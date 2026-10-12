@@ -65,6 +65,7 @@ supabase test db             # pgTAP
 - 결정: `docs/decisions.md` · 일정: `docs/plan-12w.md`(7주 MVP) · 구조: `docs/architecture.md`
 - 돈 규칙: `.claude/rules/money.md` · 원문 비노출: `.claude/rules/hidden-content.md`
 - 진행: `docs/progress.md` · 기능 목록: `docs/features.json` · 와이어프레임: `docs/wireframe/`
+- 디자인 시스템: `docs/design-system.md` · Next.js 16 에이전트 규칙: @AGENTS.md
 
 ## 하네스
 

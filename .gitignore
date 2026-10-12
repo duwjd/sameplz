@@ -38,3 +38,9 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# --- from create-next-app ---
+/.pnp
+.pnp.*
+npm-debug.log*
+.pnpm-debug.log*

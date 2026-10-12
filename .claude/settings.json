@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "disableBypassPermissionsMode": "disable",
+    "allow": [
+      "Bash(pnpm install *)",
+      "Bash(pnpm run *)",
+      "Bash(pnpm typecheck *)",
+      "Bash(pnpm lint *)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm build *)",
+      "Bash(pnpm exec vitest *)",
+      "Bash(pnpm exec playwright *)",
+      "Bash(pnpm exec prettier *)",
+      "Bash(pnpm exec eslint *)",
+      "Bash(pnpm dlx shadcn@latest add *)",
+      "Bash(supabase start *)",
+      "Bash(supabase stop *)",
+      "Bash(supabase status *)",
+      "Bash(supabase migration new *)",
+      "Bash(supabase db reset *)",
+      "Bash(supabase db lint *)",
+      "Bash(supabase db diff *)",
+      "Bash(supabase gen types *)",
+      "Bash(supabase test db *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git switch *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh issue view *)",
+      "mcp__context7__*",
+      "mcp__tosspayments__*",
+      "mcp__playwright__*",
+      "mcp__shadcn__*",
+      "mcp__supabase-dev__search_docs",
+      "mcp__supabase-dev__list_tables",
+      "mcp__supabase-dev__get_advisors"
+    ],
+    "ask": [
+      "Bash(pnpm add *)",
+      "Bash(git push *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)",
+      "Bash(supabase db push *)",
+      "Bash(supabase link *)",
+      "Bash(vercel *)",
+      "mcp__supabase-local__apply_migration",
+      "mcp__supabase-local__execute_sql",
+      "mcp__supabase-dev__execute_sql"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./supabase/.env)",
+      "Read(./supabase/.env.*)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(rm -rf *)",
+      "Bash(supabase db reset --linked *)",
+      "Bash(supabase migration repair *)",
+      "Bash(supabase projects delete *)",
+      "Bash(vercel --prod *)",
+      "Bash(vercel deploy --prod *)"
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2"
+  },
+  "enabledMcpjsonServers": [
+    "supabase-local",
+    "supabase-dev",
+    "context7",
+    "tosspayments",
+    "playwright",
+    "shadcn"
+  ],
+  "plansDirectory": "./docs/plans",
+  "worktree": {
+    "baseRef": "fresh"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-context.sh",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-paths.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format-file.sh",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-verify.sh",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  }
+}

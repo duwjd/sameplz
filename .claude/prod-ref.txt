@@ -1,0 +1,4 @@
+# 운영 Supabase project ref (비밀이 아님). guard-bash.sh가 이 값을 읽어
+# 명령에 운영 ref가 들어 있으면 실행을 막는다.
+# '#'로 시작하지 않는 첫 줄을 ref로 쓴다. 운영 프로젝트를 만든 뒤 아래 줄을 ref로 바꾼다.
+# 예: abcdefghijklmnopqrst

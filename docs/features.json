@@ -1,0 +1,991 @@
+{
+  "description": "SAMEPLZ P0 기능 목록 (Anthropic long-running harness 패턴). 기능의 수용 기준이 테스트로 통과했을 때만 해당 항목의 passes를 true로 바꾼다. 다른 필드를 고치거나 항목을 지우지 않는다. 출처: docs/specs/F1~F8. MVP(무료 출시, 7주): week는 docs/plan-12w.md의 7주 MVP 주차다. \"phase\": \"paid\"인 항목은 유료 전환 단계(사업자등록 후)이고 week가 null이며 SessionStart 훅·/sprint-status의 집계에서 빠진다. mvp_note는 MVP에서 줄어든 범위를 적는다.",
+  "generated_from": "docs/specs/F*-*.md (보고서 'SAMEPLZ 기능 명세와 개발 하네스' 3장)",
+  "features": [
+    {
+      "id": "F1-1",
+      "group": "F1",
+      "screen": "HOME",
+      "items": [
+        "HOME-01",
+        "HOME-02",
+        "HOME-03",
+        "HOME-04",
+        "HOME-05"
+      ],
+      "title": "비회원이 구경부터 하도록 HOME 섹션을 정해진 순서로 보여 준다",
+      "acceptance": "비회원이 `/`에 들어오면 배너 → HOME-02 → HOME-03 → HOME-04 → HOME-05 순서. 배너는 5초마다 넘어가고 호버·포커스 때 멈춤. 직접 넘기면 자동 넘김 끔. 움직임 줄이기 설정이면 처음부터 멈춤(WCAG 2.2.2)",
+      "week": 2,
+      "scn": [
+        "guest-to-same"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F1-2",
+      "group": "F1",
+      "screen": "HOME",
+      "items": [
+        "HOME-02",
+        "HOME-03"
+      ],
+      "title": "인기 점수 = 다운로드 + SAME×4 + 좋아요×0.5, 판매 중만, 셀프 구매·환불·같은 사람 반복 다운로드 제외",
+      "acceptance": "판매 중지된 레시피는 다음 MV 갱신(5~10분) 뒤 TOP 10·HOME-02에서 사라짐",
+      "week": 2,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F1-3",
+      "group": "F1",
+      "screen": "HOME",
+      "items": [
+        "HOME-03"
+      ],
+      "title": "크리에이터·운영팀 상한과 콜드스타트 표시",
+      "acceptance": "최근 24시간 다운로드가 100건 미만이면 ▲▼ 대신 NEW·— 표시, 계산 창 24시간. 한 크리에이터 카드는 TOP 10에 2개를 넘지 않음",
+      "week": 2,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F1-4",
+      "group": "F1",
+      "screen": "MKT",
+      "items": [
+        "MKT-02",
+        "MKT-03",
+        "MKT-04"
+      ],
+      "title": "사용자가 필터·정렬·칩으로 결과만 다시 그린다",
+      "acceptance": "기본 정렬 인기순. 칩을 하나 지우면 그 조건만 해제. GNB 검색어는 마켓 전체로 가서 칩으로 남음. 판매 중지·심사 중·비공개는 목록에 없음",
+      "week": 2,
+      "scn": [
+        "zero-result-search"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F1-5",
+      "group": "F1",
+      "screen": "MKT",
+      "items": [
+        "MKT-05"
+      ],
+      "title": "두 글자 한국어 검색이 된다",
+      "acceptance": "\"보고\", \"세무\", \"엑셀\" 검색이 제목·요약·태그·크리에이터 닉네임에서 걸림(PGroonga)",
+      "week": 2,
+      "scn": [
+        "zero-result-search"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F1-6",
+      "group": "F1",
+      "screen": "MKT",
+      "items": [
+        "MKT-05"
+      ],
+      "title": "0건이 막다른 길이 되지 않는다",
+      "acceptance": "하위 카테고리 0건 + 다른 곳 있음 → 「스킬에 1개 있어요」·「마켓 전체에 N개」 칩. 어디에도 없음 → 인기 검색어 칩 10개 + 「필터 초기화」",
+      "week": 2,
+      "scn": [
+        "zero-result-search"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F1-7",
+      "group": "F1",
+      "screen": "NF",
+      "items": [
+        "NF-01",
+        "NF-02"
+      ],
+      "title": "비공개·심사 중 레시피의 존재를 숨긴다",
+      "acceptance": "남이 `/r/{id}`를 열면 없는 주소와 같은 NF 화면, HTTP 404",
+      "week": 3,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F1-8",
+      "group": "F1",
+      "screen": "HOME",
+      "items": [
+        "HOME-06",
+        "PAY-04"
+      ],
+      "title": "통신판매중개 고지가 초기화면에서 보인다(HOME-06)",
+      "acceptance": "와이어프레임은 푸터에 두지만 하단 표시만으로는 부족하다는 안내가 있어 첫 화면 안에 한 줄 고지를 추가하고 위치는 변호사가 확정. 결제 단계·영수증에도 같은 문안",
+      "week": null,
+      "scn": [],
+      "passes": false,
+      "phase": "paid"
+    },
+    {
+      "id": "F2-1",
+      "group": "F2",
+      "screen": "PRM",
+      "items": [
+        "PRM-06",
+        "AGT-06",
+        "SKL-07"
+      ],
+      "title": "구매자가 상태에 맞는 버튼 하나만 본다(PRM-06·AGT-06·SKL-07)",
+      "acceptance": "비회원 「SAME 하기」 → 로그인 → 결제로 복귀 / 받음 → 「라이브러리에서 열기」 / 내 레시피 → 「새 버전 올리기」 / 무료 → 「무료로 SAME 하기」 → 라이브러리",
+      "week": 3,
+      "scn": [
+        "guest-to-same"
+      ],
+      "passes": false,
+      "mvp_note": "MVP: 모든 레시피가 무료라 버튼은 「무료로 SAME 하기」 → 라이브러리, 받음 → 「라이브러리에서 열기」, 내 레시피 → 「새 버전 올리기」. 비회원 → 로그인 → 받기로 복귀. 결제 분기는 유료 전환 단계"
+    },
+    {
+      "id": "F2-2",
+      "group": "F2",
+      "screen": "PRM",
+      "items": [
+        "PRM-04",
+        "SKL-05",
+        "AGT-04"
+      ],
+      "title": "본문은 어떤 경로로도 안 받은 사람에게 가지 않는다",
+      "acceptance": "익명·안 받은 회원으로 받은 HTML, RSC 페이로드, `/api/*` 응답 어디에도 본문의 고유 샘플 문자열이 없음",
+      "week": 3,
+      "scn": [
+        "guest-to-same"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F2-3",
+      "group": "F2",
+      "screen": "PRM",
+      "items": [
+        "PRM-08",
+        "AGT-08",
+        "SKL-08"
+      ],
+      "title": "공유 링크 유입을 기록한다",
+      "acceptance": "`?ref=` 진입 시 「링크로 들어옴」 띠, `recordShareClick` 실행, 1st-party 방문자 쿠키, 7일 안 구매는 직접 유입",
+      "week": 3,
+      "scn": [],
+      "passes": false,
+      "mvp_note": "MVP: 유입 수만 센다(SELL 「내 레시피」 표시). 7일 귀속·직접 유입 수수료는 유료 전환 단계"
+    },
+    {
+      "id": "F2-4",
+      "group": "F2",
+      "screen": "STOP",
+      "items": [
+        "STOP-01",
+        "STOP-02",
+        "STOP-03"
+      ],
+      "title": "판매 중지 레시피는 막되 받은 사람은 계속 쓴다",
+      "acceptance": "비회원·안 받은 회원: 받기 버튼 없음 + 사유 + 비슷한 레시피 / 받은 회원: 「받은 버전 열기」 / 만든 사람: 일반 상세 + 「판매 중지」 띠. 검색엔진용 `noindex` 또는 `availability: Discontinued`",
+      "week": 3,
+      "scn": [
+        "stopped-recipe"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F2-5",
+      "group": "F2",
+      "screen": "PRM",
+      "items": [
+        "PRM-07"
+      ],
+      "title": "API 없는 도구 레시피는 실행 버튼을 끈다",
+      "acceptance": "Midjourney 전용 레시피에서 「바로 만들어 보기」 비활성 + 이유 문구",
+      "week": 3,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F2-6",
+      "group": "F2",
+      "screen": "AGT",
+      "items": [
+        "AGT-07"
+      ],
+      "title": "전문 영역은 검토 보조로만 판다",
+      "acceptance": "세무·법률 카테고리면 상단 고지 띠 고정, 증빙 없는 배지 불가",
+      "week": 3,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F2-7",
+      "group": "F2",
+      "screen": "PRM",
+      "items": [],
+      "title": "판매자 신원을 청약 전에 보여 준다",
+      "acceptance": "사업자 판매자 상세에 7개 신원 필드 표시. 개인 판매자는 구분 배지",
+      "week": null,
+      "scn": [],
+      "passes": false,
+      "phase": "paid"
+    },
+    {
+      "id": "F3-1",
+      "group": "F3",
+      "screen": "PAY",
+      "items": [
+        "PAY-02",
+        "PAY-05"
+      ],
+      "title": "결제 금액·유입·수수료를 서버가 정한다",
+      "acceptance": "`get_checkout_quote`가 쿠폰 크리에이터 = 레시피 소유자를 확인. 7일 안 마지막 클릭 + 구매자≠크리에이터일 때만 직접 유입. 쿠폰을 쓰면 직접 유입. 결과를 주문 행에 동결",
+      "week": null,
+      "scn": [
+        "paid-same-coupon-open"
+      ],
+      "passes": false,
+      "phase": "paid"
+    },
+    {
+      "id": "F3-2",
+      "group": "F3",
+      "screen": "PAY",
+      "items": [
+        "PAY-03"
+      ],
+      "title": "필수 동의 2개 전에는 결제할 수 없다(PAY-03)",
+      "acceptance": "체크 전 버튼 비활성. 주문에 동의 문구 버전·시각·`trial_available` 저장",
+      "week": null,
+      "scn": [
+        "paid-same-coupon-open"
+      ],
+      "passes": false,
+      "phase": "paid"
+    },
+    {
+      "id": "F3-3",
+      "group": "F3",
+      "screen": "PAY",
+      "items": [
+        "PAY-01"
+      ],
+      "title": "결제 성공이 정확히 한 번 권리가 된다",
+      "acceptance": "성공 리다이렉트 → 확인 API(Idempotency-Key = 주문 id, 15일 유효·300자 이하) → `confirm_order_paid`. 웹훅은 힌트로만 쓰고 결제 상태를 다시 조회. 같은 이벤트 재수신은 no-op",
+      "week": null,
+      "scn": [
+        "paid-same-coupon-open"
+      ],
+      "passes": false,
+      "phase": "paid"
+    },
+    {
+      "id": "F3-4",
+      "group": "F3",
+      "screen": "PAY",
+      "items": [
+        "PAY-01"
+      ],
+      "title": "결제가 막혀야 할 때 막는다",
+      "acceptance": "이미 받음·내 레시피·판매 중지는 결제 전 차단 + 안내. 비회원은 로그인 뒤 결제로 복귀",
+      "week": null,
+      "scn": [
+        "stopped-recipe"
+      ],
+      "passes": false,
+      "phase": "paid"
+    },
+    {
+      "id": "F3-5",
+      "group": "F3",
+      "screen": "LIB",
+      "items": [
+        "LIB-02",
+        "LIB-03"
+      ],
+      "title": "처음 열 때만 확인을 받고 시각을 남긴다",
+      "acceptance": "첫 열기에서 m:openConfirm → `open_original`이 `opened_at` 기록, 상태 「열어 봄 · 환불 제한」. 두 번째부터 바로 원문. 파일은 `/api/files/[versionId]` → 약 60초 서명 URL",
+      "week": 3,
+      "scn": [
+        "paid-same-coupon-open"
+      ],
+      "passes": false,
+      "mvp_note": "MVP: m:openConfirm·「열어 봄 · 환불 제한」 없이 바로 원문(D6). `opened_at`은 통계용으로만 기록. 파일 서명 URL은 그대로. 확인 팝업은 유료 전환 단계"
+    },
+    {
+      "id": "F3-6",
+      "group": "F3",
+      "screen": "LIB",
+      "items": [
+        "LIB-04",
+        "ORD-03"
+      ],
+      "title": "열기 전 7일 안이면 한 번에 환불된다",
+      "acceptance": "조건을 DB 함수가 판정. PG 취소 즉시 호출 → 권리 회수 → `refund_reversal` → 양쪽 알림 → 상세에 다시 「SAME 하기」. 열기와 동시 요청이면 하나만 성공",
+      "week": null,
+      "scn": [
+        "refund-before-open"
+      ],
+      "passes": false,
+      "phase": "paid"
+    },
+    {
+      "id": "F3-7",
+      "group": "F3",
+      "screen": "ORD",
+      "items": [
+        "ORD-01",
+        "ORD-02",
+        "ORD-03",
+        "ORD-04"
+      ],
+      "title": "구매 내역과 영수증",
+      "acceptance": "무료 레시피는 구매 내역에 없음. 환불 주문은 「환불 완료」 + 환불일",
+      "week": null,
+      "scn": [
+        "refund-before-open",
+        "my-page-tour"
+      ],
+      "passes": false,
+      "phase": "paid"
+    },
+    {
+      "id": "F3-8",
+      "group": "F3",
+      "screen": "LIB",
+      "items": [
+        "LIB-01",
+        "MY-03"
+      ],
+      "title": "업데이트는 줄마다 고른다(LIB-01)",
+      "acceptance": "`apply_update`가 그 권리만 새 버전으로 옮기고 이력 행 추가",
+      "week": 3,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F4-1",
+      "group": "F4",
+      "screen": "PLAY",
+      "items": [
+        "PLAY-04"
+      ],
+      "title": "사용자가 실행 전에 정확한 크레딧을 본다",
+      "acceptance": "견적에 `price_version`을 실어 보내고, 실행 시 바뀌었으면 409 \"가격이 바뀌었어요\"",
+      "week": 5,
+      "scn": [
+        "trial-to-certify"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F4-2",
+      "group": "F4",
+      "screen": "PLAY",
+      "items": [
+        "PLAY-04",
+        "PLAY-05"
+      ],
+      "title": "실행 시작은 원자적이다",
+      "acceptance": "`start_run`이 실행·셀·체험 행·셀별 홀드(보너스 먼저)를 한 트랜잭션으로 처리. 잔액 부족이면 아무것도 만들지 않고 부족분 반환 → 충전 창 → 같은 입력으로 재실행. 같은 `client_request_id`면 기존 실행 반환",
+      "week": 5,
+      "scn": [
+        "trial-to-certify"
+      ],
+      "passes": false,
+      "mvp_note": "MVP: 체험 행 없음, 홀드는 월 무료 로트에서. 잔액 부족이면 충전 창 대신 「이번 달 크레딧을 다 썼어요 · 다음 리셋 날짜」. 일일 한도·레이트 리밋·예산 검사는 F4-14~16"
+    },
+    {
+      "id": "F4-3",
+      "group": "F4",
+      "screen": "PLAY",
+      "items": [
+        "PLAY-03"
+      ],
+      "title": "공급자 하나를 어댑터 뒤에 둔다",
+      "acceptance": "제출 시 웹훅 URL에 셀 id + 셀별 토큰. 429면 `queued`로 두고 sweeper가 재시도. sweeper는 1분마다. Replicate를 쓰면 1시간 안에 폴링(입출력이 1시간 뒤 삭제)",
+      "week": 5,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F4-4",
+      "group": "F4",
+      "screen": "PLAY",
+      "items": [
+        "PLAY-05"
+      ],
+      "title": "웹훅을 검증하고 한 번만 처리한다",
+      "acceptance": "fal ED25519 또는 Replicate HMAC을 원본 body로 검증. inbox unique. 결과 저장 → `settle_cell` → `realtime.send()`로 화이트리스트 페이로드(`cell_id`, `status`, `error_code`, `signed_url`)만",
+      "week": 5,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F4-5",
+      "group": "F4",
+      "screen": "PLAY",
+      "items": [
+        "PLAY-05",
+        "CRD-04"
+      ],
+      "title": "실패해도 크레딧이 맞다",
+      "acceptance": "모델 오류 → 반환(내역 「반환」), 안전 필터 → 차감 없음, 시간 초과 → 공급자 조회 뒤 캡처 또는 반환, 3개 중 1개 실패 → 칸마다 따로 정산. 같은 셀 정산은 두 번째부터 `noop`",
+      "week": 5,
+      "scn": [
+        "trial-to-certify"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F4-6",
+      "group": "F4",
+      "screen": "PLAY",
+      "items": [
+        "PLAY-01"
+      ],
+      "title": "체험은 한 번, 원문은 서버 밖으로 안 나간다",
+      "acceptance": "`trial_uses` PK(user, recipe). 렌더링은 서버에서, `private.play_prompts`에만 저장. 공급자 응답 객체를 그대로 반환하지 않음. 체험 결과는 서버에서 워터마크를 박고 원본은 저장하지 않음",
+      "week": null,
+      "scn": [
+        "trial-to-certify"
+      ],
+      "passes": false,
+      "phase": "paid",
+      "mvp_note": "MVP: 체험 모드가 없어 `trial_uses`·워터마크는 유료 전환 단계. 단 '렌더링은 서버에서, `private.play_prompts`에만 저장, 공급자 응답 객체를 그대로 반환하지 않음'은 MVP 모든 실행에 그대로 적용(절대 규칙 5·7, hidden-content)"
+    },
+    {
+      "id": "F4-7",
+      "group": "F4",
+      "screen": "PLAY",
+      "items": [
+        "PLAY-02",
+        "PLAY-05"
+      ],
+      "title": "위험한 입력·결과를 거른다",
+      "acceptance": "변수 텍스트는 홀드 전에 omni-moderation + 한국어 금지어 검사. 레퍼런스 이미지는 업로드 때 검사. 결과 이미지는 방송 전에 검사, 걸리면 삭제·반환. omni-moderation의 `sexual/minors`는 텍스트 전용",
+      "week": 5,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F4-8",
+      "group": "F4",
+      "screen": "PLAY",
+      "items": [
+        "PLAY-02"
+      ],
+      "title": "얼굴 사진은 동의·삭제",
+      "acceptance": "실행마다 동의 체크 없으면 비활성. 비공개 버킷 `play-refs/{user}/{upload}`, 공급자에는 10분 이하 서명 URL, 24시간~7일 뒤 삭제",
+      "week": 5,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F4-9",
+      "group": "F4",
+      "screen": "PLAY",
+      "items": [
+        "PLAY-05"
+      ],
+      "title": "AI 생성 표시",
+      "acceptance": "첫 실행 전 고지 확인 시각 저장. 일반 결과물은 공급자 원본 바이트를 그대로 둬 C2PA·SynthID 유지. 체험·얼굴 결과물은 눈에 보이는 표시를 박음",
+      "week": 5,
+      "scn": [
+        "trial-to-certify"
+      ],
+      "passes": false,
+      "mvp_note": "MVP: 체험 워터마크 없음. 얼굴 결과물의 눈에 보이는 표시는 유지"
+    },
+    {
+      "id": "F4-10",
+      "group": "F4",
+      "screen": "CRD",
+      "items": [
+        "CRD-01",
+        "CRD-02",
+        "CRD-03",
+        "CRD-04",
+        "PLAY-07"
+      ],
+      "title": "크레딧 충전과 환불",
+      "acceptance": "`grant_purchase`가 결제 id로 멱등하게 유료 로트 + 팩 보너스 로트 생성. 환불은 유료 잔여 × 10원 − 수수료(D3), 진행 중 홀드는 제외",
+      "week": null,
+      "scn": [
+        "trial-to-certify",
+        "withdraw-rejoin"
+      ],
+      "passes": false,
+      "phase": "paid"
+    },
+    {
+      "id": "F4-11",
+      "group": "F4",
+      "screen": "PLAY",
+      "items": [
+        "PLAY-06"
+      ],
+      "title": "결과로 할 일",
+      "acceptance": "SAME 인증은 받은 레시피에서만. 빈 프롬프트 결과 → UP 초안으로 프리필",
+      "week": 6,
+      "scn": [
+        "trial-to-certify"
+      ],
+      "passes": false,
+      "mvp_note": "MVP: SAME 인증은 받은(무료) 레시피에서만"
+    },
+    {
+      "id": "F4-14",
+      "group": "F4",
+      "screen": "PLAY",
+      "items": [
+        "PLAY-07",
+        "CRD-01",
+        "CRD-03"
+      ],
+      "title": "월 무료 크레딧을 주고 매월 리셋한다",
+      "acceptance": "가입 때 그달 몫(D11, 예 30C)을 `monthly_grant` 보너스 계열 로트로 지급, `expires_at` = 다음 리셋. 리셋 때 남은 몫은 `expire` 원장 행으로 소멸 후 새 로트 지급. `grant_monthly_credits`는 (user, 월) idem_key로 멱등, 두 번 돌려도 로트 하나. 유료 로트·충전·환불 경로 없음",
+      "week": 5,
+      "scn": [
+        "trial-to-certify"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F4-15",
+      "group": "F4",
+      "screen": "PLAY",
+      "items": [
+        "PLAY-04",
+        "PLAY-05"
+      ],
+      "title": "전체 월 예산을 넘으면 생성이 자동으로 멈춘다(킬 스위치)",
+      "acceptance": "`generation_budget`(월, 한도, 예약, 실사용, 상태). `start_run`이 홀드 전에 예산을 예약하고 넘으면 아무것도 만들지 않고 `BUDGET_EXHAUSTED`. 80%에 운영자 알림. 100%면 PLAY 실행 버튼 비활성 + 마감 안내. 이미 제출된 셀은 끝까지 정산. 다음 달 자동 재개, 수동 재개는 `admin_actions` 기록(D12)",
+      "week": 5,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F4-16",
+      "group": "F4",
+      "screen": "PLAY",
+      "items": [
+        "PLAY-04"
+      ],
+      "title": "계정 일일 한도와 IP·기기 레이트 리밋",
+      "acceptance": "계정별 일일 사용 한도(D11)를 넘으면 `DAILY_LIMIT` + 내일 다시 안내. IP·기기 해시 단위 분당 실행·하루 가입 수 제한(D13)을 넘으면 429 + 「잠시 뒤에 다시 해 주세요」. 한도 판정은 서버(SQL)에서, 클라이언트 값 무시. 남용 신호는 `abuse_signals`에 남김",
+      "week": 5,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F5-1",
+      "group": "F5",
+      "screen": "UP",
+      "items": [
+        "UP-01",
+        "UP-08"
+      ],
+      "title": "크리에이터가 단계마다 막힌 곳을 바로 안다",
+      "acceptance": "제목 없이 「다음」 → 칸 아래 오류 + 포커스. 나갔다 오면 「이어서 / 새로 시작」",
+      "week": 4,
+      "scn": [
+        "first-sale-registration"
+      ],
+      "passes": false,
+      "mvp_note": "MVP: SCN 7은 첫 무료 등록으로 줄인다(본인인증 없음)"
+    },
+    {
+      "id": "F5-2",
+      "group": "F5",
+      "screen": "UP",
+      "items": [
+        "UP-04",
+        "UP-05",
+        "UP-06"
+      ],
+      "title": "[변수]와 결과물 규칙",
+      "acceptance": "변수마다 설명·예시 필수(R15). 무료는 결과물 1개, 판매는 3개 이상(R01). 가격은 1,000원 이상 또는 무료, 라이선스·가격 하나",
+      "week": 4,
+      "scn": [
+        "first-sale-registration"
+      ],
+      "passes": false,
+      "mvp_note": "MVP: 무료만, 결과물 1개 이상. 가격 입력 없음. 판매 3개 이상·1,000원 규칙은 유료 전환 단계"
+    },
+    {
+      "id": "F5-3",
+      "group": "F5",
+      "screen": "UP",
+      "items": [
+        "UP-07"
+      ],
+      "title": "자동 검사 1층(결정적 검사)",
+      "acceptance": "Unicode Tags(U+E0000~E007F), 폭 0 문자, bidi 제어, 비표준 variation selector, 인젝션 문구(\"이전 지시 무시\" 등), URL·200자 넘는 base64·`curl | bash`, 선언과 다른 변수명을 잡고 「고치러 가기」로 위치 표시",
+      "week": 4,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F5-4",
+      "group": "F5",
+      "screen": "UP",
+      "items": [
+        "UP-07"
+      ],
+      "title": "자동 검사 2층(분류기 + 판정)",
+      "acceptance": "omni-moderation + 저가 LLM 판정 루브릭(과업 밖 행동 변경·유출·은닉). 애매하면 `pending_review`",
+      "week": 4,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F5-5",
+      "group": "F5",
+      "screen": "UP",
+      "items": [
+        "UP-04",
+        "UP-07"
+      ],
+      "title": "스킬 패키지 검증",
+      "acceptance": "zip 최상위 폴더 하나 = `name`. `name` 1~64자 소문자·숫자·하이픈, `description` 1,024자 이하. 중첩·암호 zip, 실행 파일, 루트 밖 심볼릭 링크 거부. `scripts/`가 있거나 산문에 셸 명령이 있으면 `review_queue`. 버전마다 `content_sha256`",
+      "week": 4,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F5-6",
+      "group": "F5",
+      "screen": "UP",
+      "items": [
+        "UP-04",
+        "UP-07"
+      ],
+      "title": "에이전트는 항상 사람 확인",
+      "acceptance": "「하는 일·안 하는 일」 양식, 키 미포함 확인 체크. 반려 시 사유 + 「고쳐서 다시 제출」",
+      "week": 4,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F5-7",
+      "group": "F5",
+      "screen": "UP",
+      "items": [
+        "UP-08"
+      ],
+      "title": "새 버전 규칙",
+      "acceptance": "변경 내용이 비면 제출 불가. 카테고리 변경 불가. 승인된 버전 수정은 트리거가 거부",
+      "week": 4,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F5-8",
+      "group": "F5",
+      "screen": "SELL",
+      "items": [
+        "SELL-06",
+        "UP-06",
+        "ACC-02"
+      ],
+      "title": "판매자 등록(m:verify)",
+      "acceptance": "PortOne 본인인증 → 서버 `GET /identity-verifications/{id}` 상태 `VERIFIED`일 때만 진행. `ci_hash` unique(한 사람 한 판매자 계정). 19세 미만 차단. 토스 셀러 등록 → `seller.changed` 웹훅. 인증 전 개인 셀러는 주 1천만원 미만으로 제한",
+      "week": null,
+      "scn": [
+        "first-sale-registration"
+      ],
+      "passes": false,
+      "phase": "paid"
+    },
+    {
+      "id": "F5-9",
+      "group": "F5",
+      "screen": "SELL",
+      "items": [
+        "SELL-05"
+      ],
+      "title": "정산이 정확하다",
+      "acceptance": "`hold_until = paid_at + 7d`. 매일 보류 해제(열린 환불·신고 있으면 제외). 화요일 배치 → `POST /v2/payouts` `SCHEDULED`(수요일, 요청당 100건 이하, JWE 암호화, Node 런타임) → `payout.changed` 웹훅. 음수는 다음 정산에서 상계",
+      "week": null,
+      "scn": [],
+      "passes": false,
+      "phase": "paid"
+    },
+    {
+      "id": "F5-10",
+      "group": "F5",
+      "screen": "SELL",
+      "items": [
+        "SELL-01",
+        "SELL-02",
+        "SELL-03",
+        "SELL-04"
+      ],
+      "title": "판매자 센터 숫자",
+      "acceptance": "`recipe_daily_stats` 기준 7·30·90일. 링크 이름 규칙 위반·중복 링크·중복 쿠폰은 칸 아래 오류",
+      "week": 4,
+      "scn": [
+        "my-page-tour"
+      ],
+      "passes": false,
+      "mvp_note": "MVP: 「내 레시피」 — 목록·상태·조회수·다운로드·SAME 수, 공유 링크 유입 수. 매출·유입별 매출·쿠폰은 유료 전환 단계"
+    },
+    {
+      "id": "F5-14",
+      "group": "F5",
+      "screen": "SELL",
+      "items": [
+        "SELL-06",
+        "UP-06"
+      ],
+      "title": "「유료 판매 오픈 알림 신청」 대기 명단",
+      "acceptance": "SELL·UP의 버튼으로 `creator_waitlist`(user_id unique, 신청 시각, 관심 카테고리, 알림 동의 버전)에 한 번만 등록. 다시 누르면 「신청했어요」 상태와 취소. RLS로 본인 행만 보임. 가격 입력·판매자 등록 화면은 없음",
+      "week": 4,
+      "scn": [
+        "first-sale-registration"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F6-1",
+      "group": "F6",
+      "screen": "GAL",
+      "items": [
+        "GAL-04",
+        "PRM-05",
+        "ACTV-02"
+      ],
+      "title": "받은 사람만 인증을 올린다",
+      "acceptance": "`gallery_posts` `same_cert` INSERT 정책이 활성 권리(`has_entitlement`)를 요구. 올리면 갤러리 맨 위 + SAME +1 + 크리에이터 알림 + 대시보드 반영. 내리면 −1",
+      "week": 6,
+      "scn": [
+        "same-cert-to-gallery"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F6-2",
+      "group": "F6",
+      "screen": "GAL",
+      "items": [
+        "GAL-03"
+      ],
+      "title": "포크는 원작을 기억한다",
+      "acceptance": "「이걸로 만들기」 → `forked_from_*`가 채워진 UP 초안. `fork_allowed=false`면 버튼 없음. 상세에 원작 표시. 판매 시 D1 규칙으로 로열티",
+      "week": 6,
+      "scn": [
+        "fork-free-share"
+      ],
+      "passes": false,
+      "mvp_note": "MVP: 원작 표시만. 판매 시 D1 로열티는 유료 전환 단계"
+    },
+    {
+      "id": "F6-3",
+      "group": "F6",
+      "screen": "GAL",
+      "items": [
+        "GAL-01"
+      ],
+      "title": "올린 결과도 다시 거른다",
+      "acceptance": "게시 때 이미지 재검사, 신고 버튼, 검토 중이면 숨김",
+      "week": 6,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F6-4",
+      "group": "F6",
+      "screen": "ACTV",
+      "items": [
+        "ACTV-01",
+        "ACTV-02",
+        "ACTV-03",
+        "ACTV-04"
+      ],
+      "title": "활동 화면",
+      "acceptance": "탭별 빈 화면, 신고 상태 2단계, 비회원 좋아요·포크·올리기는 로그인 뒤 이어서",
+      "week": 6,
+      "scn": [
+        "report-after-open"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F7-1",
+      "group": "F7",
+      "screen": "MY",
+      "items": [
+        "m:login"
+      ],
+      "title": "로그인 뒤 하려던 일로 돌아간다",
+      "acceptance": "의도(`next` + 동작)를 sessionStorage/쿠키에 저장해 OAuth 리다이렉트를 넘김. 창을 닫으면 취소",
+      "week": 2,
+      "scn": [
+        "guest-to-same"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F7-2",
+      "group": "F7",
+      "screen": "MY",
+      "items": [
+        "MY-01",
+        "MY-07"
+      ],
+      "title": "마이페이지 접근 제어",
+      "acceptance": "비회원이 `/my`에 오면 로그인 안내 → 로그인 뒤 `/my`. `getClaims()`로 판정",
+      "week": 6,
+      "scn": [
+        "my-page-tour"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F7-3",
+      "group": "F7",
+      "screen": "NOTI",
+      "items": [
+        "NOTI-01",
+        "NOTI-02",
+        "ACC-03"
+      ],
+      "title": "알림이 실시간으로 오고 필수는 못 끈다",
+      "acceptance": "RPC·트리거가 `notifications`에 넣으면 `user:{uid}` 비공개 채널로 방송. NOTI를 열면 모두 읽음, GNB 숫자 0. 필수 6종은 스위치 무시",
+      "week": 6,
+      "scn": [
+        "same-cert-to-gallery"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F7-4",
+      "group": "F7",
+      "screen": "PRF",
+      "items": [
+        "PRF-01",
+        "PRF-02",
+        "PRF-03",
+        "PRF-04",
+        "PRF-05"
+      ],
+      "title": "프로필 저장 즉시 반영",
+      "acceptance": "핸들은 확인 때와 저장 때 두 번 중복 확인. 저장하면 GNB·내 레시피 상세·갤러리 이름 바로 반영. 서버 오류면 입력 유지",
+      "week": 6,
+      "scn": [
+        "my-page-tour"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F7-5",
+      "group": "F7",
+      "screen": "ACC",
+      "items": [
+        "ACC-01"
+      ],
+      "title": "로그인 수단은 1개 이상 남는다",
+      "acceptance": "마지막 수단 해제는 막고 안내. Supabase identity 연결·해제 동작은 W1에 확인(미검증)",
+      "week": 6,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F7-6",
+      "group": "F7",
+      "screen": "ACC",
+      "items": [
+        "ACC-04"
+      ],
+      "title": "탈퇴 게이트",
+      "acceptance": "정산 대기 금액이 있으면 버튼 꺼짐. 유료 크레딧이 있으면 「크레딧 환불 먼저」. 탈퇴하면 익명화(「탈퇴한 회원」), 주문·정산은 `archive`로",
+      "week": 6,
+      "scn": [
+        "withdraw-rejoin"
+      ],
+      "passes": false,
+      "mvp_note": "MVP: 정산 대기·유료 크레딧 게이트 없음(유료 전환 단계). 남은 무료 크레딧은 탈퇴 때 소멸 안내"
+    },
+    {
+      "id": "F7-7",
+      "group": "F7",
+      "screen": "GUIDE",
+      "items": [
+        "GUIDE-01",
+        "GUIDE-02",
+        "GUIDE-03",
+        "GUIDE-04",
+        "GUIDE-05"
+      ],
+      "title": "정책 문서",
+      "acceptance": "이용약관·개인정보처리방침·판매자 약관·통신판매중개 고지 문안 법률 검토. 처리방침의 국외이전 수탁자에는 Supabase, Vercel, 생성 모델 공급자, 구글 로그인, 이메일·SMS 업체를 넣는다. 계약 이행에 필요한 위탁·보관을 처리방침에 공개하면 별도 동의는 필요 없다",
+      "week": 7,
+      "scn": [],
+      "passes": false,
+      "mvp_note": "MVP: 이용약관·개인정보처리방침·금지 콘텐츠 정책·AI 고지. 판매자 약관·통신판매중개 고지는 유료 전환 단계"
+    },
+    {
+      "id": "F7-9",
+      "group": "F7",
+      "screen": "MY",
+      "items": [
+        "m:login",
+        "ACC-01"
+      ],
+      "title": "가입 때 18세 이상 자기 확인을 받는다",
+      "acceptance": "첫 로그인 뒤 약관 동의 + 「만 18세 이상이에요」 체크박스(미리 체크 없음) 전에는 가입이 끝나지 않음. 문구 버전·시각을 `consent_events`에 기록. 확인이 없으면 PLAY 실행·업로드 불가(D5)",
+      "week": 2,
+      "scn": [
+        "guest-to-same"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F8-1",
+      "group": "F8",
+      "screen": "ADM",
+      "items": [],
+      "title": "심사 큐",
+      "acceptance": "자동 검사 결과, 이전 버전 diff, 승인·반려(R코드 템플릿), 24시간 경과 알림",
+      "week": 6,
+      "scn": [],
+      "passes": false,
+      "mvp_note": "MVP: `/admin` UI가 밀리면 Studio + SQL 함수 + `admin_actions`(잘라 낼 순서 5)"
+    },
+    {
+      "id": "F8-2",
+      "group": "F8",
+      "screen": "ADM",
+      "items": [],
+      "title": "신고함",
+      "acceptance": "사유 4종, 열람 시각·구매 이력, 소명 요청, 결정(기각·환불·판매 중지·게시중단·제재), 20시간 무응답 알림",
+      "week": 6,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F8-3",
+      "group": "F8",
+      "screen": "ADM",
+      "items": [],
+      "title": "판매 중지 vs 게시중단",
+      "acceptance": "판매 중지는 받은 사람이 계속 쓰고, 게시중단(불법·권리 침해)은 모두에게 숨김. 저작권 신고는 접수 → 즉시 중단 → 게시자 통지 → 복원 요청 → 복원 흐름, 반복 침해자 정책. 명예훼손·사생활은 임시조치 최대 30일",
+      "week": 6,
+      "scn": [],
+      "passes": false
+    },
+    {
+      "id": "F8-4",
+      "group": "F8",
+      "screen": "ADM",
+      "items": [],
+      "title": "주문 조회·환불 예외, 크레딧 조정, 지급 모니터(화요일 미리보기·보류 플래그), 제재 사다리(경고 → 판매 정지 → 계정 정지 → 차단)와 연결 계정(CI·기기·IP)",
+      "acceptance": "모든 조치는 사유 필수, `admin_actions`에 insert만",
+      "week": 7,
+      "scn": [],
+      "passes": false,
+      "mvp_note": "MVP: 크레딧 조정·제재 사다리·연결 계정(기기·IP 해시, CI 없음, D13)만. 주문·환불 예외·지급 모니터는 유료 전환 단계"
+    }
+  ]
+}

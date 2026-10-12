@@ -1,0 +1,3 @@
+# claude -w 로 만든 워크트리에 복사할 gitignore 대상 파일 (gitignore 문법)
+.env.local
+supabase/.env

@@ -1,0 +1,40 @@
+# --- dependencies / build ---
+node_modules/
+.pnpm-store/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- env & secrets (env.example is the only committed template) ---
+.env*
+!env.example
+supabase/.env*
+*.pem
+*.key
+
+# --- Claude Code (personal / local only) ---
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/worktrees/
+
+# --- Supabase local state ---
+supabase/.temp/
+supabase/.branches/
+
+# --- tests / tooling ---
+coverage/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+.vercel/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

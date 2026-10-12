@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "supabase-local": {
+      "type": "http",
+      "url": "http://localhost:54321/mcp"
+    },
+    "supabase-dev": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=<DEV_PROJECT_REF>&read_only=true&features=docs%2Cdatabase%2Cdebugging%2Cdevelopment"
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${CONTEXT7_API_KEY:-}"
+      }
+    },
+    "tosspayments": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@tosspayments/integration-guide-mcp@latest"]
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless", "--isolated", "--allowed-origins", "http://localhost:3000"]
+    },
+    "shadcn": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["shadcn@latest", "mcp"]
+    }
+  }
+}

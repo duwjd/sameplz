@@ -23,7 +23,7 @@ CLAUDE.md                 루트 규칙(절대 규칙 8개, 명령, 작업 방�
 .mcp.json                 dev 전용 MCP 6개(로컬 Supabase, dev Supabase 읽기 전용, context7, 토스 문서, playwright, shadcn)
 .github/workflows/        ci.yml · claude.yml(@claude) · claude-review.yml(돈·보안 경로 리뷰)
 src/app/CLAUDE.md, supabase/CLAUDE.md, e2e/CLAUDE.md   중첩 규칙(해당 폴더 파일을 읽을 때 로드)
-docs/decisions.md         착공 전 결정 D1~D13 (MVP open: D4·D8·D10~D13, closed: D5·D6, 유료 전환 deferred: D1·D2·D3·D7·D9)
+docs/decisions.md         착공 전 결정 D1~D14 (MVP open: D4·D8·D10~D13, closed: D5·D6·D14, 유료 전환 deferred: D1·D2·D3·D7·D9)
 docs/plan-12w.md          7주 MVP 계획(파일 이름만 12w), 외부 할 일, go/no-go, 잘라 낼 순서, 유료 전환 단계
 docs/architecture.md      스택, 테이블 묶음, 돈 RPC 불변식, 경로↔화면, 배포 파이프라인, 함정 12개
 docs/content-baseline.md  출시 콘텐츠 수량·가격대·시딩 계획
@@ -79,11 +79,18 @@ cp env.example .env.local     # 값은 직접 넣는다. Claude는 .env* 를 읽
 
 ### 3. Supabase
 
-1. 대시보드에서 운영 프로젝트를 **서울(`ap-northeast-2`)**로 직접 고른다('APAC 일반'은 싱가포르). Pro 플랜.
+> **MVP는 Supabase Free 단일 프로젝트(D14).** 클라우드 프로젝트 1개 = 운영, 개발은 로컬 Supabase, 운영 반영은 `deploy-db` 워크플로. Pro로 옮기면 Branching 구성(dev 프로젝트·staging 브랜치)으로 되돌린다.
+
+1. 대시보드에서 운영 프로젝트를 **서울(`ap-northeast-2`)**로 직접 고른다('APAC 일반'은 싱가포르).
 2. 운영 project ref를 `.claude/prod-ref.txt`의 주석 아래 줄에 적는다(비밀 아님). guard-bash가 이 ref가 들어간 명령을 막는다.
-3. dev용 ref(별도 dev 프로젝트 또는 상시 staging 브랜치)를 `.mcp.json`의 `<DEV_PROJECT_REF>` 자리에 넣는다. 변수 확장 대신 직접 박는 이유: 변수가 비면 프로젝트 범위 제한이 사라질 수 있다.
-4. GitHub 연동(Branching): 대시보드 → Integrations → GitHub → 이 저장소, Supabase 디렉터리 `supabase`, "Deploy to production"을 main에 켠다. 상시 staging 브랜치를 하나 만든다(OAuth 리다이렉트는 운영 + staging에만 등록).
-5. `supabase login` 후 dev에만 링크: `supabase link --project-ref <DEV_REF>`(사람이 실행. Claude가 하면 확인 창).
+3. `.mcp.json`에서 `supabase-dev` 서버 블록을 지운다(dev 클라우드 프로젝트가 없고 운영에는 MCP를 붙이지 않는다). `supabase-local`은 남긴다.
+4. 운영 반영용 GitHub 시크릿을 `production` 환경에 넣는다(환경은 필수 승인자 duwjd, 배포 브랜치 main).
+   ```bash
+   gh secret set SUPABASE_ACCESS_TOKEN --env production   # supabase.com → Account → Access Tokens
+   gh secret set SUPABASE_DB_PASSWORD  --env production   # 프로젝트 만들 때 정한 DB 비밀번호
+   gh secret set SUPABASE_PROJECT_REF  --env production   # 운영 project ref
+   ```
+5. 로컬은 `supabase start` 후 `supabase status -o env` 값으로 `.env.local`을 채운다. 로컬에서 `supabase link`는 하지 않는다(링크할 dev가 없다).
 
 ### 4. Vercel
 
@@ -97,7 +104,7 @@ vercel link                    # 새 프로젝트, 루트 디렉터리 그대로
 
 ### 5. MCP 서버
 
-프로젝트 서버 6개는 `.mcp.json`에 이미 있다. 첫 세션에서 `/mcp`로 승인하고, `supabase-dev`는 `/mcp`에서 OAuth 로그인한다.
+프로젝트 서버는 `.mcp.json`에 이미 있다. 첫 세션에서 `/mcp`로 승인한다. `supabase-local`은 `supabase start` 뒤에 붙는다(Free 단일 프로젝트라 `supabase-dev`는 쓰지 않는다, D14).
 
 계정 단위 권한을 갖는 서버는 **커밋하지 않고** 로컬·사용자 범위로만, W6(베타) 이후에 붙인다:
 
@@ -215,7 +222,7 @@ docs/decisions.md 의 해당 결정과 docs/specs 의 관련 요구사항을 읽
 
 W1 외부 할 일(전부 사업자등록 없이 된다)은 코드보다 먼저 건다. `docs/plan-12w.md` 「외부 할 일」 참조.
 
-- 도메인 구입, Supabase Pro(서울)·Vercel Pro(`icn1`)를 개인 카드로
+- 도메인 구입, Supabase 서울(MVP는 Free, D14)·Vercel(`icn1`)
 - Google OAuth 동의 화면, 카카오 개인 앱(이메일 동의 항목 없음), 네이버 앱
 - fal 계정 + 동시성 상향 요청 + 지출 한도(spend cap, D12 월 예산 이하)
 - OpenAI 모더레이션 키
@@ -257,7 +264,7 @@ W1 외부 할 일(전부 사업자등록 없이 된다)은 코드보다 먼저 �
 | `ci.yml` 서드파티 액션 버전, `supabase status -o env` 변수 이름 | `ci.yml` | W1에 버전(SHA) 고정 후 dry run |
 | gitleaks-action 라이선스 필요 여부(조직 계정) | `ci.yml` `secrets` 잡 | 개인 계정이면 불필요로 알려짐 |
 | 클라우드 세션에서 `supabase start`(Docker) | — | 그전까지 클라우드에서는 CI `db` 잡에 의존 |
-| dev ref로 상시 staging 브랜치 ref를 써도 되는지 | `.mcp.json` | 안 되면 별도 dev 프로젝트 |
+| `deploy-db` 워크플로의 첫 실제 반영(승인 → db push) | `.github/workflows/deploy-db.yml` | 첫 마이그레이션 머지 때. 그전에 `workflow_dispatch`로 dry run |
 | 샌드박스 `excludedCommands` 목록 | (꺼 둠) | 권한·훅이 안정된 뒤 로컬에서 시험 |
 | Next.js DevTools MCP 설정 형식 | (제외) | 형식 확인 뒤 추가 |
 | `create-next-app`이 비어 있지 않은 폴더를 거부하는지 | W1 프롬프트 | 그래서 임시 폴더 경유로 적었다 |

@@ -89,18 +89,20 @@ Next 16 변경점: `middleware.ts` → `proxy.ts`(Node 런타임), `params`·`co
 
 ## 5. 배포 파이프라인
 
+> **MVP(D14)**: Supabase Free 플랜, 클라우드 프로젝트 1개 = 운영. Branching·프리뷰 브랜치·dev 클라우드 프로젝트·상시 staging이 없다. 개발·테스트 DB는 로컬 Supabase(Docker)와 CI의 일회용 스택이다.
+
 1. 스키마는 `supabase/migrations/*.sql`에만 둔다.
-2. PR을 열면 Supabase GitHub 연동이 마이그레이션으로 **프리뷰 브랜치**를 만들고 `seed.sql`로 채운다(프리뷰 브랜치는 기본적으로 데이터가 없으므로 시드가 e2e를 돌릴 만큼 넉넉해야 한다).
-3. Vercel 연동이 브랜치별 환경 변수를 프리뷰 배포에 넣는다. 주입과 배포가 경합할 수 있어 Supabase가 최신 배포를 다시 돌려 우회한다.
+2. PR을 열면 CI `db` 잡이 깨끗한 로컬 스택에 마이그레이션과 `seed.sql`을 적용하고 pgTAP·RLS 검사를 돌린다. `e2e` 잡도 같은 일회용 스택을 쓴다.
+3. Vercel 프리뷰 배포는 운영 Supabase를 본다(프리뷰 브랜치 없음). 머지 전 마이그레이션은 운영에 없으므로, 스키마가 바뀐 PR의 프리뷰는 화면 확인용으로만 쓰고 DB 동작은 로컬·CI에서 확인한다.
 4. CI(`checks`, `db`, `e2e`)와 경로 필터 Claude 리뷰가 돈다. **`checks`·`db`·`e2e`를 필수 체크로** 걸어야 실패한 PR이 운영에 닿지 않는다.
-5. main에 머지하면 Supabase가 마이그레이션을 운영에 반영하고 Vercel이 운영 배포한다.
-6. OAuth 리다이렉트 URI는 운영과 상시 staging 브랜치에만 등록하고, 소셜 로그인은 staging에서만 시험한다(프리뷰 도메인은 PR마다 바뀜).
+5. main에 머지하면 `deploy-db` 워크플로가 `production` 환경 승인(duwjd)을 기다린 뒤 `supabase db push --dry-run` → `supabase db push`로 운영에 반영하고, Vercel이 운영 배포한다. 마이그레이션은 반드시 이전 버전 앱과 호환되게(추가 먼저, 삭제는 다음 PR) 쓴다. 배포 순서가 보장되지 않는다.
+6. OAuth 리다이렉트 URI는 운영 도메인과 로컬(`http://127.0.0.1:54321/auth/v1/callback`)에만 등록한다. 소셜 로그인은 로컬에서 시험한다.
 
 ### 월 비용(약 5천 MAU)
 
 | 항목 | 월 비용 | 메모 |
 |---|---|---|
-| Supabase Pro(서울) | $25, 상시 staging 브랜치 약 $10 추가 | 무료 플랜은 1주 미사용 시 일시 정지, 이미지 변환 없음 |
+| Supabase Pro(서울) | $25, 상시 staging 브랜치 약 $10 추가 | MVP는 Free(D14): 1주 미사용 시 일시 정지, 일일 백업 없음, 이미지 변환 없음. 베타(W6) 전 Pro 재검토 |
 | Vercel Pro | $20(사용량 크레딧 $20 포함) | 함수 최대 800초, 요청·응답 4.5MB |
 | Resend Pro / Solapi 알림톡 | $20 / 건당 13원 | 무료 이메일은 하루 100통 |
 | Sentry / PostHog / Better Stack / 채널톡 | $0~26 / $0 / $0 / 0원부터 | |

@@ -4,10 +4,6 @@
       "type": "http",
       "url": "http://localhost:54321/mcp"
     },
-    "supabase-dev": {
-      "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=<DEV_PROJECT_REF>&read_only=true&features=docs%2Cdatabase%2Cdebugging%2Cdevelopment"
-    },
     "context7": {
       "type": "http",
       "url": "https://mcp.context7.com/mcp",

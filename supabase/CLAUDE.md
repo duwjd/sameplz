@@ -12,7 +12,7 @@ Supabase 서울(`ap-northeast-2`). ORM 없음. 사용자 경로는 supabase-js +
 4. 정책·함수마다 pgTAP 테스트(`supabase/tests/*.sql`) → `supabase test db`
 5. db-migration-reviewer에 검토를 맡긴다.
 
-운영 반영은 PR 머지 때 Supabase Branching이 한다. `supabase db push`는 `--dry-run`만 허용된다.
+운영 반영은 main 머지 때 `.github/workflows/deploy-db.yml`이 한다(`production` 환경 승인 → `supabase db push`). Supabase Free 플랜이라 Branching·프리뷰 브랜치·dev 클라우드 프로젝트가 없다(D14). 에이전트의 `supabase db push`는 `--dry-run`만 허용되고, `supabase link`도 하지 않는다.
 
 ## 함수 규약 (돈이 걸린 RPC)
 
@@ -52,4 +52,4 @@ revoke execute on function private.refund_order(uuid) from public, anon, authent
 
 ## 시드
 
-`seed.sql`은 프리뷰 브랜치와 e2e가 쓴다. 사용자 guest·jiwoo·creator·admin, 레시피 3카테고리 × 무료(MVP는 유료 레시피 시드 없음), 판매 중지 1, 심사 중 1, 포크 1, 이번 달 `generation_budget` 1행. 실제 개인정보·키를 넣지 않는다.
+`seed.sql`은 로컬 `db reset`과 CI(`db`·`e2e` 잡)가 쓴다. 운영에는 들어가지 않는다. 사용자 guest·jiwoo·creator·admin, 레시피 3카테고리 × 무료(MVP는 유료 레시피 시드 없음), 판매 중지 1, 심사 중 1, 포크 1, 이번 달 `generation_budget` 1행. 실제 개인정보·키를 넣지 않는다.

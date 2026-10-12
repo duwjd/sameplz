@@ -24,7 +24,7 @@
 
 | 주 | 기간 | 개발(화면 코드) | 외부 일정(임계 경로) | 콘텐츠·운영 | 주말 게이트 |
 |---|---|---|---|---|---|
-| W1 | 10/05~10/11 | 하네스·스캐폴드 커밋, Supabase Pro 서울·Vercel Pro `icn1`, 로그인 스파이크(Google, 카카오 개인 앱, 네이버 D4, Supabase identity 연결·해제), PGroonga 한국어·fal vs Replicate 스파이크 | **도메인 구입, Supabase Pro·Vercel Pro(개인 카드), Google OAuth 동의 화면, 카카오 개인 앱(이메일 없음), 네이버 앱, fal 계정 + 동시성 상향 요청 + 지출 한도, OpenAI 모더레이션 키** | 레시피 백로그 60, 직무 9, 필드 스펙, 네이버 데이터랩으로 키워드 30개 검색량 확인 | 빈 앱에서 CI 통과, 로그인 2종 동작, D4·D8 결정 |
+| W1 | 10/05~10/11 | 하네스·스캐폴드 커밋, Supabase 서울(Free 단일 프로젝트, D14)·Vercel `icn1`, 로그인 스파이크(Google, 카카오 개인 앱, 네이버 D4, Supabase identity 연결·해제), PGroonga 한국어·fal vs Replicate 스파이크 | **도메인 구입, Supabase Pro·Vercel Pro(개인 카드), Google OAuth 동의 화면, 카카오 개인 앱(이메일 없음), 네이버 앱, fal 계정 + 동시성 상향 요청 + 지출 한도, OpenAI 모더레이션 키** | 레시피 백로그 60, 직무 9, 필드 스펙, 네이버 데이터랩으로 키워드 30개 검색량 확인 | 빈 앱에서 CI 통과, 로그인 2종 동작, D4·D8 결정 |
 | W2 | 10/12~10/18 | 스키마 v1(계정·카탈로그·`entitlements`·`recipe_versions`·`gallery_posts`·`creator_waitlist`), RLS + pgTAP, 로그인 팝업(돌아가기), 18+ 자기 확인 가입, `seed.sql`, HOME·MKT·COL 읽기 + `search_recipes` | 개인정보처리방침·이용약관 초안(무료 서비스 기준) | 운영팀 레시피 8 | RLS CI 검사 통과, SCN 10(검색 0건) 통과 |
 | W3 | 10/19~10/25 | PRM·AGT·SKL·STOP·NF 상세, 보는 사람 상태, `?ref` 유입 기록, SEO 메타·OG. LIB(원문 열기, 파일 리다이렉트, 업데이트), 무료 받기 `claim_free_recipe` | 금지 콘텐츠 정책·AI 고지 문안 초안 | 운영팀 +6(14), GUIDE 초안, 반려 사유 문구 | SCN 1(비회원 → 무료 SAME)·SCN 9(판매 중지) 통과 |
 | W4 | 10/26~11/01 | UP 무료 올리기(초안·서명 업로드·[변수]·결과물·자동 검사 1~2층·사람 확인 큐), SELL 「내 레시피」 + 대기 명단 버튼, 크레딧 원장 SQL(`grant_monthly_credits`·`place_hold`·`settle_cell`) pgTAP 먼저 | **GPT 신규 생성 중단(10/26)** → 크리에이터 모집 시계 | 운영팀 +6(20), 크리에이터 DM 1차 40명 | SCN 7(첫 무료 등록) 통과, 크레딧 원장 pgTAP 통과, D10·D11·D12·D13 결정 |
@@ -37,7 +37,7 @@
 | 항목 | 언제 | 메모 |
 |---|---|---|
 | 도메인 | W1 | 운영 도메인은 W5에 공개 페이지로 연다 |
-| Supabase Pro(서울), Vercel Pro(`icn1`) | W1 | 개인 카드. 사업자 전환 뒤 결제 주체를 옮긴다 |
+| Supabase 서울(MVP는 Free 단일 프로젝트, D14), Vercel(`icn1`) | W1 | 베타(W6) 전 Supabase Pro 재검토. 사업자 전환 뒤 결제 주체를 옮긴다 |
 | Google OAuth 동의 화면 | W1 | 앱 이름·도메인·처리방침 URL. 외부 공개 전 검수 여부 확인 |
 | 카카오 개인 앱 | W1 | 비즈 앱이 아니므로 이메일 동의 항목 없음. 닉네임·프로필만, 키는 `auth.users.id` |
 | 네이버 앱 | W1 | 스파이크 결과에 따라 출시 포함 또는 P1(D4) |
@@ -55,7 +55,7 @@
 4. 실사용자 SAME 인증 40건
 5. MVP SCN e2e 통과(유료 전환 단계 SCN 제외, `docs/specs/SCN.md`)
 6. 개인정보처리방침·이용약관·금지 콘텐츠 정책·AI 고지 게시
-7. 전체 월 예산 킬 스위치·계정 일일 한도·레이트 리밋이 staging에서 동작
+7. 전체 월 예산 킬 스위치·계정 일일 한도·레이트 리밋이 로컬·CI(시드 값 조정)에서 동작
 8. 운영 도메인이 서치어드바이저·서치콘솔에 등록됨
 
 ## 잘라 낼 순서 (일정이 밀리면)

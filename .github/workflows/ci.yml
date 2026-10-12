@@ -1,6 +1,6 @@
 # CI: harness self-check (always) + checks / db / e2e (once the app and supabase/ exist).
-# Mark `checks`, `db`, `e2e` as REQUIRED status checks on main so Supabase Branching
-# never deploys migrations from a failing PR. Skipped jobs (before W1 scaffold) report as skipped.
+# Mark `checks`, `db`, `e2e` as REQUIRED status checks on main so deploy-db (D14, no Branching)
+# never applies migrations from a failing PR. Skipped jobs (before W1 scaffold) report as skipped.
 #
 # TODO(unverified): third-party action major versions (pnpm/action-setup, actions/setup-node,
 # supabase/setup-cli, actions/upload-artifact, gitleaks/gitleaks-action) were not re-verified.

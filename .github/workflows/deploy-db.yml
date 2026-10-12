@@ -1,0 +1,56 @@
+# Production schema deploy (D14: Supabase Free, single project = production, no Branching).
+# Runs on every push to main that touches migrations. The `production` environment requires
+# approval from duwjd before any step runs, so nothing reaches production without a human click.
+#
+# Environment secrets (Settings → Environments → production):
+#   SUPABASE_ACCESS_TOKEN  personal access token (supabase.com → Account → Access Tokens)
+#   SUPABASE_DB_PASSWORD   production database password
+#   SUPABASE_PROJECT_REF   production project ref
+#
+# Manual run (workflow_dispatch) with dry_run=true only prints the pending migrations.
+name: deploy-db
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only show pending migrations (no changes)"
+        type: boolean
+        default: true
+
+concurrency:
+  group: deploy-db
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: supabase/setup-cli@v1 # TODO(unverified): pin version with ci.yml
+        with:
+          version: latest
+      - name: Check secrets
+        run: |
+          for v in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_PROJECT_REF; do
+            [ -n "${!v}" ] || { echo "::error::missing environment secret $v"; exit 1; }
+          done
+      - run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+      - name: Pending migrations (dry run)
+        run: supabase db push --dry-run
+      - name: Apply migrations
+        if: github.event_name == 'push' || inputs.dry_run == false
+        run: supabase db push

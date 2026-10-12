@@ -3,3 +3,5 @@ src/types/database.types.ts
 docs/wireframe/
 .mcp.json
 .claude/
+# harness docs: keep hand formatting (tables) stable
+*.md

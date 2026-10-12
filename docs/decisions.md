@@ -1,4 +1,4 @@
-# 착공 전 결정 (D1~D14)
+# 착공 전 결정 (D1~D15)
 
 이 결정들이 `orders`·`seller_earnings`·`credit_lots`의 컬럼과 약관 문구를 정한다. 코드보다 먼저 닫는다.
 
@@ -26,6 +26,7 @@
 | D12 | 전체 월 생성 예산과 킬 스위치 동작 | 창업자 + 엔지니어링 | W4 | open |
 | D13 | 본인인증 없는 남용 신호와 조치 | 엔지니어링 | W4 | open |
 | D14 | Supabase 플랜과 환경 구성(Free 단일 프로젝트) | 창업자 + 엔지니어링 | W1 | closed |
+| D15 | 레시피 검색 구현 방식(PGroonga + 검색 RPC) | 창업자 + 엔지니어링 | W1 | closed |
 ---
 
 ## D1 · 포크 로열티 10%는 누가 내고, 어떤 금액 기준인가
@@ -166,6 +167,16 @@
 - **확인 주체 · 기한**: 창업자 + 엔지니어링 · W1
 - **상태**: closed
 - **결정**: 2026-10-12 C 선택. Supabase Free 단일 프로젝트(운영), 로컬 개발, GitHub Actions `deploy-db`로 운영 반영(사용자 결정).
+---
+
+## D15 · 레시피 검색 구현 방식
+
+- **선택지**: A RLS가 걸린 `recipes`에 PGroonga `&@~`를 직접 건다 / B 공개 조건을 함수 안에 직접 넣은 SECURITY DEFINER `search_recipes` RPC로만 검색한다
+- **근거(스파이크 `docs/spikes/W1-pgroonga-korean.md`, 2만 행)**: A는 PGroonga 연산자가 LEAKPROOF가 아니라 RLS 조건보다 먼저 인덱스로 못 쓰여 Seq Scan **2,366ms**. B는 인덱스 스캔 **9~19ms**. F1-5 세 단어는 두 방식 모두 정확히 걸림.
+- **영향**: 검색은 `public.search_recipes`만(직접 `&@~` 금지), 입력은 `pgroonga_query_escape`, 실행 권한 `anon`·`authenticated`, 반환은 공개 필드 DTO. `create extension pgroonga with schema extensions`. 이 함수만 `search_path = extensions, public` 예외(`pgroonga_condition()`이 `''`에서 동작하지 않음, 돈 RPC 아님).
+- **확인 주체 · 기한**: 창업자 + 엔지니어링 · W1
+- **상태**: closed
+- **결정**: 2026-10-12 B 선택. 2.4초는 받아들일 수 없어 검색 RPC 방식으로 확정(사용자 결정).
 ---
 
 ## 계획 전체를 떠받치는 가정 (검증 대상)

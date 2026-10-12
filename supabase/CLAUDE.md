@@ -30,6 +30,12 @@ revoke execute on function private.refund_order(uuid) from public, anon, authent
 - `private` 스키마, `security definer`, `set search_path = ''`, 모든 객체를 스키마로 한정(`public.orders`).
 - `anon`·`authenticated` 실행 권한을 뺀다. 서버 액션이 secret 키 클라이언트로만 부른다.
 - 한 함수 = 한 트랜잭션. 경합 행은 `select … for update`. 멱등 키는 unique 제약으로.
+
+## 검색 (D15)
+
+- 레시피 검색은 `public.search_recipes` RPC로만 한다. RLS 테이블에 PGroonga `&@~`를 직접 걸지 않는다(인덱스를 못 써서 2만 행에 2.4초).
+- RPC 안에서 공개 조건(`status = 'live'`)을 직접 건다. 사용자 입력은 `pgroonga_query_escape()`로 감싼다.
+- 이 함수만 `set search_path = extensions, public`(예외, D15). 결과는 공개 필드만.
 - 금액·수수료율·로열티는 계산 시점에 주문 행에 동결하고 다시 계산하지 않는다.
 
 ## 데이터 세 겹

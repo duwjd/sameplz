@@ -14,7 +14,7 @@ Next.js 16.3.x · Supabase 서울(`ap-northeast-2`) · Vercel `icn1`. ORM은 쓰
 | 인증·세션 | `@supabase/ssr`, `proxy.ts`는 세션 갱신만, 서버에서는 `getClaims()` | 서버에서 `getSession()`을 믿지 말 것. 캐시된 응답의 `Set-Cookie` 유출 주의 |
 | 키 | `sb_publishable_…` / `sb_secret_…` 새 키로 시작 | 기존 `anon`/`service_role`은 2026년 말 폐기 예정 |
 | 데이터 접근 | `server-only` DAL(`src/data`) + 서버 액션(`src/actions`) → RPC | 서버 액션은 직접 POST로 닿는 공개 엔드포인트 → 액션마다 인가 재확인 |
-| 검색 | PGroonga(`&@~`) | 기본 전문 검색은 알파벳 언어용, `pg_bigm`은 목록에 없음 |
+| 검색 | PGroonga(`&@~` + `pgroonga_query_escape`), `search_recipes` RPC로만 | 기본 전문 검색은 알파벳 언어용, `pg_bigm`은 목록에 없음. RLS 테이블에 직접 걸면 인덱스를 못 씀 → `docs/spikes/W1-pgroonga-korean.md` |
 | 실시간 | Broadcast + 비공개 채널(`user:{uid}`, `run:{id}`) | Postgres Changes는 확장성이 떨어짐 |
 | 작업 | DB 내부 작업은 `pg_cron`(랭킹, 통계, 보류 해제, 정리), Node SDK가 필요한 작업만 Vercel Cron(지급 배치) | Vercel Cron은 Hobby 하루 1회, Pro 분 단위 |
 | UI·폼 | SAMEPLZ 디자인 시스템(Vapor 기반, `src/components/ds`, `--sp-*` 토큰) + Tailwind v4(레이아웃 보조), zod + react-hook-form 공용 스키마 | `docs/design-system.md`. shadcn은 쓰지 않는다 |

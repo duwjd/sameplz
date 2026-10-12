@@ -1,0 +1,4 @@
+-- SAMEPLZ 로컬·프리뷰·e2e 시드. `supabase db reset`이 마이그레이션 뒤에 적용한다.
+-- 실제 개인정보·키를 넣지 않는다. 채울 내용은 supabase/CLAUDE.md 「시드」 참고:
+--   사용자 guest·jiwoo·creator·admin, 레시피 3카테고리 × 무료, 판매 중지 1, 심사 중 1, 포크 1,
+--   이번 달 generation_budget 1행.

@@ -4,6 +4,8 @@
 - 환경: 로컬 Supabase, PostgreSQL 17.11, **pgroonga 3.2.5**. 운영 DB는 건드리지 않았다. 클라우드는 Supabase 문서 기준으로 지원된다(`create extension pgroonga with schema extensions;`).
 - 데이터: 실제와 비슷한 레시피 33행 + 합성 2만 행(10%는 비공개)
 
+> **결정(D15, 2026-10-12):** 아래 권고대로 검색 RPC 방식으로 확정했다.
+
 ## 결론
 
 **된다.** 단, 아래 두 가지를 지켜야 한다.

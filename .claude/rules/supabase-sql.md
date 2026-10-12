@@ -18,6 +18,6 @@ paths:
 - `security definer` 함수는 `private` 스키마, `set search_path = ''`, 객체 이름을 스키마로 한정, `revoke execute … from public, anon, authenticated`.
 - 원장 테이블은 UPDATE·DELETE 금지 트리거. 승인된 `recipe_versions` 내용 컬럼 UPDATE도 트리거로 거부.
 - 새 테이블은 같은 마이그레이션에서 `enable row level security`와 정책·인덱스까지.
-- 확장: 한국어 검색은 PGroonga(`&@~`). `pg_bigm`은 쓸 수 없다.
+- 확장: 한국어 검색은 PGroonga(`&@~`, `extensions` 스키마). `pg_bigm`은 쓸 수 없다. 검색은 `search_recipes` RPC로만(D15) — RLS 테이블에 직접 걸면 Seq Scan.
 - 이미 `origin/main`에 있는 마이그레이션 파일은 고치지 않는다(훅이 막는다). 고칠 것은 새 마이그레이션으로.
 - 원격 DB 대상 명령(`--linked`, `--db-url`, `db push`, `migration repair`)은 쓰지 않는다. 로컬만.

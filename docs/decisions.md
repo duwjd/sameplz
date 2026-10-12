@@ -1,4 +1,4 @@
-# 착공 전 결정 (D1~D13)
+# 착공 전 결정 (D1~D14)
 
 이 결정들이 `orders`·`seller_earnings`·`credit_lots`의 컬럼과 약관 문구를 정한다. 코드보다 먼저 닫는다.
 
@@ -25,6 +25,7 @@
 | D11 | 월 무료 크레딧과 계정별 일일 한도 | 창업자 | W4 | open |
 | D12 | 전체 월 생성 예산과 킬 스위치 동작 | 창업자 + 엔지니어링 | W4 | open |
 | D13 | 본인인증 없는 남용 신호와 조치 | 엔지니어링 | W4 | open |
+| D14 | Supabase 플랜과 환경 구성(Free 단일 프로젝트) | 창업자 + 엔지니어링 | W1 | closed |
 ---
 
 ## D1 · 포크 로열티 10%는 누가 내고, 어떤 금액 기준인가
@@ -154,6 +155,17 @@
 - **확인 주체 · 기한**: 엔지니어링 · W4
 - **상태**: open
 - **결정**:
+---
+
+## D14 · Supabase 플랜과 환경 구성
+
+- **선택지**: A Pro + Branching(프리뷰 브랜치·상시 staging, 머지 시 자동 반영) / B Free 프로젝트 2개(dev·운영) / C Free 프로젝트 1개 = 운영, 개발은 로컬 Supabase, 운영 반영은 GitHub Actions
+- **권고**: **C.** sameplz용으로 만들 수 있는 Free 프로젝트가 1개다. Branching은 유료 기능이다.
+- **영향**: `.github/workflows/deploy-db.yml`(main 머지 → `production` 환경 승인 → `supabase db push`), `.mcp.json`의 `supabase-dev` 원격 MCP 제거, Vercel 프리뷰가 운영 DB를 봄, OAuth 리다이렉트는 운영 + 로컬만, `.env.local`은 로컬 Supabase 값만. 마이그레이션은 이전 버전 앱과 호환되게(추가 → 다음 PR에서 삭제).
+- **위험**: Free는 1주 미사용 시 일시 정지, 일일 백업·PITR 없음. 베타(W6) 전에 Pro 전환을 다시 본다. 그때 B·A로 옮기면 이 결정을 다시 연다.
+- **확인 주체 · 기한**: 창업자 + 엔지니어링 · W1
+- **상태**: closed
+- **결정**: 2026-10-12 C 선택. Supabase Free 단일 프로젝트(운영), 로컬 개발, GitHub Actions `deploy-db`로 운영 반영(사용자 결정).
 ---
 
 ## 계획 전체를 떠받치는 가정 (검증 대상)

@@ -26,8 +26,8 @@ main 대비 바뀐 마이그레이션 파일:
 7. `supabase test db`
 8. `supabase db lint` (경고 확인)
 9. db-migration-reviewer에 검토를 맡긴다. 위임 메시지에 명세 ID와 새 마이그레이션 파일 경로를 적는다.
-10. seed가 바뀌어야 하면 `supabase/seed.sql`을 같이 고친다(프리뷰 브랜치와 e2e가 쓴다).
+10. seed가 바뀌어야 하면 `supabase/seed.sql`을 같이 고친다(로컬 `db reset`과 CI가 쓴다).
 
 ## 운영 반영
 
-PR을 열면 Supabase Branching이 프리뷰 브랜치를 만들고, main에 머지하면 운영에 적용한다. 에이전트는 `supabase db push`(dry-run 제외)·`supabase link`·`migration repair`를 하지 않는다.
+PR의 CI `db` 잡이 깨끗한 로컬 스택에 마이그레이션을 적용해 확인하고, main에 머지하면 `deploy-db` 워크플로가 `production` 환경 승인 뒤 `supabase db push`로 운영에 적용한다(D14, Branching 없음). 에이전트는 `supabase db push`(dry-run 제외)·`supabase link`·`migration repair`를 하지 않는다.

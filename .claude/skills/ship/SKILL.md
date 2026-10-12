@@ -56,7 +56,7 @@ allowed-tools: Bash(git add *) Bash(git commit *) Bash(gh pr create *)
 
 ## 마이그레이션
 - 새 파일: supabase/migrations/… (없으면 "없음")
-- 운영 반영: 머지 시 Supabase Branching
+- 운영 반영: 머지 시 deploy-db 워크플로(production 승인 필요)
 
 ## 건드린 결정
 - [ ] D<n> … (없으면 "없음")
@@ -65,4 +65,4 @@ allowed-tools: Bash(git add *) Bash(git commit *) Bash(gh pr create *)
 - [ ] code-review  - [ ] payment-auditor  - [ ] security-auditor
 ```
 
-PR을 열면 Supabase 프리뷰 브랜치, Vercel 프리뷰, CI(checks·db·e2e), 경로 필터 Claude 리뷰가 돈다. 머지는 사용자가 한다.
+PR을 열면 Vercel 프리뷰(운영 DB를 보므로 DB 변경은 확인하지 않음), CI(checks·db·e2e), 경로 필터 Claude 리뷰가 돈다. 머지는 사용자가 하고, 마이그레이션이 있으면 deploy-db 승인도 사용자가 한다.

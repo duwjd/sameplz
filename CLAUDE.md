@@ -39,7 +39,7 @@ supabase test db             # pgTAP
 
 ## 절대 규칙
 
-1. 운영 Supabase·Vercel에 직접 쓰지 않는다. 스키마는 PR 머지(Supabase Branching)로만 운영에 간다.
+1. 운영 Supabase·Vercel에 직접 쓰지 않는다. 스키마는 PR 머지 → `deploy-db` 워크플로(승인 후 `supabase db push`)로만 운영에 간다. 개발 DB는 로컬 Supabase뿐이다(Free 플랜 단일 프로젝트 = 운영, D14).
 2. `origin/main`에 있는 마이그레이션 파일은 고치지 않는다. 새 파일을 만든다.
 3. secret 키(`sb_secret_…`, PG secret, 공급자 키)를 클라이언트 코드나 `NEXT_PUBLIC_*`에 두지 않는다.
 4. 돈·크레딧 계산은 SQL 함수와 `src/lib/credits`·`src/lib/payments`에서만 한다. 클라이언트가 보낸 금액은 쓰지 않는다.
@@ -71,7 +71,7 @@ supabase test db             # pgTAP
 
 - 훅이 막는 것: `.env*`·잠금 파일·`.git/`·하네스 설정·생성 타입·적용된 마이그레이션 편집, 운영 ref·`--linked` reset·`--db-url`·`db push`(dry-run 제외)·`curl | sh`·강제 push. 막히면 우회하지 말고 사용자에게 알린다.
 - Stop 훅이 typecheck·관련 테스트를 돌린다. 자동화(`claude -p`)에서는 `SAMEPLZ_SKIP_STOP_VERIFY=1`.
-- 원격 MCP는 dev 프로젝트·읽기 전용만. 운영 DB와 PortOne 콘솔은 어떤 범위로도 연결하지 않는다.
+- Supabase MCP는 로컬(`supabase-local`)만. 클라우드 프로젝트는 운영뿐이라 원격 Supabase MCP를 붙이지 않는다. 운영 DB와 PortOne 콘솔은 어떤 범위로도 연결하지 않는다.
 
 ## 압축
 

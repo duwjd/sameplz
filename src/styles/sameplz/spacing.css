@@ -1,0 +1,69 @@
+/* ============================================================
+   SAMEPLZ — Spacing, Radius, Sizing, Shadow, Motion
+   Values transcribed from the Vapor Figma variables.
+   Spacing base unit = 4px. Named `space-NNN` where 100 = 8px.
+   ============================================================ */
+
+:root {
+  /* ---- Space scale (px) ---- */
+  --sp-space-000: 0;
+  --sp-space-025: 2px;
+  --sp-space-050: 4px;
+  --sp-space-075: 6px;
+  --sp-space-100: 8px;
+  --sp-space-150: 12px;
+  --sp-space-175: 14px;
+  --sp-space-200: 16px;
+  --sp-space-225: 18px;
+  --sp-space-250: 20px;
+  --sp-space-300: 24px;
+  --sp-space-400: 32px;
+  --sp-space-500: 40px;
+  --sp-space-600: 48px;
+  --sp-space-700: 56px;
+  --sp-space-800: 64px;
+  --sp-space-900: 72px;
+
+  /* ---- Dimension / control sizes (px) — icon + control heights ---- */
+  --sp-dimension-200: 16px;
+  --sp-dimension-250: 20px;
+  --sp-dimension-300: 24px;
+  --sp-dimension-400: 32px;
+  --sp-dimension-500: 40px;
+  --sp-dimension-600: 48px;
+
+  /* ---- Border radius (px) ---- */
+  --sp-radius-000: 0;
+  --sp-radius-050: 2px;
+  --sp-radius-100: 4px;
+  --sp-radius-200: 6px;
+  --sp-radius-300: 8px;
+  --sp-radius-400: 12px;
+  --sp-radius-500: 16px;
+  --sp-radius-600: 20px;
+  --sp-radius-700: 24px;
+  --sp-radius-800: 32px;
+  --sp-radius-900: 40px;
+  --sp-radius-full: 9999px;
+
+  /* ---- Border widths ---- */
+  --sp-border-width: 1px;
+  --sp-border-width-thick: 1.5px;
+
+  /* ---- Elevation / box-shadow ---- */
+  --sp-shadow-sm: 0 1px 3px rgb(0 0 0 / 20%);
+  --sp-shadow-md: 0 2px 10px rgb(0 0 0 / 20%);
+  --sp-shadow-lg: 0 4px 16px rgb(0 0 0 / 20%);
+  --sp-shadow-xl: 0 16px 32px rgb(0 0 0 / 20%);
+
+  /* ---- Motion ---- */
+  --sp-duration-fast: 100ms; /* @kind other */
+  --sp-duration-medium: 150ms; /* @kind other */
+  --sp-duration-default: 200ms; /* @kind other */
+  --sp-duration-slow: 500ms; /* @kind other */
+  --sp-easing-standard: ease; /* @kind other */
+  --sp-easing-out: ease-out; /* @kind other */
+  --sp-easing-in: ease-in; /* @kind other */
+  --sp-easing-emphasized: ease-in-out; /* @kind other */
+  --sp-transition: 200ms ease; /* @kind other */
+}

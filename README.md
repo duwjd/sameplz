@@ -20,7 +20,7 @@ CLAUDE.md                 루트 규칙(절대 규칙 8개, 명령, 작업 방�
 .claude/skills/           스킬 10개(/feature-from-spec, /wireframe-to-ui, /supabase-migration, rls-policy,
                           /credit-ledger, /payment-webhook, /generation-pipeline, /e2e-scenario, /sprint-status, /ship)
 .claude/prod-ref.txt      운영 Supabase ref(비밀 아님) — guard-bash가 읽어 차단
-.mcp.json                 dev 전용 MCP 6개(로컬 Supabase, dev Supabase 읽기 전용, context7, 토스 문서, playwright, shadcn)
+.mcp.json                 dev 전용 MCP(로컬 Supabase, context7, 토스 문서, playwright, shadcn). shadcn 서버는 디자인 시스템 도입으로 쓰지 않는다
 .github/workflows/        ci.yml · claude.yml(@claude) · deploy-db.yml(운영 스키마 반영). PR 자동 리뷰(claude-review)는 쓰지 않는다
 src/app/CLAUDE.md, supabase/CLAUDE.md, e2e/CLAUDE.md   중첩 규칙(해당 폴더 파일을 읽을 때 로드)
 docs/decisions.md         착공 전 결정 D1~D14 (MVP open: D4·D8·D10~D13, closed: D5·D6·D14, 유료 전환 deferred: D1·D2·D3·D7·D9)
@@ -203,7 +203,7 @@ SAMEPLZ Next.js 앱을 이 저장소에 스캐폴드하는 계획을 세워 줘.
   옮길 때 기존 하네스 파일(CLAUDE.md, src/app/CLAUDE.md, .gitignore, README.md, docs/ 등)을 덮어쓰지 않는다. .gitignore는 합친다.
 - next@16.3.x 최신 패치, cacheComponents: true, proxy.ts는 세션 갱신만(@supabase/ssr).
 - package.json 스크립트: dev, build, start, typecheck(tsc --noEmit), lint, test(vitest run).
-- 개발 의존성: vitest, @playwright/test, prettier. shadcn/ui 초기화(sonner 포함).
+- 개발 의존성: vitest, @playwright/test, prettier. (shadcn/ui는 W1에 넣었다가 SAMEPLZ 디자인 시스템으로 대체)
 - 폴더 골격: src/data(server-only, secrets.ts 자리만), src/actions, src/lib/{supabase,credits,payments,generation,moderation,validation},
   src/components, src/types, e2e/scenarios, e2e/fixtures. 빈 파일 대신 각 폴더의 역할을 한 줄 주석으로 가진 index.ts만.
 - supabase init(supabase/config.toml), seed.sql 빈 틀, supabase/tests/ 에 RLS 켜짐을 확인하는 pgTAP 1개.

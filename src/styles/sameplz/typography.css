@@ -1,0 +1,58 @@
+/* ============================================================
+   SAMEPLZ — Typography
+   Typeface: Pretendard (KR/Latin), Inter (numeric UI), Fira Code (mono).
+   Type scale + weights transcribed from the Vapor Figma variables.
+   ============================================================ */
+
+:root {
+  /* Families */
+  --sp-font-sans: var(--font-pretendard), "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", sans-serif;
+  --sp-font-code: var(--font-fira-code), "Fira Code", "SFMono-Regular", ui-monospace, Menlo,
+    Consolas, monospace;
+
+  /* Weights */
+  --sp-weight-regular: 400;
+  --sp-weight-medium: 500;
+  --sp-weight-bold: 700;
+  --sp-weight-extrabold: 800;
+
+  /* Font-size scale (px) */
+  --sp-fs-050: 12px;   /* caption */
+  --sp-fs-075: 14px;   /* body-2 / label */
+  --sp-fs-100: 16px;   /* body-1 (base) */
+  --sp-fs-200: 18px;   /* heading-6 */
+  --sp-fs-300: 20px;   /* heading-5 */
+  --sp-fs-400: 24px;   /* heading-4 */
+  --sp-fs-500: 32px;   /* heading-3 */
+  --sp-fs-600: 38px;   /* heading-2 */
+  --sp-fs-700: 48px;   /* heading-1 */
+  --sp-fs-800: 64px;   /* display-2 */
+  --sp-fs-900: 80px;   /* display-1 */
+
+  /* Line heights */
+  --sp-lh-tight: 1.3; /* @kind other */
+  --sp-lh-normal: 1.5; /* @kind other */
+
+  /* Letter spacing — display/heading are slightly negative */
+  --sp-ls-heading: -0.4px; /* @kind other */
+  --sp-ls-normal: 0; /* @kind other */
+}
+
+/* ---- Ready-made text classes ---- */
+.sp-display-1 { font-family: var(--sp-font-sans); font-weight: 800; font-size: var(--sp-fs-900); line-height: 1.2; letter-spacing: -0.8px; color: var(--sp-fg-normal); }
+.sp-display-2 { font-family: var(--sp-font-sans); font-weight: 800; font-size: var(--sp-fs-800); line-height: 1.2; letter-spacing: -0.6px; color: var(--sp-fg-normal); }
+
+.sp-heading-1 { font-family: var(--sp-font-sans); font-weight: 700; font-size: var(--sp-fs-700); line-height: 1.3; letter-spacing: -0.4px; color: var(--sp-fg-normal); }
+.sp-heading-2 { font-family: var(--sp-font-sans); font-weight: 700; font-size: var(--sp-fs-600); line-height: 1.47; letter-spacing: -0.4px; color: var(--sp-fg-normal); }
+.sp-heading-3 { font-family: var(--sp-font-sans); font-weight: 700; font-size: var(--sp-fs-500); line-height: 1.4; letter-spacing: -0.3px; color: var(--sp-fg-normal); }
+.sp-heading-4 { font-family: var(--sp-font-sans); font-weight: 700; font-size: var(--sp-fs-400); line-height: 1.4; letter-spacing: -0.2px; color: var(--sp-fg-normal); }
+.sp-heading-5 { font-family: var(--sp-font-sans); font-weight: 700; font-size: var(--sp-fs-300); line-height: 1.4; color: var(--sp-fg-normal); }
+.sp-heading-6 { font-family: var(--sp-font-sans); font-weight: 700; font-size: var(--sp-fs-200); line-height: 1.44; color: var(--sp-fg-normal); }
+
+.sp-body-1 { font-family: var(--sp-font-sans); font-weight: 400; font-size: var(--sp-fs-100); line-height: 1.5; color: var(--sp-fg-normal); }
+.sp-body-2 { font-family: var(--sp-font-sans); font-weight: 400; font-size: var(--sp-fs-075); line-height: 1.5; color: var(--sp-fg-normal); }
+.sp-label-1 { font-family: var(--sp-font-sans); font-weight: 500; font-size: var(--sp-fs-100); line-height: 1.5; color: var(--sp-fg-normal); }
+.sp-label-2 { font-family: var(--sp-font-sans); font-weight: 500; font-size: var(--sp-fs-075); line-height: 1.5; color: var(--sp-fg-normal); }
+.sp-caption  { font-family: var(--sp-font-sans); font-weight: 500; font-size: var(--sp-fs-050); line-height: 1.5; color: var(--sp-fg-hint); }
+.sp-code     { font-family: var(--sp-font-code); font-weight: 400; font-size: var(--sp-fs-075); line-height: 1.5; }

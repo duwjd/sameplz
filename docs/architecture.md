@@ -17,7 +17,7 @@ Next.js 16.3.x · Supabase 서울(`ap-northeast-2`) · Vercel `icn1`. ORM은 쓰
 | 검색 | PGroonga(`&@~`) | 기본 전문 검색은 알파벳 언어용, `pg_bigm`은 목록에 없음 |
 | 실시간 | Broadcast + 비공개 채널(`user:{uid}`, `run:{id}`) | Postgres Changes는 확장성이 떨어짐 |
 | 작업 | DB 내부 작업은 `pg_cron`(랭킹, 통계, 보류 해제, 정리), Node SDK가 필요한 작업만 Vercel Cron(지급 배치) | Vercel Cron은 Hobby 하루 1회, Pro 분 단위 |
-| UI·폼 | shadcn/ui(Tailwind v4, `sonner`), zod + react-hook-form 공용 스키마 | shadcn v4에서 `toast` → `sonner` |
+| UI·폼 | SAMEPLZ 디자인 시스템(Vapor 기반, `src/components/ds`, `--sp-*` 토큰) + Tailwind v4(레이아웃 보조), zod + react-hook-form 공용 스키마 | `docs/design-system.md`. shadcn은 쓰지 않는다 |
 | 테스트 | Vitest(수수료·크레딧 계산), pgTAP(RLS·원장 불변식), Playwright(SCN 12개) | 돈 경로를 테스트로 먼저 고정 |
 | 관측·분석 | Sentry, PostHog Cloud, Better Stack(가동 감시) | 무료 구간으로 출시 가능 |
 

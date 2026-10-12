@@ -1,0 +1,144 @@
+/* ============================================================
+   SAMEPLZ — Color system
+   Brand: Mint #00FF9C · Lime #B6FFA1 · Lemon #FEFFA7 · Yellow #FFE700
+   Bright fills carry dark ink text (--sp-fg-accent), never white.
+   ============================================================ */
+:root {
+  /* ---- Brand (fixed, theme-independent) ---- */
+  --sp-brand-mint: #00FF9C;
+  --sp-brand-lime: #B6FFA1;
+  --sp-brand-lemon: #FEFFA7;
+  --sp-brand-yellow: #FFE700;
+  --sp-ink: #0E1A14;
+  --sp-logo-ink: #0A0C0E;
+  /* Logo gradient (top-left Yellow → Lime → Mint bottom-right). Logo symbol and rare brand moments only — never on controls. */
+  --sp-brand-gradient: linear-gradient(135deg, #FFEA2E 0%, #6DF08B 50%, #00E6A6 100%);
+
+  /* ---- Mint (primary) — 500 = brand ---- */
+  --sp-mint-050: #EBFFF5; --sp-mint-100: #CCFFE9; --sp-mint-200: #99FFD2; --sp-mint-300: #5CFFB8;
+  --sp-mint-400: #2EFFAA; --sp-mint-500: #00FF9C; --sp-mint-600: #00E08A; --sp-mint-700: #00B870;
+  --sp-mint-800: #008A55; --sp-mint-900: #006B42; --sp-mint-950: #004D30;
+
+  /* ---- Lime (success) — 200 = brand ---- */
+  --sp-lime-050: #F0FFEB; --sp-lime-100: #DAFFCF; --sp-lime-200: #B6FFA1; --sp-lime-300: #A2F58A;
+  --sp-lime-400: #8EEB72; --sp-lime-500: #74D957; --sp-lime-600: #4FB534; --sp-lime-700: #3B8F25;
+  --sp-lime-800: #2E6E1D; --sp-lime-900: #1F4D13;
+
+  /* ---- Yellow (warning) — 100 = Lemon, 500 = Yellow ---- */
+  --sp-yellow-050: #FFFFE0; --sp-yellow-100: #FEFFA7; --sp-yellow-200: #FFF97A; --sp-yellow-300: #FFF35C;
+  --sp-yellow-400: #FFED2E; --sp-yellow-500: #FFE700; --sp-yellow-600: #F2D600; --sp-yellow-700: #D6C100;
+  --sp-yellow-800: #9C8C00; --sp-yellow-900: #6E6200;
+
+  /* ---- Red (danger) — functional, outside the brand set ---- */
+  --sp-red-100: #FFE2E3; --sp-red-300: #FF9AA1; --sp-red-500: #F5535E; --sp-red-600: #EC323E; --sp-red-700: #D91C29;
+
+  /* ---- Gray (green-tinted neutral) ---- */
+  --sp-gray-000: #FFFFFF; --sp-gray-050: #F6F8F7; --sp-gray-100: #EEF2F0; --sp-gray-200: #E5EAE7;
+  --sp-gray-300: #DCE2DF; --sp-gray-400: #C5CDC9; --sp-gray-500: #8A948F; --sp-gray-600: #66706B;
+  --sp-gray-700: #4C5551; --sp-gray-800: #353D39; --sp-gray-900: #222925; --sp-gray-950: #161B18;
+
+  --sp-base-white: #FFFFFF;
+  --sp-base-black: #000000;
+
+  /* ============ Semantic (light = default) ============ */
+  --sp-fg-normal: var(--sp-gray-900);
+  --sp-fg-secondary: var(--sp-gray-800);
+  --sp-fg-hint: var(--sp-gray-600);
+  --sp-fg-disabled: var(--sp-gray-400);
+  --sp-fg-inverse: var(--sp-gray-000);
+  --sp-fg-accent: var(--sp-ink);
+  --sp-fg-on-contrast: var(--sp-mint-500);
+  --sp-fg-primary: var(--sp-mint-900);
+  --sp-fg-success: var(--sp-lime-800);
+  --sp-fg-warning: var(--sp-yellow-900);
+  --sp-fg-danger: var(--sp-red-700);
+  --sp-fg-contrast: var(--sp-gray-800);
+
+  --sp-bg-canvas: var(--sp-gray-050);
+  --sp-bg-surface: var(--sp-gray-000);
+  --sp-bg-normal: var(--sp-gray-000);
+  --sp-bg-secondary: var(--sp-gray-100);
+  --sp-bg-hover: var(--sp-gray-050);
+  --sp-bg-overlay: rgba(0, 0, 0, 0.5);
+
+  --sp-bg-primary: var(--sp-mint-500);
+  --sp-bg-primary-hover: var(--sp-mint-600);
+  --sp-bg-primary-soft: var(--sp-mint-100);
+  --sp-bg-primary-tint: rgba(0, 224, 138, 0.12);
+  --sp-bg-success: var(--sp-lime-400);
+  --sp-bg-success-hover: var(--sp-lime-500);
+  --sp-bg-success-soft: var(--sp-lime-200);
+  --sp-bg-success-tint: rgba(116, 217, 87, 0.14);
+  --sp-bg-warning: var(--sp-yellow-500);
+  --sp-bg-warning-hover: var(--sp-yellow-600);
+  --sp-bg-warning-soft: var(--sp-yellow-100);
+  --sp-bg-warning-tint: rgba(242, 214, 0, 0.16);
+  --sp-bg-danger: var(--sp-red-500);
+  --sp-bg-danger-hover: var(--sp-red-600);
+  --sp-bg-danger-soft: var(--sp-red-100);
+  --sp-bg-danger-tint: rgba(245, 83, 94, 0.08);
+  --sp-bg-contrast: var(--sp-gray-950);
+  --sp-bg-contrast-hover: var(--sp-gray-800);
+  --sp-bg-hint-soft: var(--sp-gray-100);
+  --sp-bg-neutral-tint: rgba(102, 112, 107, 0.08);
+
+  --sp-border-normal: var(--sp-gray-300);
+  --sp-border-secondary: var(--sp-gray-200);
+  --sp-border-hover: var(--sp-gray-400);
+  --sp-border-primary: var(--sp-mint-700);
+  --sp-border-success: var(--sp-lime-600);
+  --sp-border-warning: var(--sp-yellow-700);
+  --sp-border-danger: var(--sp-red-500);
+  --sp-border-contrast: var(--sp-gray-800);
+
+  --sp-focus-ring: rgba(0, 224, 138, 0.24);
+}
+
+/* ============ Dark theme — [data-theme="dark"] on any ancestor ============ */
+[data-theme="dark"] {
+  --sp-logo-ink: #FFFFFF;
+  --sp-gray-000: #0F1411; --sp-gray-050: #161C19; --sp-gray-100: #1D2420; --sp-gray-200: #2A332E;
+  --sp-gray-300: #39433E; --sp-gray-400: #525C57; --sp-gray-500: #7A847F; --sp-gray-600: #A3ADA8;
+  --sp-gray-700: #C5CDC9; --sp-gray-800: #DCE2DF; --sp-gray-900: #EEF2F0; --sp-gray-950: #F6F8F7;
+
+  --sp-fg-normal: var(--sp-gray-900);
+  --sp-fg-secondary: var(--sp-gray-800);
+  --sp-fg-hint: var(--sp-gray-600);
+  --sp-fg-disabled: var(--sp-gray-400);
+  --sp-fg-on-contrast: var(--sp-gray-000);
+  --sp-fg-primary: var(--sp-mint-500);
+  --sp-fg-success: var(--sp-lime-200);
+  --sp-fg-warning: var(--sp-yellow-500);
+  --sp-fg-danger: var(--sp-red-300);
+
+  --sp-bg-canvas: #0A0E0C;
+  --sp-bg-surface: var(--sp-gray-050);
+  --sp-bg-normal: var(--sp-gray-050);
+  --sp-bg-secondary: var(--sp-gray-100);
+  --sp-bg-hover: var(--sp-gray-100);
+
+  --sp-bg-primary-hover: var(--sp-mint-300);
+  --sp-bg-primary-soft: rgba(0, 255, 156, 0.14);
+  --sp-bg-primary-tint: rgba(0, 255, 156, 0.10);
+  --sp-bg-success-hover: var(--sp-lime-200);
+  --sp-bg-success-soft: rgba(182, 255, 161, 0.14);
+  --sp-bg-success-tint: rgba(182, 255, 161, 0.10);
+  --sp-bg-warning-hover: var(--sp-yellow-300);
+  --sp-bg-warning-soft: rgba(255, 231, 0, 0.14);
+  --sp-bg-warning-tint: rgba(255, 231, 0, 0.10);
+  --sp-bg-danger-soft: rgba(245, 83, 94, 0.18);
+  --sp-bg-danger-tint: rgba(245, 83, 94, 0.12);
+  --sp-bg-contrast: var(--sp-gray-950);
+  --sp-bg-contrast-hover: var(--sp-gray-800);
+  --sp-bg-hint-soft: var(--sp-gray-100);
+  --sp-bg-neutral-tint: rgba(163, 173, 168, 0.10);
+
+  --sp-border-normal: var(--sp-gray-200);
+  --sp-border-secondary: var(--sp-gray-100);
+  --sp-border-hover: var(--sp-gray-400);
+  --sp-border-primary: var(--sp-mint-500);
+  --sp-border-success: var(--sp-lime-300);
+  --sp-border-warning: var(--sp-yellow-500);
+
+  --sp-focus-ring: rgba(0, 255, 156, 0.28);
+}

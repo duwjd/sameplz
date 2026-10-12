@@ -80,9 +80,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
-      - uses: supabase/setup-cli@v1         # TODO(unverified): version and `version:` input
+      - uses: supabase/setup-cli@v1         # CLI version pinned below; bump with local `supabase --version`
         with:
-          version: latest
+          version: 2.120.0 # pinned: "latest" queries the GitHub API unauthenticated and hits rate limits
       - run: supabase start
       - run: supabase db reset              # local only; never --linked / --db-url
       - run: supabase test db
@@ -108,7 +108,7 @@ jobs:
           cache: pnpm
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.120.0 # pinned: "latest" queries the GitHub API unauthenticated and hits rate limits
       - run: supabase start
       - run: supabase db reset
       - name: Local Supabase env for the app

@@ -94,7 +94,7 @@ Next 16 변경점: `middleware.ts` → `proxy.ts`(Node 런타임), `params`·`co
 1. 스키마는 `supabase/migrations/*.sql`에만 둔다.
 2. PR을 열면 CI `db` 잡이 깨끗한 로컬 스택에 마이그레이션과 `seed.sql`을 적용하고 pgTAP·RLS 검사를 돌린다. `e2e` 잡도 같은 일회용 스택을 쓴다.
 3. Vercel 프리뷰 배포는 운영 Supabase를 본다(프리뷰 브랜치 없음). 머지 전 마이그레이션은 운영에 없으므로, 스키마가 바뀐 PR의 프리뷰는 화면 확인용으로만 쓰고 DB 동작은 로컬·CI에서 확인한다.
-4. CI(`checks`, `db`, `e2e`)와 경로 필터 Claude 리뷰가 돈다. **`checks`·`db`·`e2e`를 필수 체크로** 걸어야 실패한 PR이 운영에 닿지 않는다.
+4. CI(`checks`, `db`, `e2e`)가 돈다(PR 자동 Claude 리뷰는 쓰지 않는다. 리뷰는 로컬 `/code-review`와 감사 서브에이전트로). **`checks`·`db`·`e2e`를 필수 체크로** 걸어야 실패한 PR이 운영에 닿지 않는다.
 5. main에 머지하면 `deploy-db` 워크플로가 `production` 환경 승인(duwjd)을 기다린 뒤 `supabase db push --dry-run` → `supabase db push`로 운영에 반영하고, Vercel이 운영 배포한다. 마이그레이션은 반드시 이전 버전 앱과 호환되게(추가 먼저, 삭제는 다음 PR) 쓴다. 배포 순서가 보장되지 않는다.
 6. OAuth 리다이렉트 URI는 운영 도메인과 로컬(`http://127.0.0.1:54321/auth/v1/callback`)에만 등록한다. 소셜 로그인은 로컬에서 시험한다.
 

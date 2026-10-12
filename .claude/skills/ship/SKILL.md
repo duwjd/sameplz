@@ -65,4 +65,4 @@ allowed-tools: Bash(git add *) Bash(git commit *) Bash(gh pr create *)
 - [ ] code-review  - [ ] payment-auditor  - [ ] security-auditor
 ```
 
-PR을 열면 Vercel 프리뷰(운영 DB를 보므로 DB 변경은 확인하지 않음), CI(checks·db·e2e), 경로 필터 Claude 리뷰가 돈다. 머지는 사용자가 하고, 마이그레이션이 있으면 deploy-db 승인도 사용자가 한다.
+PR을 열면 Vercel 프리뷰(운영 DB를 보므로 DB 변경은 확인하지 않음), CI(checks·db·e2e)가 돈다. PR 자동 Claude 리뷰는 없으니 리뷰는 PR 전에 로컬 `/code-review`·감사 서브에이전트로 한다. 머지는 사용자가 하고, 마이그레이션이 있으면 deploy-db 승인도 사용자가 한다.

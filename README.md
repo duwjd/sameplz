@@ -21,7 +21,7 @@ CLAUDE.md                 루트 규칙(절대 규칙 8개, 명령, 작업 방�
                           /credit-ledger, /payment-webhook, /generation-pipeline, /e2e-scenario, /sprint-status, /ship)
 .claude/prod-ref.txt      운영 Supabase ref(비밀 아님) — guard-bash가 읽어 차단
 .mcp.json                 dev 전용 MCP 6개(로컬 Supabase, dev Supabase 읽기 전용, context7, 토스 문서, playwright, shadcn)
-.github/workflows/        ci.yml · claude.yml(@claude) · claude-review.yml(돈·보안 경로 리뷰)
+.github/workflows/        ci.yml · claude.yml(@claude) · deploy-db.yml(운영 스키마 반영). PR 자동 리뷰(claude-review)는 쓰지 않는다
 src/app/CLAUDE.md, supabase/CLAUDE.md, e2e/CLAUDE.md   중첩 규칙(해당 폴더 파일을 읽을 때 로드)
 docs/decisions.md         착공 전 결정 D1~D14 (MVP open: D4·D8·D10~D13, closed: D5·D6·D14, 유료 전환 deferred: D1·D2·D3·D7·D9)
 docs/plan-12w.md          7주 MVP 계획(파일 이름만 12w), 외부 할 일, go/no-go, 잘라 낼 순서, 유료 전환 단계

@@ -18,7 +18,7 @@ export const ALL_RECIPES: HomeRecipe[] = [
   {
     title: "셀카 → 링크드인 프로필 사진",
     creator: "사진관K",
-    job: "공통",
+    job: "인사·채용",
     kind: "이미지",
     tools: ["ChatGPT", "Gemini"],
     price: 4900,
@@ -30,7 +30,7 @@ export const ALL_RECIPES: HomeRecipe[] = [
   {
     title: "한국어 번역투 교정",
     creator: "문장공방",
-    job: "공통",
+    job: "사무·기획",
     category: "skill",
     mediaLabel: "SKILL.md · 텍스트 · 파일 3개",
     tools: ["Claude", "ChatGPT", "Gemini CLI"],
@@ -43,7 +43,7 @@ export const ALL_RECIPES: HomeRecipe[] = [
   {
     title: "감성 카페 메뉴 사진 톤",
     creator: "무드랩",
-    job: "마케터",
+    job: "마케팅·SNS",
     kind: "이미지",
     tools: ["ChatGPT", "Gemini"],
     price: 0,
@@ -55,7 +55,7 @@ export const ALL_RECIPES: HomeRecipe[] = [
   {
     title: "스마트스토어 상세페이지 카피",
     creator: "상세장인",
-    job: "온라인 셀러",
+    job: "커머스·셀러",
     kind: "텍스트",
     tools: ["ChatGPT", "Claude"],
     price: 19000,
@@ -67,7 +67,7 @@ export const ALL_RECIPES: HomeRecipe[] = [
   {
     title: "제품 사진 → 상세 연출 컷 6종",
     creator: "상세장인",
-    job: "온라인 셀러",
+    job: "커머스·셀러",
     kind: "이미지",
     tools: ["Midjourney", "Seedream"],
     price: 9900,
@@ -79,7 +79,7 @@ export const ALL_RECIPES: HomeRecipe[] = [
   {
     title: "인스타 카드뉴스 10장 기획",
     creator: "카드뉴스공방",
-    job: "마케터",
+    job: "마케팅·SNS",
     kind: "텍스트",
     tools: ["ChatGPT", "Claude"],
     price: 12000,
@@ -91,7 +91,7 @@ export const ALL_RECIPES: HomeRecipe[] = [
   {
     title: "9:16 제품 언박싱 숏폼 8초",
     creator: "숏폼공장",
-    job: "온라인 셀러",
+    job: "콘텐츠·영상",
     kind: "영상",
     tools: ["Veo", "Kling"],
     price: 14900,
@@ -103,7 +103,7 @@ export const ALL_RECIPES: HomeRecipe[] = [
   {
     title: "네이버 블로그 SEO 글 구조",
     creator: "블로그연구소",
-    job: "마케터",
+    job: "마케팅·SNS",
     category: "skill",
     mediaLabel: "SKILL.md · 블로그 HTML · 파일 4개",
     tools: ["Claude", "Codex", "Cursor"],
@@ -116,7 +116,7 @@ export const ALL_RECIPES: HomeRecipe[] = [
   {
     title: "블로그 키워드 → 글감 노션 정리",
     creator: "블로그연구소",
-    job: "마케터",
+    job: "마케팅·SNS",
     category: "agent",
     mediaLabel: "키워드 → … → 노션 정리",
     tools: ["Claude"],
@@ -129,7 +129,7 @@ export const ALL_RECIPES: HomeRecipe[] = [
   {
     title: "스마트스토어 리뷰 답글 초안 에이전트",
     creator: "동네사장",
-    job: "온라인 셀러",
+    job: "CS·고객응대",
     category: "agent",
     mediaLabel: "새 리뷰 가져오기 → … → 승인 요청",
     tools: ["Claude", "n8n"],
@@ -142,7 +142,7 @@ export const ALL_RECIPES: HomeRecipe[] = [
   {
     title: "향수 무드 시네마틱 컷",
     creator: "무드랩",
-    job: "디자이너",
+    job: "콘텐츠·영상",
     kind: "영상",
     tools: ["Seedance", "Runway"],
     price: 19000,

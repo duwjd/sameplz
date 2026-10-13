@@ -58,4 +58,4 @@ revoke execute on function private.refund_order(uuid) from public, anon, authent
 
 ## 시드
 
-`seed.sql`은 로컬 `db reset`과 CI(`db`·`e2e` 잡)가 쓴다. 운영에는 들어가지 않는다. 사용자 guest·jiwoo·creator·admin, 레시피 3카테고리 × 무료(MVP는 유료 레시피 시드 없음), 판매 중지 1, 심사 중 1, 포크 1, 이번 달 `generation_budget` 1행. 실제 개인정보·키를 넣지 않는다.
+`seed.sql`은 로컬 `db reset`과 CI(`db`·`e2e` 잡)가 쓴다. 운영에는 들어가지 않는다. 사용자 jiwoo(`…01`, 가입 동의 완료)·크리에이터 8명·「SAMEPLZ 운영팀」(`…10`, role `staff`)·admin(`…11`), 레시피 17개(라이브 15·판매 중지 `…15`·심사 중 `…16`·포크 `…17`, 전부 무료, 원문에 `SAMEPLZ-SECRET-SAMPLE-<nn>`), 받기·SAME 인증·좋아요·팔로우·컬렉션 1·배너 4. 고정 UUID는 pgTAP 테스트가 쓴다. `generation_budget`과 jiwoo의 월 무료 크레딧은 W4(크레딧 테이블)에서 더한다. 실제 개인정보·키를 넣지 않는다.

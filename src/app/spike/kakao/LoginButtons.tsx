@@ -22,6 +22,9 @@ export function LoginButtons({ signedIn }: { signedIn: boolean }) {
       <a href="/auth/kakao?next=/spike/kakao">
         카카오로 로그인 (OIDC + ID 토큰)
       </a>
+      <a href="/auth/naver?next=/spike/kakao">
+        네이버로 로그인 (B: 서버 + Admin API)
+      </a>
       {signedIn && (
         <button
           onClick={async () => {

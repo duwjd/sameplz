@@ -23,7 +23,7 @@ end $$;
 
 -- entitlements
 select pg_temp.login_as('00000000-0000-0000-0000-000000000001');
-select is((select count(*) from public.entitlements), 1::bigint, 'entitlements: user sees only own row');
+select is((select count(*) from public.entitlements), 2::bigint, 'entitlements: user sees only own rows (cafe tone + stopped)');
 select throws_ok($$ insert into public.entitlements (user_id, recipe_id, version_id, source)
                     values ('00000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',
                             'bbbbbbbb-0000-0000-0000-000000000001', 'free') $$,

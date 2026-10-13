@@ -21,7 +21,7 @@ select is((select count(*) from public.search_recipes(null, p_category => 'agent
 select is((select count(*) from public.search_recipes(null, p_job => 'tax')), 1::bigint, 'browse mode: job filter');
 select is((select total from public.search_recipe_counts('상세페이지') where category = 'prompt'), 3::bigint,
           'F1-6 per-category counts for zero-result chips');
-select is((select max(total_count) from public.search_recipes(null, p_limit => 5)), 15::bigint,
+select is((select max(total_count) from public.search_recipes(null, p_limit => 5)), 16::bigint,
           'total_count reports all live matches beyond the page');
 reset role;
 

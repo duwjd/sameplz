@@ -129,16 +129,54 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
-                },"entitlements": {
+                },"entitlement_version_history": {
                   Row: {
-                    "created_at": string,"id": string,"opened_at": string | null,"recipe_id": string,"revoked_at": string | null,"source": string,"user_id": string,"version_id": string
+                    "applied_at": string,"entitlement_id": string,"from_version_id": string,"id": number,"to_version_id": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"opened_at"?: string | null,"recipe_id": string,"revoked_at"?: string | null,"source": string,"user_id": string,"version_id": string
+                    "applied_at"?: string,"entitlement_id": string,"from_version_id": string,"id"?: never,"to_version_id": string,"user_id": string
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"opened_at"?: string | null,"recipe_id"?: string,"revoked_at"?: string | null,"source"?: string,"user_id"?: string,"version_id"?: string
+                    "applied_at"?: string,"entitlement_id"?: string,"from_version_id"?: string,"id"?: never,"to_version_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "entitlement_version_history_entitlement_id_fkey"
+      columns: ["entitlement_id"]
+isOneToOne: false
+      referencedRelation: "entitlements"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "entitlement_version_history_from_version_id_fkey"
+      columns: ["from_version_id"]
+isOneToOne: false
+      referencedRelation: "recipe_versions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "entitlement_version_history_to_version_id_fkey"
+      columns: ["to_version_id"]
+isOneToOne: false
+      referencedRelation: "recipe_versions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "entitlement_version_history_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"entitlements": {
+                  Row: {
+                    "created_at": string,"id": string,"opened_at": string | null,"recipe_id": string,"revoked_at": string | null,"share_link_id": string | null,"source": string,"user_id": string,"version_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"opened_at"?: string | null,"recipe_id": string,"revoked_at"?: string | null,"share_link_id"?: string | null,"source": string,"user_id": string,"version_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"opened_at"?: string | null,"recipe_id"?: string,"revoked_at"?: string | null,"share_link_id"?: string | null,"source"?: string,"user_id"?: string,"version_id"?: string
                   }
                   Relationships: [
                     {
@@ -152,6 +190,12 @@ isOneToOne: false
       columns: ["recipe_id"]
 isOneToOne: false
       referencedRelation: "recipes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "entitlements_share_link_id_fkey"
+      columns: ["share_link_id"]
+isOneToOne: false
+      referencedRelation: "share_links"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "entitlements_user_id_fkey"
@@ -305,14 +349,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "adult_confirmed_at": string | null,"ai_notice_ack_at": string | null,"avatar_url": string | null,"bio": string | null,"created_at": string,"deleted_at": string | null,"handle": string,"id": string,"job_codes": (string)[],"nickname": string,"role": string,"terms_accepted_at": string | null,"terms_version": string | null,"updated_at": string
+                    "adult_confirmed_at": string | null,"ai_notice_ack_at": string | null,"avatar_url": string | null,"bio": string | null,"created_at": string,"deleted_at": string | null,"expert_badge": string | null,"handle": string,"id": string,"job_codes": (string)[],"nickname": string,"role": string,"terms_accepted_at": string | null,"terms_version": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "adult_confirmed_at"?: string | null,"ai_notice_ack_at"?: string | null,"avatar_url"?: string | null,"bio"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"handle": string,"id": string,"job_codes"?: (string)[],"nickname": string,"role"?: string,"terms_accepted_at"?: string | null,"terms_version"?: string | null,"updated_at"?: string
+                    "adult_confirmed_at"?: string | null,"ai_notice_ack_at"?: string | null,"avatar_url"?: string | null,"bio"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"expert_badge"?: string | null,"handle": string,"id": string,"job_codes"?: (string)[],"nickname": string,"role"?: string,"terms_accepted_at"?: string | null,"terms_version"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "adult_confirmed_at"?: string | null,"ai_notice_ack_at"?: string | null,"avatar_url"?: string | null,"bio"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"handle"?: string,"id"?: string,"job_codes"?: (string)[],"nickname"?: string,"role"?: string,"terms_accepted_at"?: string | null,"terms_version"?: string | null,"updated_at"?: string
+                    "adult_confirmed_at"?: string | null,"ai_notice_ack_at"?: string | null,"avatar_url"?: string | null,"bio"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"expert_badge"?: string | null,"handle"?: string,"id"?: string,"job_codes"?: (string)[],"nickname"?: string,"role"?: string,"terms_accepted_at"?: string | null,"terms_version"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -372,6 +416,26 @@ isOneToOne: false
       columns: ["user_id"]
 isOneToOne: false
       referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"recipe_version_files": {
+                  Row: {
+                    "created_at": string,"filename": string,"id": string,"sha256": string | null,"size_bytes": number,"sort": number,"storage_path": string,"version_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"filename": string,"id"?: string,"sha256"?: string | null,"size_bytes": number,"sort"?: number,"storage_path": string,"version_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"filename"?: string,"id"?: string,"sha256"?: string | null,"size_bytes"?: number,"sort"?: number,"storage_path"?: string,"version_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "recipe_version_files_version_id_fkey"
+      columns: ["version_id"]
+isOneToOne: false
+      referencedRelation: "recipe_versions"
       referencedColumns: ["id"]
     }
                   ]
@@ -449,14 +513,14 @@ isOneToOne: false
                   ]
                 },"recipes": {
                   Row: {
-                    "category": string,"created_at": string,"creator_nickname": string,"current_version_id": string | null,"filters": NonNullable<Json>,"fork_allowed": boolean,"forked_from_recipe_id": string | null,"forked_from_version_id": string | null,"id": string,"job_codes": (string)[],"owner_id": string,"price_krw": number,"prompt_kind": string | null,"public_id": string,"published_at": string | null,"search_tags": (string)[],"status": string,"summary": string,"title": string,"tool_codes": (string)[],"updated_at": string
+                    "category": string,"created_at": string,"creator_nickname": string,"current_version_id": string | null,"filters": NonNullable<Json>,"fork_allowed": boolean,"forked_from_recipe_id": string | null,"forked_from_version_id": string | null,"id": string,"job_codes": (string)[],"owner_id": string,"price_krw": number,"prompt_kind": string | null,"public_id": string,"published_at": string | null,"search_tags": (string)[],"status": string,"stopped_at": string | null,"stopped_reason": string | null,"summary": string,"title": string,"tool_codes": (string)[],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "category": string,"created_at"?: string,"creator_nickname"?: string,"current_version_id"?: string | null,"filters"?: NonNullable<Json>,"fork_allowed"?: boolean,"forked_from_recipe_id"?: string | null,"forked_from_version_id"?: string | null,"id"?: string,"job_codes": (string)[],"owner_id": string,"price_krw"?: number,"prompt_kind"?: string | null,"public_id"?: string,"published_at"?: string | null,"search_tags"?: (string)[],"status"?: string,"summary"?: string,"title": string,"tool_codes"?: (string)[],"updated_at"?: string
+                    "category": string,"created_at"?: string,"creator_nickname"?: string,"current_version_id"?: string | null,"filters"?: NonNullable<Json>,"fork_allowed"?: boolean,"forked_from_recipe_id"?: string | null,"forked_from_version_id"?: string | null,"id"?: string,"job_codes": (string)[],"owner_id": string,"price_krw"?: number,"prompt_kind"?: string | null,"public_id"?: string,"published_at"?: string | null,"search_tags"?: (string)[],"status"?: string,"stopped_at"?: string | null,"stopped_reason"?: string | null,"summary"?: string,"title": string,"tool_codes"?: (string)[],"updated_at"?: string
                   }
                   Update: {
-                    "category"?: string,"created_at"?: string,"creator_nickname"?: string,"current_version_id"?: string | null,"filters"?: NonNullable<Json>,"fork_allowed"?: boolean,"forked_from_recipe_id"?: string | null,"forked_from_version_id"?: string | null,"id"?: string,"job_codes"?: (string)[],"owner_id"?: string,"price_krw"?: number,"prompt_kind"?: string | null,"public_id"?: string,"published_at"?: string | null,"search_tags"?: (string)[],"status"?: string,"summary"?: string,"title"?: string,"tool_codes"?: (string)[],"updated_at"?: string
+                    "category"?: string,"created_at"?: string,"creator_nickname"?: string,"current_version_id"?: string | null,"filters"?: NonNullable<Json>,"fork_allowed"?: boolean,"forked_from_recipe_id"?: string | null,"forked_from_version_id"?: string | null,"id"?: string,"job_codes"?: (string)[],"owner_id"?: string,"price_krw"?: number,"prompt_kind"?: string | null,"public_id"?: string,"published_at"?: string | null,"search_tags"?: (string)[],"status"?: string,"stopped_at"?: string | null,"stopped_reason"?: string | null,"summary"?: string,"title"?: string,"tool_codes"?: (string)[],"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -511,6 +575,58 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"share_link_clicks": {
+                  Row: {
+                    "created_at": string,"id": number,"link_id": string,"visitor_hash": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: never,"link_id": string,"visitor_hash": string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: never,"link_id"?: string,"visitor_hash"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "share_link_clicks_link_id_fkey"
+      columns: ["link_id"]
+isOneToOne: false
+      referencedRelation: "share_links"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"share_links": {
+                  Row: {
+                    "code": string,"created_at": string,"creator_id": string,"id": string,"recipe_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "code": string,"created_at"?: string,"creator_id": string,"id"?: string,"recipe_id": string
+                  }
+                  Update: {
+                    "code"?: string,"created_at"?: string,"creator_id"?: string,"id"?: string,"recipe_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "share_links_creator_id_fkey"
+      columns: ["creator_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "share_links_recipe_id_fkey"
+      columns: ["recipe_id"]
+isOneToOne: false
+      referencedRelation: "mv_recipe_popularity"
+      referencedColumns: ["recipe_id"]
+    },{
+      foreignKeyName: "share_links_recipe_id_fkey"
+      columns: ["recipe_id"]
+isOneToOne: false
+      referencedRelation: "recipes"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"tools": {
                   Row: {
                     "code": string,"has_api": boolean,"kind": string,"label": string,"sort": number
@@ -548,6 +664,20 @@ isOneToOne: false
             "accept_signup_terms":
 { Args: { "p_terms_version": string }; Returns: Json
                            },
+"apply_update":
+{ Args: { "p_entitlement_id": string }; Returns: Json
+                           },
+"claim_free_recipe":
+{ Args: { "p_recipe_id": string,"p_ref_code"?: string }; Returns: Json
+                           },
+"file_for_download":
+{ Args: { "p_file_id": string,"p_version_id": string }; Returns: {
+              "filename": string,"storage_path": string
+            }[]
+                           },
+"get_recipe_public":
+{ Args: { "p_public_id": string }; Returns: Json
+                           },
 "home_creators":
 { Args: { "p_limit"?: number }; Returns: {
               "avatar_url": string,"bio": string,"followers": number,"handle": string,"is_staff": boolean,"nickname": string,"top_public_id": string,"top_title": string
@@ -573,8 +703,22 @@ isOneToOne: false
               "adult_confirmed_at": string,"role": string,"signup_complete": boolean,"terms_accepted_at": string,"terms_version": string
             }[]
                            },
+"my_library":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "category": string,"claimed_at": string,"creator_nickname": string,"entitlement_id": string,"files": Json,"filters": Json,"latest_changelog": string,"latest_version_no": number,"opened_at": string,"prompt_kind": string,"public_id": string,"recipe_id": string,"status": string,"summary": string,"title": string,"tool_codes": (string)[],"update_available": boolean,"version_id": string,"version_no": number
+            }[]
+                           },
+"my_recipe_state":
+{ Args: { "p_recipe_id": string }; Returns: Json
+                           },
+"open_original":
+{ Args: { "p_entitlement_id": string }; Returns: Json
+                           },
 "recipe_search_doc":
 { Args: { "nickname": string,"search_tags": (string)[],"summary": string,"title": string }; Returns: (string)[]
+                           },
+"record_share_click":
+{ Args: { "p_code": string,"p_public_id": string,"p_visitor_hash": string }; Returns: string
                            },
 "search_recipe_counts":
 { Args: { "p_job"?: string,"p_query"?: string,"p_tool"?: string }; Returns: {
@@ -584,6 +728,11 @@ isOneToOne: false
 "search_recipes":
 { Args: { "p_category"?: string,"p_job"?: string,"p_limit"?: number,"p_offset"?: number,"p_query"?: string,"p_sort"?: string,"p_tool"?: string }; Returns: {
               "category": string,"creator_handle": string,"creator_nickname": string,"downloads": number,"filters": Json,"job_codes": (string)[],"likes": number,"popularity": number,"price_krw": number,"prompt_kind": string,"public_id": string,"published_at": string,"same_count": number,"score": number,"summary": string,"title": string,"tool_codes": (string)[],"total_count": number
+            }[]
+                           },
+"similar_recipes":
+{ Args: { "p_limit"?: number,"p_public_id": string }; Returns: {
+              "category": string,"creator_handle": string,"creator_nickname": string,"downloads": number,"filters": Json,"job_codes": (string)[],"likes": number,"price_krw": number,"prompt_kind": string,"public_id": string,"same_count": number,"summary": string,"title": string,"tool_codes": (string)[]
             }[]
                            }
           }

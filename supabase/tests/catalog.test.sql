@@ -20,9 +20,9 @@ begin
   perform set_config('request.jwt.claims', '{}', true);
 end $$;
 
--- seed: 15 live, 1 stopped (…15, owner 02), 1 in_review (…16, owner 03)
+-- seed: 16 live, 1 stopped (…15, owner 02), 1 in_review (…16, owner 03), private …19, rejected …20
 select pg_temp.login_anon();
-select is((select count(*) from public.recipes), 16::bigint, 'recipes: anon sees live + stopped only');
+select is((select count(*) from public.recipes), 17::bigint, 'recipes: anon sees live + stopped only');
 select is((select count(*) from public.recipes where id = 'aaaaaaaa-0000-0000-0000-000000000016'), 0::bigint,
           'recipes: anon cannot see in_review (404 semantics)');
 select throws_ok($$ insert into public.recipes (owner_id, category, title, job_codes)

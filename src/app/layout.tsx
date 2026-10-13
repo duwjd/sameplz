@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Fira_Code } from "next/font/google";
+import { AppFooter } from "@/components/shell/AppFooter";
+import { Suspense } from "react";
+import { AppHeader, AppHeaderFallback } from "@/components/shell/AppHeader";
 import "./globals.css";
 
 // Pretendard variable (OFL-1.1), weights 45–920 in one file.
@@ -26,7 +29,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ko" className={`${pretendard.variable} ${firaCode.variable}`}>
-      <body>{children}</body>
+      <body>
+        <Suspense fallback={<AppHeaderFallback />}>
+          <AppHeader />
+        </Suspense>
+        {children}
+        <AppFooter />
+      </body>
     </html>
   );
 }

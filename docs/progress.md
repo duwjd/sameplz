@@ -20,3 +20,4 @@ SessionStart 훅이 `- YYYY-MM-DD`로 시작하는 로그 줄 중 마지막 5개
 - 2026-10-13 SPIKE-naver(D4): A(커스텀 OAuth)는 중첩 응답 매핑 불가로 제외(소스), B(라우트 + Admin API + 매직링크)로 가입·재로그인 성공 — 자리표시 이메일·provider=email 기록이 비용 · D4 근거 기록, 상태는 사용자 결정 대기 · 다음: fal vs Replicate(D8)
 - 2026-10-13 SPIKE-google: Supabase 기본 구글 OAuth로 가입·재로그인 성공(실제 이메일, 기본 범위만 → 검수 없음, 도메인 없이 설정) · W1 로그인 3종 확인 · 다음: W2 스키마 v1
 - 2026-10-13 W2-schema-v1: 마이그레이션 6개(계정·카탈로그·권리·소셜·인기·검색), RLS 전 테이블, pgTAP 81개 통과, seed(레시피 17·사용자 11), DB 타입 생성, 직무 9개(D16) · 테스트 통과 · 다음: HOME·MKT DAL 연결 + 로그인 팝업
+- 2026-10-13 MKT-search: /market·카테고리 3종·컬렉션 읽기, GNB 검색 연결, 필터·정렬·적용 칩·0건 안내(인기 검색어 10), SCN 10 e2e 통과(F1-4·5·6 passes) · Vitest 12·e2e 5 통과 · 다음: 홈 DB 연결(PR 2)

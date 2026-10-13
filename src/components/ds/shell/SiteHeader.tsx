@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 import { Icon } from "@/components/ds/icons/Icon";
 import { Button } from "@/components/ds/actions/Button";
@@ -130,8 +131,8 @@ export function SiteHeader({
           flexWrap: "wrap",
         }}
       >
-        <a
-          href="#home"
+        <Link
+          href="/"
           onClick={(e) => {
             if (onNavigate) {
               e.preventDefault();
@@ -142,7 +143,7 @@ export function SiteHeader({
           style={{ display: "inline-flex", color: "inherit" }}
         >
           <Logo size={30} />
-        </a>
+        </Link>
         <form
           role="search"
           onSubmit={(e) => {
@@ -187,6 +188,7 @@ export function SiteHeader({
             </span>
             <input
               type="search"
+              aria-label="검색"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={searchPlaceholder}

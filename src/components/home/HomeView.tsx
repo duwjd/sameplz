@@ -10,16 +10,11 @@ import {
   RankCard,
   RankRail,
   RecipeCard,
-  SiteFooter,
-  SiteHeader,
   Tabs,
-  type SiteHeaderActive,
-  type SiteHeaderUser,
 } from "@/components/ds";
 import {
   CREATORS,
   FEED,
-  MARKET_MENU,
   RANK_TABS,
   SLIDES,
   WEEKLY,
@@ -71,8 +66,7 @@ function SectionHead({
   );
 }
 
-export function HomeView({ user = null }: { user?: SiteHeaderUser | null }) {
-  const [active, setActive] = useState<SiteHeaderActive>("home");
+export function HomeView() {
   const [rankTab, setRankTab] = useState<RankTab>("all");
   const ranks = rankRecipes(rankTab);
 
@@ -80,21 +74,11 @@ export function HomeView({ user = null }: { user?: SiteHeaderUser | null }) {
     <div
       data-screen-label="Home"
       style={{
-        minHeight: "100vh",
         background: "var(--sp-bg-canvas)",
         color: "var(--sp-fg-normal)",
         fontFamily: "var(--sp-font-sans)",
       }}
     >
-      <SiteHeader
-        user={user}
-        notifications={3}
-        credits={1240}
-        active={active}
-        onNavigate={(k) => setActive(k as SiteHeaderActive)}
-        market={MARKET_MENU}
-      />
-
       <main
         style={{
           padding: "24px 24px 64px",
@@ -208,7 +192,6 @@ export function HomeView({ user = null }: { user?: SiteHeaderUser | null }) {
         </section>
       </main>
 
-      <SiteFooter />
     </div>
   );
 }

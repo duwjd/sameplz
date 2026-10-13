@@ -16,6 +16,7 @@ import {
 } from "react";
 import { fetchViewer } from "@/actions/auth";
 import { toggleFollow } from "@/actions/follow";
+import { claimFreeRecipe } from "@/actions/recipe";
 import { Toast } from "@/components/ds";
 import {
   clearIntent,
@@ -23,6 +24,7 @@ import {
   saveIntent,
   type LoginIntent,
 } from "@/lib/auth/intent";
+import { readShareRef } from "@/lib/share-ref";
 import { createClient } from "@/lib/supabase/client";
 import { LoginDialog, type LoginProvider } from "./LoginDialog";
 
@@ -33,8 +35,8 @@ interface AuthContextValue {
   ready: boolean;
   /** Open the login popup; `intent` runs after login (F7-1). */
   requireLogin: (intent?: Partial<LoginIntent>) => void;
-  /** Bumps when a replayed action changed follow state. */
-  followVersion: number;
+  /** Bumps when a replayed action (follow, claim) changed server state. */
+  replayVersion: number;
   notify: (message: string) => void;
 }
 
@@ -63,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [followVersion, setFollowVersion] = useState(0);
+  const [replayVersion, setReplayVersion] = useState(0);
   const replayed = useRef(false);
 
   const notify = useCallback((message: string) => {
@@ -111,14 +113,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     replayed.current = true;
     clearIntent();
     (async () => {
-      if (intent.action?.type === "follow") {
-        const res = await toggleFollow({
-          handle: intent.action.handle,
-          follow: true,
+      const hello = `${viewer.nickname}님, 반가워요. 하던 걸 이어서 할게요.`;
+      const action = intent.action;
+      if (action?.type === "follow") {
+        const res = await toggleFollow({ handle: action.handle, follow: true });
+        if (res.ok) setReplayVersion((n) => n + 1);
+        notify(hello);
+      } else if (action?.type === "claim") {
+        const res = await claimFreeRecipe({
+          recipeId: action.recipeId,
+          publicId: action.publicId,
+          ref: readShareRef(action.publicId),
         });
-        if (res.ok) setFollowVersion((n) => n + 1);
+        if (res.ok) setReplayVersion((n) => n + 1);
+        notify(
+          res.ok
+            ? `${hello} 라이브러리에 담았어요.`
+            : res.reason === "OWN_RECIPE"
+              ? `${hello} 내 레시피라 받지 않아도 돼요.`
+              : `${hello} 지금은 받을 수 없는 레시피예요.`,
+        );
+      } else {
+        notify(hello);
       }
-      notify(`${viewer.nickname}님, 반가워요. 하던 걸 이어서 할게요.`);
     })();
   }, [viewer, notify]);
 
@@ -167,8 +184,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ viewer, ready, requireLogin, followVersion, notify }),
-    [viewer, ready, requireLogin, followVersion, notify],
+    () => ({ viewer, ready, requireLogin, replayVersion, notify }),
+    [viewer, ready, requireLogin, replayVersion, notify],
   );
 
   return (
@@ -233,10 +250,12 @@ function AuthRouteEffects({
 
   // F7-9: signed in but signup unfinished → /welcome first.
   // The cached viewer can be stale right after /welcome finishes, so confirm before redirecting.
+  // Keyed on primitives: refreshViewer() sets a new viewer object, and depending on the object
+  // re-ran this effect, cancelled the pending redirect and refetched forever.
+  const needsSignup = Boolean(viewer && !viewer.signupComplete);
   useEffect(() => {
     if (
-      !viewer ||
-      viewer.signupComplete ||
+      !needsSignup ||
       SIGNUP_FREE_PATHS.some((p) => pathname.startsWith(p))
     )
       return;
@@ -249,7 +268,7 @@ function AuthRouteEffects({
     return () => {
       alive = false;
     };
-  }, [viewer, pathname, router, refreshViewer]);
+  }, [needsSignup, pathname, router, refreshViewer]);
 
   return null;
 }

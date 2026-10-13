@@ -23,7 +23,9 @@ Next.js 16.3.x App Router, `cacheComponents: true`. 서버 컴포넌트가 기�
 | `/terms`, `/privacy` | 정책(초안 자리) | 정적 |
 | `/api/webhooks/toss`, `/api/webhooks/generation/[provider]`, `/api/play/runs`, `/api/files/[versionId]`, `/api/cron/[job]` | — | Node 런타임, 원본 body로 서명 검증 |
 
-없는 주소·비공개·심사 중 레시피는 같은 NF 화면(HTTP 404)이다. 존재 여부를 알리지 않는다.
+없는 주소·비공개·심사 중·반려 레시피는 같은 NF 화면(`src/app/not-found.tsx`, HTTP 404)이다. 존재 여부를 알리지 않는다.
+`/r/[id]`는 `params`와 캐시된 `getRecipePublic`을 Suspense **앞에서** 확인하고 `notFound()`한다(스트리밍이 시작되면 404 상태를 못 보낸다). `generateStaticParams`는 인기 레시피 20개(없으면 자리표시 1개 — Cache Components는 빈 배열을 거부).
+`sitemap.ts`(라이브 레시피·마켓)와 `robots.ts`(`/my`·`/checkout`·`/play`·`/admin`·`/welcome`·`/auth`·`/api` 제외).
 
 ## 규칙
 

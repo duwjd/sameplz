@@ -70,7 +70,7 @@ export function SiteFooter({
         }}
       >
         SAMEPLZ는 통신판매중개자로서 거래 당사자가 아니며, 상품 정보와 거래에
-        대한 책임은 각 판매자에게 있습니다.
+        대한 책임은 각 판매자에게 있어요.
       </p>
       {company ? (
         <p style={{ margin: 0, fontSize: 12, color: "var(--sp-fg-hint)" }}>

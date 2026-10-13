@@ -107,7 +107,7 @@
       "acceptance": "남이 `/r/{id}`를 열면 없는 주소와 같은 NF 화면, HTTP 404",
       "week": 3,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F1-8",
@@ -139,7 +139,7 @@
       "scn": [
         "guest-to-same"
       ],
-      "passes": false,
+      "passes": true,
       "mvp_note": "MVP: 모든 레시피가 무료라 버튼은 「무료로 SAME 하기」 → 라이브러리, 받음 → 「라이브러리에서 열기」, 내 레시피 → 「새 버전 올리기」. 비회원 → 로그인 → 받기로 복귀. 결제 분기는 유료 전환 단계"
     },
     {
@@ -157,7 +157,7 @@
       "scn": [
         "guest-to-same"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F2-3",
@@ -172,7 +172,7 @@
       "acceptance": "`?ref=` 진입 시 「링크로 들어옴」 띠, `recordShareClick` 실행, 1st-party 방문자 쿠키, 7일 안 구매는 직접 유입",
       "week": 3,
       "scn": [],
-      "passes": false,
+      "passes": true,
       "mvp_note": "MVP: 유입 수만 센다(SELL 「내 레시피」 표시). 7일 귀속·직접 유입 수수료는 유료 전환 단계"
     },
     {
@@ -190,7 +190,7 @@
       "scn": [
         "stopped-recipe"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F2-5",
@@ -203,7 +203,7 @@
       "acceptance": "Midjourney 전용 레시피에서 「바로 만들어 보기」 비활성 + 이유 문구",
       "week": 3,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F2-6",
@@ -216,7 +216,7 @@
       "acceptance": "세무·법률 카테고리면 상단 고지 띠 고정, 증빙 없는 배지 불가",
       "week": 3,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F2-7",

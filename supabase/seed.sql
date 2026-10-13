@@ -4,10 +4,14 @@
 -- W4 adds generation_budget + jiwoo's monthly_grant credits here (credit tables come in W4).
 
 -- ---------------------------------------------------------------- users (profiles via signup trigger)
-insert into auth.users (id, instance_id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+-- Token columns are '' (not NULL): GoTrue fails to load users with NULL tokens (e2e signs in as seed users).
+insert into auth.users (id, instance_id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+                        confirmation_token, recovery_token, email_change_token_new, email_change, email_change_token_current,
+                        phone_change, phone_change_token, reauthentication_token)
 select v.id::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
        v.email, now(), '{"provider":"email","providers":["email"]}'::jsonb,
-       jsonb_build_object('name', v.name), now() - interval '30 days', now()
+       jsonb_build_object('name', v.name), now() - interval '30 days', now(),
+       '', '', '', '', '', '', '', ''
 from (values
   ('00000000-0000-0000-0000-000000000001', 'jiwoo@sameplz.test',      '지우'),
   ('00000000-0000-0000-0000-000000000002', 'sangse@sameplz.test',     '상세장인'),
@@ -84,13 +88,13 @@ from generate_series(1, 20) n
 -- regulated: tax | legal | medical → F2-6 notice band.
 left join (values
   (1,  '{"variables":[{"name":"셀카","example":"정면 셀카 1장"},{"name":"옷 색","example":"네이비"},{"name":"배경","example":"밝은 회색 스튜디오"}],"settings":[{"label":"비율","value":"1:1"},{"label":"추천 모델","value":"ChatGPT 이미지"}]}'::jsonb),
-  (2,  '{"examples":[{"user":"이 문장 번역투 좀 고쳐 줘: 그것은 매우 중요한 결정이 되어질 것이다.","reply":"아주 중요한 결정이 될 거예요."}],"before":"우리는 고객에게 최고의 경험을 제공하는 것을 목표로 하고 있습니다.","after":"고객에게 가장 좋은 경험을 드리는 게 목표예요.","install":[{"tool":"claude","steps":["파일을 받아요","Claude 설정 > 스킬에서 폴더를 올려요","대화에서 \"번역투 고쳐 줘\"라고 말해요"]},{"tool":"chatgpt","steps":["파일을 받아요","GPT 지침에 SKILL.md 내용을 붙여 넣어요","고칠 문장을 보내요"]}]}'),
+  (2,  '{"examples":[{"user":"이 문장 번역투 좀 고쳐 줘: 그것은 매우 중요한 결정이 되어질 것이다.","reply":"아주 중요한 결정이 될 거예요."}],"before":"우리는 고객에게 최고의 경험을 제공하는 것을 목표로 하고 있습니다.","after":"고객에게 가장 좋은 경험을 드리는 게 목표예요.","install":[{"tool":"claude","steps":["파일을 받아요","Claude 설정 > 스킬에서 폴더를 올려요","대화에서 \"번역투 고쳐 줘\"라고 말해요"],"command":"unzip translate-ko.zip -d ~/.claude/skills/"},{"tool":"chatgpt","steps":["파일을 받아요","GPT 지침에 SKILL.md 내용을 붙여 넣어요","고칠 문장을 보내요"]}]}'),
   (3,  '{"variables":[{"name":"메뉴 사진","example":"라테 사진 1장"},{"name":"필름 톤","example":"코닥 포트라"}],"settings":[{"label":"비율","value":"1:1"},{"label":"추천 모델","value":"ChatGPT 이미지"}]}'),
   (4,  '{"variables":[{"name":"상품명","example":"저자극 수분크림"},{"name":"장점 3개","example":"무향, 끈적임 없음, 대용량"},{"name":"말투","example":"친근하게"}],"settings":[{"label":"출력","value":"문단 5개"}]}'),
   (5,  '{"variables":[{"name":"제품 사진","example":"흰 배경 제품 컷"},{"name":"분위기","example":"아침 햇살"}],"settings":[{"label":"비율","value":"3:4"},{"label":"추천 모델","value":"Midjourney v7, Seedream"}]}'),
   (6,  '{"variables":[{"name":"주제","example":"직장인 점심 다이어트"},{"name":"타깃","example":"20대 직장인"}],"settings":[{"label":"출력","value":"카드 10장 문구"}]}'),
   (7,  '{"variables":[{"name":"제품","example":"무선 이어폰"},{"name":"장면 수","example":"4"}],"settings":[{"label":"비율","value":"9:16"},{"label":"길이","value":"8초"}]}'),
-  (8,  '{"examples":[{"user":"\"홈카페 원두 추천\"으로 블로그 글 구조 짜 줘","reply":"제목 후보 3개와 소제목 5개, 키워드 배치를 정리했어요."}],"before":"홈카페 원두 추천합니다","after":"홈카페 원두 추천 TOP 5 | 산미·바디감별로 골라 봤어요","install":[{"tool":"claude","steps":["파일을 받아요","Claude 설정 > 스킬에서 폴더를 올려요","\"블로그 구조 짜 줘\"라고 말해요"]},{"tool":"cursor","steps":["파일을 받아요","프로젝트 .cursor/skills에 넣어요","채팅에서 키워드를 알려 줘요"]}]}'),
+  (8,  '{"examples":[{"user":"\"홈카페 원두 추천\"으로 블로그 글 구조 짜 줘","reply":"제목 후보 3개와 소제목 5개, 키워드 배치를 정리했어요."}],"before":"홈카페 원두 추천합니다","after":"홈카페 원두 추천 TOP 5 | 산미·바디감별로 골라 봤어요","install":[{"tool":"claude","steps":["파일을 받아요","Claude 설정 > 스킬에서 폴더를 올려요","\"블로그 구조 짜 줘\"라고 말해요"],"command":"unzip blog-seo.zip -d ~/.claude/skills/"},{"tool":"cursor","steps":["파일을 받아요","프로젝트 .cursor/skills에 넣어요","채팅에서 키워드를 알려 줘요"],"command":"unzip blog-seo.zip -d .cursor/skills/"}]}'),
   (9,  '{"flow":["키워드 입력","관련 검색어 모으기","글감 10개 고르기","노션 표에 정리"],"sample_log":["> 키워드: 홈카페","관련 검색어 24개를 모았어요","글감 10개를 골랐어요","노션 \"글감\" 표에 10줄을 추가했어요"],"runtime":"Claude Desktop","integrations":["Notion"],"prepare":["Notion 계정","글감을 담을 Notion 페이지"],"does":["검색어를 모아요","Notion 표에 줄을 추가해요"],"does_not":["글을 외부에 올리지 않아요","기존 페이지를 지우거나 고치지 않아요","결제하지 않아요"]}'),
   (10, '{"flow":["새 리뷰 확인","답글 초안 작성","승인 요청","승인되면 등록"],"sample_log":["새 리뷰 3개를 찾았어요","답글 초안 3개를 썼어요","슬랙으로 승인을 요청했어요"],"runtime":"n8n","integrations":["스마트스토어","Slack"],"prepare":["n8n 계정","스마트스토어 API 키"],"does":["리뷰를 읽어요","승인받은 답글만 등록해요"],"does_not":["승인 없이 자동 게시하지 않아요","리뷰를 지우지 않아요","결제하지 않아요"]}'),
   (11, '{"variables":[{"name":"향수 병","example":"투명 사각 병"},{"name":"배경","example":"안개 낀 숲"}],"settings":[{"label":"비율","value":"16:9"},{"label":"길이","value":"6초"}]}'),

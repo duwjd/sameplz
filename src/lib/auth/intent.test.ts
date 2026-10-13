@@ -16,6 +16,28 @@ describe("login intent (F7-1)", () => {
     s = memoryStorage();
   });
 
+  it("F2-1 round-trips a claim action", () => {
+    const action = {
+      type: "claim" as const,
+      recipeId: "aaaaaaaa-0000-0000-0000-000000000001",
+      publicId: "rlinkedin01",
+    };
+    saveIntent({ next: "/r/rlinkedin01", action }, s, 1000);
+    expect(readIntent(s, 2000)).toEqual({ next: "/r/rlinkedin01", action });
+  });
+
+  it("drops a tampered claim action but keeps next", () => {
+    s.setItem(
+      "sp_login_intent",
+      JSON.stringify({
+        next: "/r/rlinkedin01",
+        action: { type: "claim", recipeId: "x'; drop", publicId: "rlinkedin01" },
+        savedAt: 1000,
+      }),
+    );
+    expect(readIntent(s, 2000)).toEqual({ next: "/r/rlinkedin01", action: undefined });
+  });
+
   it("round-trips next + follow action", () => {
     saveIntent(
       { next: "/market?q=a", action: { type: "follow", handle: "photok" } },

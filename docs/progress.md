@@ -25,3 +25,4 @@ SessionStart 훅이 `- YYYY-MM-DD`로 시작하는 로그 줄 중 마지막 5개
 - 2026-10-13 AUTH-login: 로그인 팝업(카카오·네이버·구글), 하던 일 이어서(팔로우), /welcome 약관·18+ 가입 마무리, 헤더 로그인·로그아웃, Dialog 접근성 보강, e2e 로그인 픽스처 · Vitest 28·e2e 12 통과(F7-1·F7-9 passes) · 다음: 운영 키 설정 후 W3(상세·받기)
 - 2026-10-13 FIX-build-race: deploy-db 승인 전 Vercel 빌드가 새 RPC를 못 찾아 실패하던 문제 → 빌드 때 공개 캐시 읽기 실패 시 빈 값 + 수 분 뒤 재시도 · e2e 12 통과 · 다음: W3
 - 2026-10-13 F2-detail-schema: W3 스키마(첨부·공유 링크·클릭·업데이트 이력·중지 사유), RPC 9개(상세 공개·비슷한·보는 사람 상태·무료 받기·클릭 기록·라이브러리·원문 열기·업데이트·파일 경로), private 버킷 recipe-files, seed 보강(public_meta·v2·비공개·반려·Midjourney 전용) · pgTAP 163 통과 · 다음: 상세 화면(PR B)
+- 2026-10-13 F2-detail: /r/[id] 상세(PRM·AGT·SKL·STOP)·NF 404, 상태별 주 버튼·무료 받기(로그인 뒤 이어서 받기), ?ref 유입 띠·클릭 기록, 규제 고지 띠, Midjourney 전용 실행 비활성, JSON-LD·sitemap·robots, 가입 마무리 가드 무한 재요청 수정 · Vitest 43·e2e 24 통과(F1-7·F2-1~6 passes) · 다음: 라이브러리(PR C)

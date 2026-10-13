@@ -20,6 +20,8 @@ export interface TabsProps {
   value?: string;
   onChange?: (value: string) => void;
   size?: "sm" | "md" | "lg";
+  /** Wires tabs to one panel: tab ids `${idPrefix}-tab-${value}`, panel id `${idPrefix}-panel`. */
+  idPrefix?: string;
   style?: React.CSSProperties;
 }
 
@@ -37,9 +39,37 @@ export function Tabs({
   value,
   onChange,
   size = "md",
+  idPrefix,
   style = {},
 }: TabsProps) {
   const s = SIZES[size] || SIZES.md;
+  // WAI-ARIA tabs: arrows / Home / End move focus and select (roving tabindex).
+  const onKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    const i = items.findIndex((it) => it.value === value);
+    const last = items.length - 1;
+    const next =
+      e.key === "ArrowRight"
+        ? i >= last
+          ? 0
+          : i + 1
+        : e.key === "ArrowLeft"
+          ? i <= 0
+            ? last
+            : i - 1
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? last
+              : -1;
+    if (next < 0 || !items[next]) return;
+    e.preventDefault();
+    onChange?.(items[next].value);
+    const tabs =
+      e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
+        '[role="tab"]',
+      );
+    tabs?.[next]?.focus();
+  };
   return (
     <div
       role="tablist"
@@ -58,6 +88,10 @@ export function Tabs({
             key={it.value}
             role="tab"
             aria-selected={active}
+            id={idPrefix ? `${idPrefix}-tab-${it.value}` : undefined}
+            aria-controls={idPrefix ? `${idPrefix}-panel` : undefined}
+            tabIndex={active || value === undefined ? 0 : -1}
+            onKeyDown={onKeyDown}
             type="button"
             onClick={() => {
               if (onChange) onChange(it.value);

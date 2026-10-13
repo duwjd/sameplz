@@ -25,7 +25,8 @@ export function activeFor(pathname: string): SiteHeaderActive {
   if (pathname.startsWith("/market/agents")) return "agent";
   if (pathname.startsWith("/market/skills")) return "skill";
   if (pathname.startsWith("/market/collections")) return "collection";
-  if (pathname.startsWith("/market")) return "market";
+  if (pathname.startsWith("/market") || pathname.startsWith("/r/"))
+    return "market";
   return "home";
 }
 

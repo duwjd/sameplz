@@ -2,7 +2,9 @@
 // replayed once after login, cleared on close (cancel). sessionStorage: per tab, gone on close.
 import { safeNext } from "./next-path";
 
-export type IntentAction = { type: "follow"; handle: string };
+export type IntentAction =
+  | { type: "follow"; handle: string }
+  | { type: "claim"; recipeId: string; publicId: string };
 export interface LoginIntent {
   next: string;
   action?: IntentAction;
@@ -59,17 +61,34 @@ export function readIntent(
       s.removeItem(KEY);
       return null;
     }
-    const action =
-      v.action &&
-      v.action.type === "follow" &&
-      /^[a-z0-9_]{3,15}$/.test(v.action.handle ?? "")
-        ? { type: "follow" as const, handle: v.action.handle }
-        : undefined;
-    return { next: safeNext(v.next), action };
+    return { next: safeNext(v.next), action: parseAction(v.action) };
   } catch {
     s.removeItem(KEY);
     return null;
   }
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** Stored JSON is untrusted: keep only well-formed actions. */
+function parseAction(a: unknown): IntentAction | undefined {
+  if (!a || typeof a !== "object") return undefined;
+  const v = a as Record<string, unknown>;
+  if (
+    v.type === "follow" &&
+    typeof v.handle === "string" &&
+    /^[a-z0-9_]{3,15}$/.test(v.handle)
+  )
+    return { type: "follow", handle: v.handle };
+  if (
+    v.type === "claim" &&
+    typeof v.recipeId === "string" &&
+    UUID.test(v.recipeId) &&
+    typeof v.publicId === "string" &&
+    /^[a-z0-9]{6,16}$/.test(v.publicId)
+  )
+    return { type: "claim", recipeId: v.recipeId, publicId: v.publicId };
+  return undefined;
 }
 
 export function clearIntent(storage?: StorageLike) {

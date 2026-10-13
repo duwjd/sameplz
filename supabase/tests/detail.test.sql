@@ -107,7 +107,8 @@ select public.record_share_click('rlinkedin01', 'demo01', repeat('a', 64));
 select public.record_share_click('rlinkedin01', 'demo01', repeat('b', 64));
 select is(public.record_share_click('rcafetone01', 'demo01', repeat('a', 64)), null, 'code must belong to this recipe');
 select is(public.record_share_click('rlinkedin01', 'demo01', 'not-a-hash'), null, 'malformed visitor hash is ignored');
-select is((select count(*) from public.share_link_clicks), 2::bigint, 'F2-3 one click per visitor per 24h');
+select is((select count(*) from public.share_link_clicks where visitor_hash in (repeat('a', 64), repeat('b', 64))),
+          2::bigint, 'F2-3 one click per visitor per 24h');
 
 -- ---------------------------------------------------------------- storage + frozen files
 select is((select public from storage.buckets where id = 'recipe-files'), false, 'recipe-files bucket is private');

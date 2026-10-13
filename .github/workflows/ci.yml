@@ -22,6 +22,12 @@ permissions:
 env:
   NODE_VERSION: "22"
   GENERATION_PROVIDER: mock
+  # OAuth providers are enabled in supabase/config.toml; CI never runs real OAuth, so placeholders
+  # only let the local Auth server start.
+  SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder.apps.googleusercontent.com
+  SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
+  SUPABASE_AUTH_EXTERNAL_KAKAO_CLIENT_ID: ci-placeholder
+  SUPABASE_AUTH_EXTERNAL_KAKAO_SECRET: ci-placeholder
 
 jobs:
   detect:

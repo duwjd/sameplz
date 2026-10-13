@@ -34,12 +34,12 @@ update public.profiles set handle = 'dongne', job_codes = '{commerce,cs}' where 
 update public.profiles set handle = 'sameplz', role = 'staff', bio = 'SAMEPLZ 운영팀이 직접 만든 레시피예요' where id = '00000000-0000-0000-0000-000000000010';
 update public.profiles set handle = 'admin', role = 'admin' where id = '00000000-0000-0000-0000-000000000011';
 
--- jiwoo finished signup (terms + 18+ self-check, F7-9)
+-- Every seed user finished signup (terms + privacy + 18+ self-check, F7-9). The RLS write gate
+-- (private.signup_complete) applies to them like to real users.
 insert into public.consent_events (user_id, kind, version)
-select '00000000-0000-0000-0000-000000000001', k, '2026-10-v1' from unnest(array['terms', 'privacy', 'adult']) k;
+select p.id, k, '2026-10-v1' from public.profiles p cross join unnest(array['terms', 'privacy', 'adult']) k;
 update public.profiles
-   set terms_version = '2026-10-v1', terms_accepted_at = now(), adult_confirmed_at = now()
- where id = '00000000-0000-0000-0000-000000000001';
+   set terms_version = '2026-10-v1', terms_accepted_at = now(), adult_confirmed_at = now();
 
 -- ---------------------------------------------------------------- recipes (all free in MVP)
 -- n: recipe a…n / version b…n. status live unless noted.

@@ -3,7 +3,9 @@
 // Layout transcribed from the design handoff (SAMEPLZ Home.dc.html); data from src/data/home.ts.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
+import { getMyFollowing, toggleFollow } from "@/actions/follow";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Avatar,
   Badge,
@@ -87,6 +89,47 @@ function SectionHead({
 
 export function HomeView({ data }: { data: HomeSections }) {
   const router = useRouter();
+  const { viewer, requireLogin, followVersion, notify } = useAuth();
+  const [followingState, setFollowing] = useState<Set<string>>(new Set());
+  const [pendingFollow, setPendingFollow] = useState<string | null>(null);
+  // Logged out (or signup unfinished) → nothing is followed.
+  const following = viewer?.signupComplete ? followingState : new Set<string>();
+
+  // Home is publicly cached; the viewer's follow state is fetched separately.
+  useEffect(() => {
+    if (!viewer?.signupComplete) return;
+    let alive = true;
+    getMyFollowing().then((handles) => {
+      if (alive) setFollowing(new Set(handles));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [viewer, followVersion]);
+
+  const onFollow = async (handle: string) => {
+    if (!viewer) {
+      // F7-1: follow continues automatically after login.
+      requireLogin({ next: "/", action: { type: "follow", handle } });
+      return;
+    }
+    const next = !following.has(handle);
+    setPendingFollow(handle);
+    const res = await toggleFollow({ handle, follow: next });
+    setPendingFollow(null);
+    if (res.ok) {
+      setFollowing((prev) => {
+        const s = new Set(prev);
+        if (res.following) s.add(handle);
+        else s.delete(handle);
+        return s;
+      });
+    } else if (res.reason === "SELF") {
+      notify("내 계정은 팔로우할 수 없어요.");
+    } else {
+      notify("팔로우하지 못했어요. 잠시 뒤 다시 눌러 주세요.");
+    }
+  };
   const [rankTab, setRankTab] = useState<RankTab>("all");
   const ranks = data.rankings[rankTab];
   const rankedAt = rankedAtLabel(data.rankedAt);
@@ -265,14 +308,27 @@ export function HomeView({ data }: { data: HomeSections }) {
                     </b>
                     <span style={{ fontSize: 12, color: "var(--sp-fg-hint)" }}>
                       팔로워 {formatCount(c.followers)} · 대표작{" "}
-                      <Link href={c.topHref} prefetch={false} style={{ color: "inherit" }}>
+                      <Link
+                        href={c.topHref}
+                        prefetch={false}
+                        style={{ color: "inherit" }}
+                      >
                         {c.top}
                       </Link>
                     </span>
                   </div>
-                  {/* Follow needs login; wired with the login popup task. */}
-                  <Button size="sm" color="contrast">
-                    팔로우
+                  <Button
+                    size="sm"
+                    color="contrast"
+                    variant={following.has(c.handle) ? "outline" : "fill"}
+                    aria-pressed={following.has(c.handle)}
+                    aria-label={`${c.name} ${following.has(c.handle) ? "팔로잉" : "팔로우"}`}
+                    disabled={
+                      pendingFollow === c.handle || viewer?.handle === c.handle
+                    }
+                    onClick={() => onFollow(c.handle)}
+                  >
+                    {following.has(c.handle) ? "팔로잉" : "팔로우"}
                   </Button>
                 </div>
               ))}

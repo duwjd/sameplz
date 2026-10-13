@@ -824,7 +824,7 @@
       "scn": [
         "guest-to-same"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F7-2",
@@ -939,7 +939,7 @@
       "scn": [
         "guest-to-same"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F8-1",

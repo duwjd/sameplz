@@ -3,7 +3,7 @@
 -- creator waitlist own-only, search log closed. Seed: jiwoo (…01) has recipe …03 only.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(23);
+select plan(26);
 
 create or replace function pg_temp.login_as(uid uuid) returns void language plpgsql as $$
 begin
@@ -89,6 +89,22 @@ select pg_temp.login_as('00000000-0000-0000-0000-000000000001');
 select throws_ok($$ insert into public.post_likes (user_id, post_id)
                     values ('00000000-0000-0000-0000-000000000001', 'dddddddd-0000-0000-0000-000000000004') $$,
           '42501', null, 'post_likes: cannot like a hidden post');
+
+-- F7-9 gate in RLS: unfinished signup cannot write social rows even via PostgREST
+select pg_temp.as_postgres();
+insert into auth.users (id, aud, role, email, raw_user_meta_data)
+values ('00000000-0000-0000-0000-0000000000c1', 'authenticated', 'authenticated', null, '{"name":"미완료회원"}');
+select pg_temp.login_as('00000000-0000-0000-0000-0000000000c1');
+select throws_ok($$ insert into public.follows (follower_id, followee_id)
+                    values ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-000000000005') $$,
+          '42501', null, 'F7-9 unfinished signup cannot follow');
+select throws_ok($$ insert into public.recipe_likes (user_id, recipe_id)
+                    values ('00000000-0000-0000-0000-0000000000c1', 'aaaaaaaa-0000-0000-0000-000000000001') $$,
+          '42501', null, 'F7-9 unfinished signup cannot like');
+select throws_ok($$ insert into public.creator_waitlist (user_id, categories, consent_version)
+                    values ('00000000-0000-0000-0000-0000000000c1', '{prompt}', 'w') $$,
+          '42501', null, 'F7-9 unfinished signup cannot join the waitlist');
+select pg_temp.login_as('00000000-0000-0000-0000-000000000001');
 
 -- creator waitlist
 select lives_ok($$ insert into public.creator_waitlist (user_id, categories, consent_version)

@@ -1,6 +1,9 @@
 "use client";
 // GNB wired to real routes. Login / account actions arrive with the login popup task.
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { signOut } from "@/actions/auth";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { SiteHeader, type SiteHeaderActive } from "@/components/ds";
 
 const ROUTES: Record<string, string> = {
@@ -29,18 +32,82 @@ export function activeFor(pathname: string): SiteHeaderActive {
 export function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
+  const { viewer, requireLogin } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <SiteHeader
-      user={null}
-      active={activeFor(pathname)}
-      onNavigate={(key) => router.push(ROUTES[key] ?? "/")}
-      onSearch={(q) => {
-        const term = q.trim();
-        // F1-4: GNB search always searches the whole market and stays as a chip there.
-        router.push(term ? `/market?q=${encodeURIComponent(term)}` : "/market");
-      }}
-    />
+    <div style={{ position: "relative" }}>
+      <SiteHeader
+        user={
+          viewer
+            ? { name: viewer.nickname, avatar: viewer.avatarUrl ?? undefined }
+            : null
+        }
+        active={activeFor(pathname)}
+        onNavigate={(key) => router.push(ROUTES[key] ?? "/")}
+        onSearch={(q) => {
+          const term = q.trim();
+          // F1-4: GNB search always searches the whole market and stays as a chip there.
+          router.push(
+            term ? `/market?q=${encodeURIComponent(term)}` : "/market",
+          );
+        }}
+        onLogin={() => requireLogin()}
+        onAccount={() => setMenuOpen((v) => !v)}
+      />
+      {viewer && menuOpen && (
+        <div
+          role="menu"
+          aria-label="계정"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setMenuOpen(false);
+          }}
+          style={{
+            position: "absolute",
+            top: 64,
+            right: 24,
+            zIndex: 90,
+            minWidth: 180,
+            padding: 8,
+            borderRadius: 12,
+            background: "var(--sp-bg-surface)",
+            border: "1px solid var(--sp-border-normal)",
+            boxShadow: "var(--sp-shadow-md)",
+          }}
+        >
+          <p
+            style={{
+              margin: "4px 8px 8px",
+              fontSize: 13,
+              color: "var(--sp-fg-hint)",
+            }}
+          >
+            {viewer.nickname}님
+          </p>
+          <form action={signOut.bind(null, pathname)}>
+            <button
+              type="submit"
+              role="menuitem"
+              autoFocus
+              style={{
+                width: "100%",
+                height: 36,
+                textAlign: "left",
+                padding: "0 8px",
+                border: "none",
+                borderRadius: 8,
+                background: "transparent",
+                fontSize: 14,
+                fontFamily: "inherit",
+                cursor: "pointer",
+              }}
+            >
+              로그아웃
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
   );
 }
 

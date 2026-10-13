@@ -18,7 +18,9 @@ Next.js 16.3.x App Router, `cacheComponents: true`. 서버 컴포넌트가 기�
 | `/my`, `/my/{library,orders,credits,notifications,activity,profile,account}` | MY·LIB·ORD·CRD·NOTI·ACTV·PRF·ACC | 동적. 사용자 키 없이 `"use cache"` 금지 |
 | `/my/seller`, `/my/seller/upload` | SELL, UP | 동적. 미디어는 서명 업로드 URL로 Storage 직행 |
 | `/admin/**` | ADM | `admin` 클레임 + MFA, noindex |
-| `/auth/callback`, `/auth/naver/*`(D4-B일 때) | 로그인 | Route Handler |
+| `/auth/callback`(구글), `/auth/kakao`·`/auth/kakao/callback`(카카오 OIDC → ID 토큰), `/auth/naver`·`/auth/naver/callback`(D4-B) | 로그인 | Route Handler. 성공하면 가입 미완료는 `/welcome`, 실패는 `next?auth_error=` |
+| `/welcome` | 가입 마무리(F7-9) | 동적, 로그인 필수, noindex |
+| `/terms`, `/privacy` | 정책(초안 자리) | 정적 |
 | `/api/webhooks/toss`, `/api/webhooks/generation/[provider]`, `/api/play/runs`, `/api/files/[versionId]`, `/api/cron/[job]` | — | Node 런타임, 원본 body로 서명 검증 |
 
 없는 주소·비공개·심사 중 레시피는 같은 NF 화면(HTTP 404)이다. 존재 여부를 알리지 않는다.

@@ -19,7 +19,7 @@
       "scn": [
         "guest-to-same"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F1-2",
@@ -33,7 +33,7 @@
       "acceptance": "판매 중지된 레시피는 다음 MV 갱신(5~10분) 뒤 TOP 10·HOME-02에서 사라짐",
       "week": 2,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F1-3",
@@ -46,7 +46,7 @@
       "acceptance": "최근 24시간 다운로드가 100건 미만이면 ▲▼ 대신 NEW·— 표시, 계산 창 24시간. 한 크리에이터 카드는 TOP 10에 2개를 넘지 않음",
       "week": 2,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F1-4",

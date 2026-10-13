@@ -53,7 +53,10 @@ test.describe("SCN 9 판매 중지된 레시피", () => {
     ).toHaveAttribute("href", /^\/my\/library\?open=/);
   });
 
-  test("F2-4 만든 사람: 판매 중지 띠 + 일반 상세", async ({ page, context }) => {
+  test("F2-4 만든 사람: 판매 중지 띠 + 일반 상세", async ({
+    page,
+    context,
+  }) => {
     await loginAsSeedUser(context, "sangse");
     await page.goto(URL);
     await expect(page.getByText("판매를 멈춘 내 레시피예요")).toBeVisible();

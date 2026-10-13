@@ -25,6 +25,7 @@ Next.js 16.3.x App Router, `cacheComponents: true`. 서버 컴포넌트가 기�
 
 없는 주소·비공개·심사 중·반려 레시피는 같은 NF 화면(`src/app/not-found.tsx`, HTTP 404)이다. 존재 여부를 알리지 않는다.
 `/r/[id]`는 `params`와 캐시된 `getRecipePublic`을 Suspense **앞에서** 확인하고 `notFound()`한다(스트리밍이 시작되면 404 상태를 못 보낸다). `generateStaticParams`는 인기 레시피 20개(없으면 자리표시 1개 — Cache Components는 빈 배열을 거부).
+`/my/library`(LIB): 비회원은 로그인 안내, `?open=<권리 id>`면 그 원문을 바로 연다. 원문은 서버 액션 결과로만 클라이언트에 가고(`src/data/secrets.ts`), 파일은 `/api/files/[versionId]?file=<id>` → 60초 서명 URL 302.
 `sitemap.ts`(라이브 레시피·마켓)와 `robots.ts`(`/my`·`/checkout`·`/play`·`/admin`·`/welcome`·`/auth`·`/api` 제외).
 
 ## 규칙

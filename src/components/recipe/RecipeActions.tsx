@@ -9,6 +9,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { BuyPanel, Button, type BuyPanelState } from "@/components/ds";
 import type { RecipeViewerState } from "@/data/recipe";
 import { libraryHref } from "@/lib/recipe/detail";
+import { markOpenIntent } from "@/lib/library/open-intent";
 import { readShareRef } from "@/lib/share-ref";
 
 export interface RecipeActionsProps {
@@ -164,8 +165,11 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
       "판매자 센터는 아직 준비하고 있어요. 열리면 여기서 새 버전을 올릴 수 있어요.",
     );
 
-  const openLibrary = () =>
-    entitlementId && router.push(libraryHref(entitlementId));
+  const openLibrary = () => {
+    if (!entitlementId) return;
+    markOpenIntent(entitlementId);
+    router.push(libraryHref(entitlementId));
+  };
 
   return (
     <>

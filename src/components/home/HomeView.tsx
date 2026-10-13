@@ -226,6 +226,7 @@ export function HomeView({ data }: { data: HomeSections }) {
         {/* HOME-04 */}
         {data.gallery.length > 0 && (
           <section
+            id="gallery"
             style={{ display: "flex", flexDirection: "column", gap: 20 }}
           >
             <SectionHead

@@ -80,6 +80,19 @@ test.describe("SCN 1 비회원으로 구경하다 SAME 하기", () => {
     await expect(
       page.getByRole("button", { name: "무료로 SAME 하기" }),
     ).toHaveCount(0);
+
+    // LIB: 「라이브러리에서 열기」 opens the received original right away.
+    await page.getByRole("button", { name: "라이브러리에서 열기" }).click();
+    await expect(page).toHaveURL(/\/my\/library\?open=/);
+    const dialog = page.getByRole("dialog", {
+      name: /셀카 → 링크드인 프로필 사진 · v1 원문/,
+    });
+    await expect(dialog).toContainText("SAMEPLZ-SECRET-SAMPLE-01", {
+      timeout: 10_000,
+    });
+    await expect(dialog.getByTestId("original-watermark")).toContainText(
+      "처음온회원",
+    );
   });
 
   test("F2-1 로그인한 회원은 바로 받는다", async ({ page, context }) => {

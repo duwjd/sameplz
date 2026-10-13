@@ -16,3 +16,4 @@ SessionStart 훅이 `- YYYY-MM-DD`로 시작하는 로그 줄 중 마지막 5개
 - 2026-10-12 D14: Supabase Free 단일 프로젝트 구성(로컬 개발, deploy-db 워크플로·production 환경 승인), 하네스 문서 정리, Docker 복구 후 로컬 supabase start·db reset·test db·check-rls 통과 · 테스트 통과 · 다음: .mcp.json supabase-dev 제거·prod-ref·production 시크릿(사용자), W1 스파이크
 - 2026-10-12 HOME/DS: SAMEPLZ 디자인 시스템(Vapor 기반) 이식 — 토큰·Pretendard·아이콘 159·컴포넌트 61개(src/components/ds), shadcn 제거, 홈(/) 구현(샘플 데이터) · typecheck·lint·test·build 통과, 브라우저 콘솔 오류 없음 · 다음: 로그인 스파이크, 홈 DAL 연결
 - 2026-10-12 SPIKE-pgroonga: 로컬 PGroonga 3.2.5로 F1-5 확인(보고·세무·엑셀 4칸 모두 걸림), RLS 직접 검색은 Seq Scan 2.4초 → SECURITY DEFINER RPC 9~19ms, 입력은 query_escape 필수 · 결과 docs/spikes/W1-pgroonga-korean.md · 다음: 카카오 로그인 스파이크
+- 2026-10-13 SPIKE-kakao: 개인 앱 카카오 로그인 성공(이메일 없음, auth.users.id 키) — Supabase 기본 OAuth는 account_email 고정 요청으로 KOE205, 카카오 OIDC 직접 + signInWithIdToken으로 해결, 재로그인 같은 id · 결과 docs/spikes/W1-kakao-login.md · 다음: 네이버 로그인 스파이크(D4)

@@ -11,7 +11,7 @@ Next.js 16.3.x · Supabase 서울(`ap-northeast-2`) · Vercel `icn1`. ORM은 쓰
 | 층 | 선택 | 이유·주의 |
 |---|---|---|
 | 프레임워크 | `next@16.3.x`, `react@19.2`, Turbopack, `cacheComponents: true` | 공개 카탈로그만 `"use cache"`, 사용자별 화면은 항상 동적. 8~9월 치명 등급 보안 릴리스 3회 → Renovate/Dependabot으로 최신 패치 |
-| 인증·세션 | `@supabase/ssr`, `proxy.ts`는 세션 갱신만, 서버에서는 `getClaims()` | 서버에서 `getSession()`을 믿지 말 것. 캐시된 응답의 `Set-Cookie` 유출 주의 |
+| 인증·세션 | `@supabase/ssr`, `proxy.ts`는 세션 갱신만, 서버에서는 `getClaims()`. 카카오는 직접 OIDC → `signInWithIdToken`(`/auth/kakao`) | 서버에서 `getSession()`을 믿지 말 것. 캐시된 응답의 `Set-Cookie` 유출 주의. 카카오 기본 OAuth는 개인 앱에서 KOE205 → `docs/spikes/W1-kakao-login.md` |
 | 키 | `sb_publishable_…` / `sb_secret_…` 새 키로 시작 | 기존 `anon`/`service_role`은 2026년 말 폐기 예정 |
 | 데이터 접근 | `server-only` DAL(`src/data`) + 서버 액션(`src/actions`) → RPC | 서버 액션은 직접 POST로 닿는 공개 엔드포인트 → 액션마다 인가 재확인 |
 | 검색 | PGroonga(`&@~` + `pgroonga_query_escape`), `search_recipes` RPC로만 | 기본 전문 검색은 알파벳 언어용, `pg_bigm`은 목록에 없음. RLS 테이블에 직접 걸면 인덱스를 못 씀 → `docs/spikes/W1-pgroonga-korean.md` |

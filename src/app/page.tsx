@@ -1,6 +1,8 @@
 import { HomeView } from "@/components/home/HomeView";
+import { getHomeSections } from "@/data/home";
 
-// HOME — 비회원 기준. 로그인(W1 스파이크) 뒤 getClaims()로 user를 넘긴다.
-export default function HomePage() {
-  return <HomeView />;
+// HOME — guest view for now; the login task adds the viewer's state.
+export default async function HomePage() {
+  const data = await getHomeSections();
+  return <HomeView data={data} />;
 }

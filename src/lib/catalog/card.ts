@@ -12,7 +12,7 @@ export interface ReferenceData {
   tools: Record<string, string>;
 }
 
-const KIND: Record<string, ResultKind> = {
+export const KIND: Record<string, ResultKind> = {
   image: "이미지",
   video: "영상",
   text: "텍스트",
@@ -47,11 +47,25 @@ export function mediaLabelFor(
   return undefined;
 }
 
-/** search_recipes row → RecipeCard props (public fields only). */
-export function toRecipeCard(
-  row: SearchRow,
-  ref: ReferenceData,
-): RecipeCardProps {
+/** Fields a card needs; search_recipes and home_weekly rows both satisfy it. */
+export type CardSource = Pick<
+  SearchRow,
+  | "public_id"
+  | "title"
+  | "creator_nickname"
+  | "job_codes"
+  | "category"
+  | "prompt_kind"
+  | "price_krw"
+  | "tool_codes"
+  | "downloads"
+  | "same_count"
+  | "likes"
+  | "filters"
+>;
+
+/** RPC row → RecipeCard props (public fields only). */
+export function toRecipeCard(row: CardSource, ref: ReferenceData): RecipeCardProps {
   const category = row.category as RecipeCardProps["category"];
   return {
     title: row.title,

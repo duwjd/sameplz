@@ -148,6 +148,17 @@ where e.source = 'free'
   and e.user_id <> '00000000-0000-0000-0000-000000000001'
   and abs(hashtext(e.id::text)) % 4 = 0;
 
+-- Gallery likes: originals and jiwoo's SAME 인증 lead HOME-04.
+insert into public.post_likes (user_id, post_id)
+select u.id, g.id
+from public.profiles u
+cross join public.gallery_posts g
+where g.id in ('dddddddd-0000-0000-0000-000000000001', 'dddddddd-0000-0000-0000-000000000002',
+               'dddddddd-0000-0000-0000-000000000003', 'dddddddd-0000-0000-0000-000000000004',
+               'dddddddd-0000-0000-0000-000000000005')
+  and u.id <> g.author_id
+  and abs(hashtext(u.id::text || g.id::text)) % 3 <> 0;
+
 -- ---------------------------------------------------------------- likes + follows
 insert into public.recipe_likes (user_id, recipe_id)
 select u.id, r.id from public.profiles u cross join public.recipes r

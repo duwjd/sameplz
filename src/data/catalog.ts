@@ -165,17 +165,7 @@ export async function getCollections(): Promise<CollectionPack[]> {
         if (!r || r.status !== "live") return [];
         return [
           toRecipeCard(
-            {
-              ...r,
-              creator_handle: "",
-              downloads: 0,
-              same_count: 0,
-              likes: 0,
-              popularity: 0,
-              published_at: "",
-              score: 0,
-              total_count: 0,
-            },
+            { ...r, downloads: 0, same_count: 0, likes: 0 },
             ref,
           ),
         ];

@@ -548,6 +548,26 @@ isOneToOne: false
             "accept_signup_terms":
 { Args: { "p_terms_version": string }; Returns: Json
                            },
+"home_creators":
+{ Args: { "p_limit"?: number }; Returns: {
+              "avatar_url": string,"bio": string,"followers": number,"handle": string,"is_staff": boolean,"nickname": string,"top_public_id": string,"top_title": string
+            }[]
+                           },
+"home_gallery":
+{ Args: { "p_limit"?: number }; Returns: {
+              "author_nickname": string,"generated_here": boolean,"id": string,"kind": string,"likes": number,"media_kind": string,"ratio": string,"recipe_public_id": string,"recipe_title": string,"title": string
+            }[]
+                           },
+"home_rankings":
+{ Args: { "p_category"?: string }; Returns: {
+              "category": string,"creator_nickname": string,"filters": Json,"is_new": boolean,"move": number,"price_krw": number,"prompt_kind": string,"public_id": string,"rank": number,"taken_at": string,"title": string
+            }[]
+                           },
+"home_weekly":
+{ Args: { "p_limit"?: number }; Returns: {
+              "category": string,"creator_handle": string,"creator_nickname": string,"downloads": number,"downloads_7d": number,"filters": Json,"job_codes": (string)[],"likes": number,"popularity": number,"price_krw": number,"prompt_kind": string,"public_id": string,"same_count": number,"summary": string,"title": string,"tool_codes": (string)[]
+            }[]
+                           },
 "my_account_status":
 { Args: Record<PropertyKey, never>; Returns: {
               "adult_confirmed_at": string,"role": string,"signup_complete": boolean,"terms_accepted_at": string,"terms_version": string

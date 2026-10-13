@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { TERMS_VERSION } from "@/lib/auth/account";
 import { safeNext } from "@/lib/auth/next-path";
+import { deviceHash, ipHash } from "@/lib/abuse/fingerprint";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export async function signOut(next?: string) {
@@ -54,6 +56,24 @@ export async function acceptSignupTerms(
   });
   if (error)
     return { errors: { form: "저장하지 못했어요. 잠시 뒤 다시 눌러 주세요." } };
+
+  // F4-14 + D13: the monthly grant only comes through this server path (IP-per-day signup limit,
+  // device record). Fail closed: without the secret key nobody gets credits.
+  const secret = process.env.SUPABASE_SECRET_KEY;
+  if (!secret)
+    return { errors: { form: "저장하지 못했어요. 잠시 뒤 다시 눌러 주세요." } };
+  const { data: grant, error: grantError } = await createAdminClient().rpc(
+    "complete_signup_credits",
+    {
+      p_user: claims.claims.sub,
+      p_device_hash: await deviceHash(secret),
+      p_ip_hash: await ipHash(secret),
+    },
+  );
+  if (grantError)
+    return { errors: { form: "저장하지 못했어요. 잠시 뒤 다시 눌러 주세요." } };
+  if ((grant as { reason?: string } | null)?.reason === "RATE_LIMITED")
+    console.warn("[signup] IP signup limit reached; no monthly credits granted");
 
   redirect(safeNext(parsed.data.next));
 }

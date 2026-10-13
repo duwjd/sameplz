@@ -1,6 +1,6 @@
 ---
 name: credit-ledger
-description: 크레딧(1C=10원, 보너스 먼저, 반환·차감 없음, MVP 월 무료 지급·한도·예산, 유료 전환 때 유료분 환불) 규칙과 SQL을 다룰 때 쓴다.
+description: 크레딧(D17 단위 1C≈3.7원, 보너스 먼저, 반환·차감 없음, MVP 월 무료 지급·한도·예산, 유료 전환 때 유료분 환불) 규칙과 SQL을 다룰 때 쓴다.
 ---
 # 크레딧 원장
 
@@ -8,7 +8,7 @@ description: 크레딧(1C=10원, 보너스 먼저, 반환·차감 없음, MVP �
 
 ## MVP (무료 출시)
 
-- **월 무료 지급만 있다.** 지급 로트는 보너스 계열 `kind = monthly_grant`(`expires_at` = 다음 리셋). 가입 때 그달 몫(예 30C, D11), 매월 리셋 때 남은 몫 `expire` → 새 로트 지급.
+- **월 무료 지급만 있다.** 지급 로트는 보너스 계열 `kind = monthly_grant`(`expires_at` = 다음 리셋). 가입 때 그달 몫(270C, D11), 매월 리셋 때 남은 몫 `expire` → 새 로트 지급.
 - **유료 로트(`paid`)·충전(`grant_purchase`, `credit_purchases`)·크레딧 환불(`request_paid_refund`, `credit_refunds`)은 MVP에 없다.** 만들지 않는다.
 - MVP 함수: `grant_monthly_credits`, `place_hold`, `start_run`(18+ 자기 확인·일일 한도·레이트 리밋·예산 예약을 홀드 전에), `settle_cell`, `expire_bonus`. 홀드·정산·반환 규칙은 아래와 같다.
 - 전체 월 예산(`generation_budget`, D12)은 홀드와 같은 트랜잭션에서 예약하고 `settle_cell`에서 실사용으로 맞춘다. 한도면 `BUDGET_EXHAUSTED`로 아무것도 만들지 않는다.
@@ -32,7 +32,7 @@ description: 크레딧(1C=10원, 보너스 먼저, 반환·차감 없음, MVP �
 | `place_hold(cell_id, credits)` | 보너스 → 만료 임박 순으로 로트를 잠그고 홀드 | `for update`, 부족하면 아무것도 안 함 + 부족분 반환 |
 | `start_run(...)` | 실행·셀·셀별 홀드(+ MVP: 일일 한도·예산 예약, 유료 전환: 체험 행)를 한 트랜잭션 | 같은 `client_request_id`면 기존 실행 반환 |
 | `settle_cell(cell_id, outcome)` | 성공 → capture, 모델 오류 → 같은 로트로 release, 안전 필터 → release(차감 없음), 시간 초과 → 조회 뒤 결정 | 셀마다 정확히 1회, 두 번째부터 noop |
-| `request_paid_refund(user_id)` | (유료 전환 단계) 유료 잔여 × 10원 − 수수료(D3), 진행 중 홀드 제외 | 보너스 제외 |
+| `request_paid_refund(user_id)` | (유료 전환 단계) 유료 잔여 × 크레딧 단가(D17·D3) − 수수료(D3), 진행 중 홀드 제외 | 보너스 제외 |
 | `expire_bonus()` | 만료 보너스 소멸(`pg_cron`) | 원장 `expire` 행 |
 
 ## 수정 절차

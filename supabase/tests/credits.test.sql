@@ -81,8 +81,8 @@ insert into public.generation_budget (month, cap_credits, state) values (private
 on conflict (month) do update set cap_credits = 1000, reserved = 0, spent = 0, state = 'open', alerted_80_at = null;
 
 select ok((select (r ->> 'ok')::boolean = false and r ->> 'reason' = 'INSUFFICIENT_CREDITS' and (r ->> 'shortfall')::int = 1
-           from private.place_hold('c0000000-0000-0000-0000-000000000001', pg_temp.u('A'), 271) r),
-          'INV-C1 hold above the balance: nothing held, shortfall 1');
+           from private.place_hold('c0000000-0000-0000-0000-000000000001', pg_temp.u('G'), 1) r),
+          'INV-C1 hold above the balance (0C, within the daily limit): nothing held, shortfall 1');
 select is((select count(*) from public.credit_holds where cell_id = 'c0000000-0000-0000-0000-000000000001'), 0::bigint,
           'INV-C1 no hold row for the refused cell');
 select is((private.place_hold('c0000000-0000-0000-0000-000000000002', pg_temp.u('A'), 100) ->> 'ok')::boolean, true,

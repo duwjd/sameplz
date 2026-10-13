@@ -3,6 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import type { RecipeCardProps } from "@/components/ds";
 import { toRecipeCard, type ReferenceData } from "@/lib/catalog/card";
 import { createPublicClient, hasSupabaseEnv } from "@/lib/supabase/public";
+import { degradeCachedRead } from "./degrade";
 import { createClient } from "@/lib/supabase/server";
 import {
   MARKET_PAGE_SIZE,
@@ -33,8 +34,13 @@ export async function getReferenceData(): Promise<
     supabase.from("jobs").select("code,label,sort").order("sort"),
     supabase.from("tools").select("code,label,kind,sort").order("sort"),
   ]);
-  if (jobs.error) throw jobs.error;
-  if (tools.error) throw tools.error;
+  if (jobs.error || tools.error)
+    return degradeCachedRead("getReferenceData", jobs.error ?? tools.error, {
+      jobs: {},
+      tools: {},
+      jobList: [],
+      toolList: [],
+    });
   return {
     jobs: Object.fromEntries(jobs.data.map((j) => [j.code, j.label])),
     tools: Object.fromEntries(tools.data.map((t) => [t.code, t.label])),
@@ -76,7 +82,7 @@ export async function getLiveCounts(): Promise<CategoryCounts> {
     "search_recipe_counts",
     {},
   );
-  if (error) throw error;
+  if (error) return degradeCachedRead("getLiveCounts", error, toCounts([]));
   return toCounts(data);
 }
 
@@ -151,7 +157,7 @@ export async function getCollections(): Promise<CollectionPack[]> {
     )
     .eq("status", "live")
     .order("sort");
-  if (error) throw error;
+  if (error) return degradeCachedRead("getCollections", error, []);
 
   return (data ?? []).map((c) => ({
     slug: c.slug,
@@ -164,10 +170,7 @@ export async function getCollections(): Promise<CollectionPack[]> {
         const r = item.recipes;
         if (!r || r.status !== "live") return [];
         return [
-          toRecipeCard(
-            { ...r, downloads: 0, same_count: 0, likes: 0 },
-            ref,
-          ),
+          toRecipeCard({ ...r, downloads: 0, same_count: 0, likes: 0 }, ref),
         ];
       }),
   }));

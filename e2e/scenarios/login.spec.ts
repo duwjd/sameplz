@@ -76,7 +76,10 @@ test.describe("로그인", () => {
 
     await page.getByText("모두 동의해요").click();
     await page.getByRole("button", { name: "동의하고 시작하기" }).click();
-    await expect(page).toHaveURL(/\/market\?q=%EC%84%B8%EB%AC%B4/);
+    // Server action redirect + signup re-check can take a few seconds on a loaded CI runner.
+    await expect(page).toHaveURL(/\/market\?q=%EC%84%B8%EB%AC%B4/, {
+      timeout: 15_000,
+    });
     await expect(
       page.getByRole("button", { name: "마이페이지" }),
     ).toBeVisible();

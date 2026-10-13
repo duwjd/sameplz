@@ -15,7 +15,7 @@
 | D1 | 포크 로열티 10% 부담 주체·금액 기준·대상 | 창업자 → 약관(변호사) | 유료 전환 단계 | deferred (유료 전환 단계) |
 | D2 | 개인 판매자 소득 처리(사업소득·기타소득·사업자만) | 세무사 | 유료 전환 단계(첫 지급 전) | deferred (유료 전환 단계) |
 | D3 | 크레딧 선불 면제 조건·환불 수수료·탈퇴 시 처리 | 변호사 | 유료 전환 단계(충전 열기 전) | deferred (유료 전환 단계) |
-| D4 | 네이버 로그인 방식 | 엔지니어링 | W1 | open |
+| D4 | 네이버 로그인 방식 | 엔지니어링 | W1 | closed |
 | D5 | 18세 게이트 범위 | 창업자(MVP) → 변호사(유료 전환) | W1 | closed |
 | D6 | 체험 비용과 '열기'의 정의 | 창업자 | W1 | closed |
 | D7 | 지급대행 제공자 | 창업자 | 유료 전환 단계(토스 신청과 함께) | deferred (유료 전환 단계) |
@@ -66,8 +66,8 @@
 - **근거**: Supabase 커스텀 OAuth/OIDC(2026-04)는 네이버처럼 `response` 안에 중첩된 사용자 정보를 매핑할 수 있는지 문서에 없다. 무료 플랜 개수 한도도 문서와 블로그가 다르다. B는 2026년 1월 구현 사례가 있다. MVP 카카오는 **개인 앱**(비즈 앱 아님)이라 이메일 동의 항목이 없다. 모든 키는 이메일이 아니라 `auth.users.id`로 건다.
 - **영향**: `/auth/naver/*` 라우트, ACC-01, F7-5.
 - **확인 주체 · 기한**: 엔지니어링 · W1
-- **상태**: open
-- **결정**: (스파이크 근거, 2026-10-13 — 상태는 사용자가 닫는다) A는 커스텀 OAuth 매핑이 맨 위 키만 읽어 네이버 `response.id`를 `sub`로 못 씀(소스 분석). B는 로컬에서 가입·재로그인 성공(같은 `auth.users.id`), 비용: 자리표시 이메일(`@naver.users.sameplz.invalid`), Supabase가 로그인 수단을 `email`로 기록 → `app_metadata.naver_id`로 구분. 상세 `docs/spikes/W1-naver-login.md`.
+- **상태**: closed
+- **결정**: 2026-10-13 **B로 출시**(사용자 결정). 자리표시 이메일은 `isPlaceholderEmail`로 앱 전체에서 "이메일 없음" 처리, ACC-01·F7-5는 `app_metadata.naver_id`로 「네이버」 표시·계산, `/auth/naver/callback`은 security-auditor 검토. 근거: A는 커스텀 OAuth 매핑이 맨 위 키만 읽어 네이버 `response.id`를 `sub`로 못 씀(소스 분석). B는 로컬에서 가입·재로그인 성공(같은 `auth.users.id`), 비용: 자리표시 이메일(`@naver.users.sameplz.invalid`), Supabase가 로그인 수단을 `email`로 기록 → `app_metadata.naver_id`로 구분. 상세 `docs/spikes/W1-naver-login.md`.
 
 ## D5 · 18세 게이트 범위
 

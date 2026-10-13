@@ -133,8 +133,14 @@ export async function loginAsNewUser(
 
 /** Seed users (supabase/seed.sql). They have no password; the fixture sets a throwaway one. */
 export const SEED_USERS = {
-  jiwoo: { id: "00000000-0000-0000-0000-000000000001", email: "jiwoo@sameplz.test" },
-  sangse: { id: "00000000-0000-0000-0000-000000000002", email: "sangse@sameplz.test" },
+  jiwoo: {
+    id: "00000000-0000-0000-0000-000000000001",
+    email: "jiwoo@sameplz.test",
+  },
+  sangse: {
+    id: "00000000-0000-0000-0000-000000000002",
+    email: "sangse@sameplz.test",
+  },
 } as const;
 
 /** Sign the browser in as a seed user (local Supabase only). */
@@ -152,4 +158,42 @@ export async function loginAsSeedUser(
   const updated = await admin.auth.admin.updateUserById(id, { password });
   if (updated.error) throw updated.error;
   await signInAndCopyCookies(context, email, password, opts.baseURL);
+}
+
+/** Give a user an entitlement directly (service role; e.g. pinned to an older version). */
+export async function grantEntitlement(
+  userId: string,
+  recipeId: string,
+  versionId: string,
+): Promise<string> {
+  const env = localSupabaseEnv();
+  const admin = createClient(env.url, env.secretKey, {
+    auth: { persistSession: false },
+  });
+  const { data, error } = await admin
+    .from("entitlements")
+    .insert({
+      user_id: userId,
+      recipe_id: recipeId,
+      version_id: versionId,
+      source: "free",
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+/** Put a file into the private recipe-files bucket (local only). */
+export async function uploadRecipeFile(path: string, body: string) {
+  const env = localSupabaseEnv();
+  const admin = createClient(env.url, env.secretKey, {
+    auth: { persistSession: false },
+  });
+  const { error } = await admin.storage
+    .from("recipe-files")
+    .upload(path, new Blob([body], { type: "text/markdown" }), {
+      upsert: true,
+    });
+  if (error) throw error;
 }

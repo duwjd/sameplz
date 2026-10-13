@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 // GNB wired to real routes. Login / account actions arrive with the login popup task.
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -85,11 +86,28 @@ export function AppHeader() {
           >
             {viewer.nickname}님
           </p>
+          <Link
+            href="/my/library"
+            role="menuitem"
+            autoFocus
+            onClick={() => setMenuOpen(false)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              height: 36,
+              padding: "0 8px",
+              borderRadius: 8,
+              fontSize: 14,
+              color: "var(--sp-fg-normal)",
+              textDecoration: "none",
+            }}
+          >
+            라이브러리
+          </Link>
           <form action={signOut.bind(null, pathname)}>
             <button
               type="submit"
               role="menuitem"
-              autoFocus
               style={{
                 width: "100%",
                 height: 36,

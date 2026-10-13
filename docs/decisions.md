@@ -67,7 +67,7 @@
 - **영향**: `/auth/naver/*` 라우트, ACC-01, F7-5.
 - **확인 주체 · 기한**: 엔지니어링 · W1
 - **상태**: open
-- **결정**:
+- **결정**: (스파이크 근거, 2026-10-13 — 상태는 사용자가 닫는다) A는 커스텀 OAuth 매핑이 맨 위 키만 읽어 네이버 `response.id`를 `sub`로 못 씀(소스 분석). B는 로컬에서 가입·재로그인 성공(같은 `auth.users.id`), 비용: 자리표시 이메일(`@naver.users.sameplz.invalid`), Supabase가 로그인 수단을 `email`로 기록 → `app_metadata.naver_id`로 구분. 상세 `docs/spikes/W1-naver-login.md`.
 
 ## D5 · 18세 게이트 범위
 

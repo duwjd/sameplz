@@ -17,3 +17,4 @@ SessionStart 훅이 `- YYYY-MM-DD`로 시작하는 로그 줄 중 마지막 5개
 - 2026-10-12 HOME/DS: SAMEPLZ 디자인 시스템(Vapor 기반) 이식 — 토큰·Pretendard·아이콘 159·컴포넌트 61개(src/components/ds), shadcn 제거, 홈(/) 구현(샘플 데이터) · typecheck·lint·test·build 통과, 브라우저 콘솔 오류 없음 · 다음: 로그인 스파이크, 홈 DAL 연결
 - 2026-10-12 SPIKE-pgroonga: 로컬 PGroonga 3.2.5로 F1-5 확인(보고·세무·엑셀 4칸 모두 걸림), RLS 직접 검색은 Seq Scan 2.4초 → SECURITY DEFINER RPC 9~19ms, 입력은 query_escape 필수 · 결과 docs/spikes/W1-pgroonga-korean.md · 다음: 카카오 로그인 스파이크
 - 2026-10-13 SPIKE-kakao: 개인 앱 카카오 로그인 성공(이메일 없음, auth.users.id 키) — Supabase 기본 OAuth는 account_email 고정 요청으로 KOE205, 카카오 OIDC 직접 + signInWithIdToken으로 해결, 재로그인 같은 id · 결과 docs/spikes/W1-kakao-login.md · 다음: 네이버 로그인 스파이크(D4)
+- 2026-10-13 SPIKE-naver(D4): A(커스텀 OAuth)는 중첩 응답 매핑 불가로 제외(소스), B(라우트 + Admin API + 매직링크)로 가입·재로그인 성공 — 자리표시 이메일·provider=email 기록이 비용 · D4 근거 기록, 상태는 사용자 결정 대기 · 다음: fal vs Replicate(D8)

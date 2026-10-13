@@ -16,6 +16,8 @@ export interface ChipProps {
   count?: number | string;
   onClick?: () => void;
   onRemove?: () => void;
+  /** Accessible name of the remove button, e.g. "검색: 세무 해제". */
+  removeLabel?: string;
   size?: "sm" | "md";
   disabled?: boolean;
   style?: CSSProperties;
@@ -32,6 +34,7 @@ export function Chip({
   count,
   onClick,
   onRemove,
+  removeLabel = "필터 해제",
   size = "md",
   disabled = false,
   style = {},
@@ -99,7 +102,7 @@ export function Chip({
       {onRemove ? (
         <button
           type="button"
-          aria-label="필터 해제"
+          aria-label={removeLabel}
           onClick={onRemove}
           style={{
             all: "unset",

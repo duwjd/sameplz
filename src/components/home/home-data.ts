@@ -6,7 +6,6 @@ import type {
   RankCardProps,
   RecipeCardProps,
   RecipeCategory,
-  SiteHeaderMarketItem,
   TabItem,
 } from "@/components/ds";
 
@@ -188,13 +187,6 @@ export const RANK_TABS: TabItem[] = [
   { value: "prompt", label: "프롬프트" },
   { value: "agent", label: "에이전트" },
   { value: "skill", label: "스킬" },
-];
-
-export const MARKET_MENU: SiteHeaderMarketItem[] = [
-  { key: "prompt", label: "프롬프트", desc: "이미지·영상·텍스트" },
-  { key: "agent", label: "에이전트", desc: "여러 단계를 알아서" },
-  { key: "skill", label: "스킬", desc: "Claude·ChatGPT에 넣는 기능" },
-  { key: "collection", label: "컬렉션", desc: "섞어서 묶은 팩" },
 ];
 
 export const SLIDES: HeroBannerSlide[] = [

@@ -63,7 +63,7 @@
       "scn": [
         "zero-result-search"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F1-5",
@@ -78,7 +78,7 @@
       "scn": [
         "zero-result-search"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F1-6",
@@ -93,7 +93,7 @@
       "scn": [
         "zero-result-search"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F1-7",

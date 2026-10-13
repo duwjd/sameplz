@@ -15,7 +15,10 @@ test.describe("홈", () => {
     await expect(page.getByText(/기준 · 1시간마다 갱신/)).toBeVisible();
 
     await page.getByRole("tab", { name: "스킬" }).click();
-    await expect(page.getByRole("tab", { name: "스킬" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab", { name: "스킬" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
 
     // F1-2: stopped recipes never reach the home lists.
     await expect(page.getByText("쿠팡 로켓 상세 문구")).toHaveCount(0);
@@ -24,6 +27,8 @@ test.describe("홈", () => {
   test("F1-1 배너를 직접 넘기면 자동 넘김이 멈춘다", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "다음 배너" }).click();
-    await expect(page.getByRole("button", { name: "자동 넘김 시작" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "자동 넘김 시작" }),
+    ).toBeVisible();
   });
 });

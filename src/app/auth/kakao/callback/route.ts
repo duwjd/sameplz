@@ -52,7 +52,15 @@ export async function GET(request: NextRequest) {
     code,
   });
   if ("error" in exchanged)
-    return done(loginFailed(request, next, "server_error"));
+    return done(
+      loginFailed(
+        request,
+        next,
+        "server_error",
+        "kakao_token",
+        exchanged.error,
+      ),
+    );
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithIdToken({
@@ -60,7 +68,10 @@ export async function GET(request: NextRequest) {
     token: exchanged.idToken,
     nonce: rawNonce,
   });
-  if (error) return done(loginFailed(request, next, "server_error"));
+  if (error)
+    return done(
+      loginFailed(request, next, "server_error", "supabase_id_token", error),
+    );
 
   return done(await loginSucceeded(request, next));
 }

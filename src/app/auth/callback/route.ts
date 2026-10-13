@@ -21,6 +21,13 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) return loginFailed(request, next, "exchange_failed");
+  if (error)
+    return loginFailed(
+      request,
+      next,
+      "exchange_failed",
+      "exchange_code",
+      error,
+    );
   return loginSucceeded(request, next);
 }

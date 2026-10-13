@@ -13,6 +13,7 @@ import {
   toRecipeCard,
 } from "@/lib/catalog/card";
 import { createPublicClient, hasSupabaseEnv } from "@/lib/supabase/public";
+import { degradeCachedRead } from "./degrade";
 
 export const RANK_TABS = ["all", "prompt", "agent", "skill"] as const;
 export type RankTab = (typeof RANK_TABS)[number];
@@ -94,8 +95,10 @@ export async function getHomeSections(): Promise<HomeSections> {
       supabase.rpc("home_rankings", { p_category: tab }),
     ),
   ]);
-  for (const r of [banners, weekly, creators, gallery, ...ranks])
-    if (r.error) throw r.error;
+  const failed = [banners, weekly, creators, gallery, ...ranks].find(
+    (r) => r.error,
+  );
+  if (failed) return degradeCachedRead("getHomeSections", failed.error, EMPTY);
 
   const slides: HomeSlide[] = (banners.data ?? []).map((b) => ({
     name: b.name,

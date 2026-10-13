@@ -23,3 +23,4 @@ SessionStart 훅이 `- YYYY-MM-DD`로 시작하는 로그 줄 중 마지막 5개
 - 2026-10-13 MKT-search: /market·카테고리 3종·컬렉션 읽기, GNB 검색 연결, 필터·정렬·적용 칩·0건 안내(인기 검색어 10), SCN 10 e2e 통과(F1-4·5·6 passes) · Vitest 12·e2e 5 통과 · 다음: 홈 DB 연결(PR 2)
 - 2026-10-13 HOME-db: 홈 RPC 4개(이번 주·TOP 10 ▲▼/NEW·결과물·크리에이터) + 홈 DB 연결, 샘플 데이터 제거, 빈 DB 대응 · pgTAP 99·e2e 7 통과(F1-1·2·3 passes) · 다음: 로그인 팝업
 - 2026-10-13 AUTH-login: 로그인 팝업(카카오·네이버·구글), 하던 일 이어서(팔로우), /welcome 약관·18+ 가입 마무리, 헤더 로그인·로그아웃, Dialog 접근성 보강, e2e 로그인 픽스처 · Vitest 28·e2e 12 통과(F7-1·F7-9 passes) · 다음: 운영 키 설정 후 W3(상세·받기)
+- 2026-10-13 FIX-build-race: deploy-db 승인 전 Vercel 빌드가 새 RPC를 못 찾아 실패하던 문제 → 빌드 때 공개 캐시 읽기 실패 시 빈 값 + 수 분 뒤 재시도 · e2e 12 통과 · 다음: W3

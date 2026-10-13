@@ -4,6 +4,9 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(8);
 
+-- The view refreshes every 5 minutes; compare against a fresh one (other runs may have added claims).
+select private.refresh_popularity();
+
 select is((select count(*) from public.mv_recipe_popularity m
            join public.recipes r on r.id = m.recipe_id where r.status <> 'live'), 0::bigint,
           'F1-2 popularity: live recipes only');

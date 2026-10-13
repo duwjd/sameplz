@@ -89,7 +89,7 @@ function SectionHead({
 
 export function HomeView({ data }: { data: HomeSections }) {
   const router = useRouter();
-  const { viewer, requireLogin, followVersion, notify } = useAuth();
+  const { viewer, requireLogin, replayVersion, notify } = useAuth();
   const [followingState, setFollowing] = useState<Set<string>>(new Set());
   const [pendingFollow, setPendingFollow] = useState<string | null>(null);
   // Logged out (or signup unfinished) → nothing is followed.
@@ -105,7 +105,7 @@ export function HomeView({ data }: { data: HomeSections }) {
     return () => {
       alive = false;
     };
-  }, [viewer, followVersion]);
+  }, [viewer, replayVersion]);
 
   const onFollow = async (handle: string) => {
     if (!viewer) {

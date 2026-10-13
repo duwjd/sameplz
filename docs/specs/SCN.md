@@ -6,7 +6,7 @@
 
 | # | SCN | 설명 | 사용자 | 파일 | 목표 주 | 화면 |
 |---|---|---|---|---|---|---|
-| 1 | 비회원으로 구경하다 SAME 하기 | 로그인 없이 구경하고, 받으려는 순간 로그인 → 하려던 일로 바로 돌아오기. MVP: 무료 받기, 18+ 자기 확인 포함. | guest → jiwoo | `e2e/scenarios/guest-to-same.spec.ts` | W3 | HOME, MKT, PRM, LIB, MY |
+| 1 | 비회원으로 구경하다 SAME 하기 | 로그인 없이 구경하고, 받으려는 순간 로그인 → 하려던 일로 바로 돌아오기. MVP: 무료 받기, 18+ 자기 확인 포함. W3는 받기 → 「라이브러리에서 열기」까지, SAME 인증 올리기는 갤러리(W6). | guest → jiwoo | `e2e/scenarios/guest-to-same.spec.ts` | W3 | HOME, MKT, PRM, LIB, MY |
 | 2 | 유료 SAME · 쿠폰 · 원문 열기 | 상세 → 결제 → 라이브러리 → 원문까지 한 번에. | jiwoo | `e2e/scenarios/paid-same-coupon-open.spec.ts` | 유료 전환 | PRM, PAY, LIB |
 | 3 | 열기 전 환불 | 원문을 열기 전, 7일 안이면 바로 환불. | jiwoo | `e2e/scenarios/refund-before-open.spec.ts` | 유료 전환 | LIB, ORD, PRM |
 | 4 | 열어 본 뒤엔 환불 대신 신고 | 열어 본 레시피는 환불이 막히고 “설명과 달라요” 신고로 이어진다. | jiwoo | `e2e/scenarios/report-after-open.spec.ts` | 유료 전환 | LIB, ACTV |

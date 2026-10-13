@@ -52,6 +52,46 @@ export interface TestUser {
   nickname: string;
 }
 
+type ServerClient = ReturnType<typeof createServerClient>;
+
+/** Sign in with @supabase/ssr in Node and copy the exact cookies it sets into the browser. */
+async function signInAndCopyCookies(
+  context: BrowserContext,
+  email: string,
+  password: string,
+  baseURL?: string,
+  afterSignIn?: (supabase: ServerClient) => Promise<void>,
+) {
+  const env = localSupabaseEnv();
+  const jar = new Map<string, string>();
+  const supabase = createServerClient(env.url, env.publishableKey, {
+    cookies: {
+      getAll: () => [...jar].map(([name, value]) => ({ name, value })),
+      setAll: (cookies) =>
+        cookies.forEach(({ name, value }) =>
+          value ? jar.set(name, value) : jar.delete(name),
+        ),
+    },
+  });
+  const signedIn = await supabase.auth.signInWithPassword({ email, password });
+  if (signedIn.error) throw signedIn.error;
+  if (afterSignIn) await afterSignIn(supabase);
+
+  const base = new URL(
+    baseURL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  );
+  await context.addCookies(
+    [...jar].map(([name, value]) => ({
+      name,
+      value,
+      domain: base.hostname,
+      path: "/",
+      httpOnly: false,
+      sameSite: "Lax" as const,
+    })),
+  );
+}
+
 /** Fresh user; signup unfinished unless `completeSignup` (terms + 18+ recorded via the real RPC). */
 export async function loginAsNewUser(
   context: BrowserContext,
@@ -74,37 +114,42 @@ export async function loginAsNewUser(
   if (created.error || !created.data.user)
     throw created.error ?? new Error("createUser failed");
 
-  const jar = new Map<string, string>();
-  const supabase = createServerClient(env.url, env.publishableKey, {
-    cookies: {
-      getAll: () => [...jar].map(([name, value]) => ({ name, value })),
-      setAll: (cookies) =>
-        cookies.forEach(({ name, value }) =>
-          value ? jar.set(name, value) : jar.delete(name),
-        ),
-    },
-  });
-  const signedIn = await supabase.auth.signInWithPassword({ email, password });
-  if (signedIn.error) throw signedIn.error;
-  if (opts.completeSignup) {
-    const { error } = await supabase.rpc("accept_signup_terms", {
-      p_terms_version: "2026-10-v1",
-    });
-    if (error) throw error;
-  }
-
-  const base = new URL(
-    opts.baseURL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-  );
-  await context.addCookies(
-    [...jar].map(([name, value]) => ({
-      name,
-      value,
-      domain: base.hostname,
-      path: "/",
-      httpOnly: false,
-      sameSite: "Lax" as const,
-    })),
+  await signInAndCopyCookies(
+    context,
+    email,
+    password,
+    opts.baseURL,
+    opts.completeSignup
+      ? async (supabase) => {
+          const { error } = await supabase.rpc("accept_signup_terms", {
+            p_terms_version: "2026-10-v1",
+          });
+          if (error) throw error;
+        }
+      : undefined,
   );
   return { id: created.data.user.id, email, nickname };
+}
+
+/** Seed users (supabase/seed.sql). They have no password; the fixture sets a throwaway one. */
+export const SEED_USERS = {
+  jiwoo: { id: "00000000-0000-0000-0000-000000000001", email: "jiwoo@sameplz.test" },
+  sangse: { id: "00000000-0000-0000-0000-000000000002", email: "sangse@sameplz.test" },
+} as const;
+
+/** Sign the browser in as a seed user (local Supabase only). */
+export async function loginAsSeedUser(
+  context: BrowserContext,
+  who: keyof typeof SEED_USERS,
+  opts: { baseURL?: string } = {},
+) {
+  const env = localSupabaseEnv();
+  const { id, email } = SEED_USERS[who];
+  const password = randomUUID();
+  const admin = createClient(env.url, env.secretKey, {
+    auth: { persistSession: false },
+  });
+  const updated = await admin.auth.admin.updateUserById(id, { password });
+  if (updated.error) throw updated.error;
+  await signInAndCopyCookies(context, email, password, opts.baseURL);
 }

@@ -51,6 +51,11 @@
 
 `getRecipePublic(publicId)`(태그 `recipe:{id}`), `getViewerState(recipeId)`(동적), 액션 `toggleLike`·`toggleFollow`·`createReport`·`recordShareClick`, `generateMetadata`, `opengraph-image.tsx`(한글 폰트 포함). 상세는 SSR로 실제 텍스트를 HTML에 담는다(네이버는 SPA에 SSR 권장). 원문은 담지 않는다.
 
+## 구현 메모 (W3)
+
+- F2-3 방문자 구분: 쿠키 대신 **IP의 HMAC**(서버 비밀 키)으로 24시간 1회만 센다. 쿠키는 요청마다 새로 만들 수 있어 클릭 수를 부풀릴 수 있었다(보안 검토). 원 IP는 저장하지 않는다. 직접 유입 7일 귀속(유료 전환 단계)에는 1st-party 쿠키를 다시 검토한다.
+- 상세 공개 데이터는 `recipe:{publicId}` 태그로 몇 분 캐시한다. **레시피 `status`를 바꾸는 모든 서버 경로(W4 판매자 센터·운영자 화면)는 `updateTag(recipe:{publicId})`와 `updateTag("rankings")`를 불러야 한다.** 그러지 않으면 비공개·판매 중지로 바꾼 뒤에도 캐시 기간 동안 이전 화면이 보인다(받기 RPC는 그래도 거절한다).
+
 ## 지표
 
 - 유형별 상세→`checkout_started` 전환
@@ -60,4 +65,4 @@
 ## 열린 질문
 
 - 텍스트 레시피 체험 출력의 노출 범위(디자인, 유료 전환 단계 — MVP에는 체험 없음)
-- 판매 중지 사유 코드 5~6종 문구
+- ~~판매 중지 사유 코드 5~6종 문구~~ → W3 확정(STOP.md 「중지 사유 코드」)

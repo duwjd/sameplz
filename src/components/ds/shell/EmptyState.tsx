@@ -11,6 +11,8 @@ export interface EmptyStateProps {
   icon?: IconName;
   eyebrow?: string;
   title: string;
+  /** Element for the title; use "h1" when the empty state is the page itself (404). */
+  titleAs?: "b" | "h1" | "h2";
   description?: string;
   actions?: ReactNode;
   children?: ReactNode;
@@ -21,6 +23,7 @@ export function EmptyState({
   icon,
   eyebrow,
   title,
+  titleAs: TitleTag = "b",
   description,
   actions,
   children,
@@ -70,8 +73,9 @@ export function EmptyState({
           {eyebrow}
         </span>
       ) : null}
-      <b
+      <TitleTag
         style={{
+          margin: 0,
           fontSize: 18,
           fontWeight: 700,
           color: "var(--sp-fg-normal)",
@@ -79,7 +83,7 @@ export function EmptyState({
         }}
       >
         {title}
-      </b>
+      </TitleTag>
       {description ? (
         <p
           style={{

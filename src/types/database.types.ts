@@ -23,7 +23,61 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "banners": {
+            "abuse_signals": {
+                  Row: {
+                    "created_at": string,"detail": NonNullable<Json>,"id": number,"key_hash": string | null,"kind": string,"user_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"detail"?: NonNullable<Json>,"id"?: never,"key_hash"?: string | null,"kind": string,"user_id"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"detail"?: NonNullable<Json>,"id"?: never,"key_hash"?: string | null,"kind"?: string,"user_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "abuse_signals_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"account_devices": {
+                  Row: {
+                    "device_hash": string,"first_seen": string,"ip_hash": string | null,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "device_hash": string,"first_seen"?: string,"ip_hash"?: string | null,"user_id": string
+                  }
+                  Update: {
+                    "device_hash"?: string,"first_seen"?: string,"ip_hash"?: string | null,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "account_devices_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"admin_actions": {
+                  Row: {
+                    "action": string,"actor_id": string,"created_at": string,"detail": NonNullable<Json>,"id": number,"reason": string,"target_id": string,"target_type": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "action": string,"actor_id": string,"created_at"?: string,"detail"?: NonNullable<Json>,"id"?: never,"reason": string,"target_id": string,"target_type": string
+                  }
+                  Update: {
+                    "action"?: string,"actor_id"?: string,"created_at"?: string,"detail"?: NonNullable<Json>,"id"?: never,"reason"?: string,"target_id"?: string,"target_type"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"banners": {
                   Row: {
                     "active": boolean,"alt_text": string | null,"created_at": string,"cta_href": string | null,"cta_label": string | null,"eyebrow": string,"id": string,"media_id": string | null,"name": string,"sort": number,"subtitle": string,"title": string
                   }
@@ -125,6 +179,92 @@ isOneToOne: false
       foreignKeyName: "creator_waitlist_user_id_fkey"
       columns: ["user_id"]
 isOneToOne: true
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"credit_accounts": {
+                  Row: {
+                    "available": number,"generation_suspended_at": string | null,"grant_eligible": boolean,"held": number,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "available"?: number,"generation_suspended_at"?: string | null,"grant_eligible"?: boolean,"held"?: number,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "available"?: number,"generation_suspended_at"?: string | null,"grant_eligible"?: boolean,"held"?: number,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "credit_accounts_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: true
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"credit_holds": {
+                  Row: {
+                    "allocations": NonNullable<Json>,"cell_id": string,"created_at": string,"credits": number,"outcome": string | null,"settled_at": string | null,"state": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "allocations": NonNullable<Json>,"cell_id": string,"created_at"?: string,"credits": number,"outcome"?: string | null,"settled_at"?: string | null,"state"?: string,"user_id": string
+                  }
+                  Update: {
+                    "allocations"?: NonNullable<Json>,"cell_id"?: string,"created_at"?: string,"credits"?: number,"outcome"?: string | null,"settled_at"?: string | null,"state"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "credit_holds_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"credit_ledger": {
+                  Row: {
+                    "cell_id": string | null,"created_at": string,"delta": number,"entry_type": string,"id": number,"idem_key": string,"lot_id": string | null,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cell_id"?: string | null,"created_at"?: string,"delta": number,"entry_type": string,"id"?: never,"idem_key": string,"lot_id"?: string | null,"user_id": string
+                  }
+                  Update: {
+                    "cell_id"?: string | null,"created_at"?: string,"delta"?: number,"entry_type"?: string,"id"?: never,"idem_key"?: string,"lot_id"?: string | null,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "credit_ledger_lot_id_fkey"
+      columns: ["lot_id"]
+isOneToOne: false
+      referencedRelation: "credit_lots"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "credit_ledger_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"credit_lots": {
+                  Row: {
+                    "amount": number,"created_at": string,"expires_at": string,"grant_month": string | null,"held": number,"id": string,"kind": string,"remaining": number,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"created_at"?: string,"expires_at": string,"grant_month"?: string | null,"held"?: number,"id"?: string,"kind": string,"remaining": number,"user_id": string
+                  }
+                  Update: {
+                    "amount"?: number,"created_at"?: string,"expires_at"?: string,"grant_month"?: string | null,"held"?: number,"id"?: string,"kind"?: string,"remaining"?: number,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "credit_lots_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
@@ -287,6 +427,20 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"generation_budget": {
+                  Row: {
+                    "alerted_80_at": string | null,"cap_credits": number,"month": string,"reserved": number,"spent": number,"state": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "alerted_80_at"?: string | null,"cap_credits": number,"month": string,"reserved"?: number,"spent"?: number,"state"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "alerted_80_at"?: string | null,"cap_credits"?: number,"month"?: string,"reserved"?: number,"spent"?: number,"state"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"jobs": {
                   Row: {
                     "code": string,"label": string,"sort": number
@@ -386,6 +540,20 @@ isOneToOne: false
       referencedRelation: "recipes"
       referencedColumns: ["id"]
     }
+                  ]
+                },"rate_limit_buckets": {
+                  Row: {
+                    "count": number,"key": string,"window_start": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "count"?: number,"key": string,"window_start": string
+                  }
+                  Update: {
+                    "count"?: number,"key"?: string,"window_start"?: string
+                  }
+                  Relationships: [
+                    
                   ]
                 },"recipe_likes": {
                   Row: {
@@ -670,6 +838,9 @@ isOneToOne: false
 "claim_free_recipe":
 { Args: { "p_recipe_id": string,"p_ref_code"?: string }; Returns: Json
                            },
+"complete_signup_credits":
+{ Args: { "p_device_hash": string,"p_ip_hash": string,"p_user": string }; Returns: Json
+                           },
 "file_for_download":
 { Args: { "p_file_id": string,"p_version_id": string }; Returns: {
               "filename": string,"storage_path": string
@@ -702,6 +873,9 @@ isOneToOne: false
 { Args: Record<PropertyKey, never>; Returns: {
               "adult_confirmed_at": string,"role": string,"signup_complete": boolean,"terms_accepted_at": string,"terms_version": string
             }[]
+                           },
+"my_credit_summary":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "my_library":
 { Args: Record<PropertyKey, never>; Returns: {

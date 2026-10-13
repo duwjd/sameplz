@@ -1,9 +1,9 @@
 "use server";
 import { createHmac } from "node:crypto";
-import { headers } from "next/headers";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 import { recipeTag } from "@/data/recipe";
+import { ipHash } from "@/lib/abuse/fingerprint";
 import { getViewer } from "@/lib/auth/account";
 import { isPublicId } from "@/lib/recipe/detail";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -106,20 +106,6 @@ export async function toggleRecipeLike(input: {
 }
 
 /**
- * Visitor key for click dedupe: HMAC of the client IP with a server secret (no raw IP stored, not
- * reversible without the key). Keyed on the IP rather than a cookie so a script cannot mint a new
- * visitor per request (security review); people behind one NAT count once per 24h, fine for counts.
- */
-async function visitorHash(secret: string): Promise<string> {
-  const h = await headers();
-  const ip =
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    h.get("x-real-ip")?.trim() ||
-    "unknown";
-  return createHmac("sha256", secret).update(`share-visitor:${ip}`).digest("hex");
-}
-
-/**
  * F2-3: count a share-link visit (MVP: counts only, no fee or attribution). Returns the creator
  * nickname for the inflow band, or null when the code is not this recipe's.
  */
@@ -136,7 +122,11 @@ export async function recordShareClick(input: {
   const { data, error } = await createAdminClient().rpc("record_share_click", {
     p_public_id: parsed.data.publicId,
     p_code: parsed.data.code,
-    p_visitor_hash: await visitorHash(secret),
+    // IP HMAC: a script cannot mint visitors per request (W3 security review). Loopback (local
+    // dev) falls back to a fixed key so clicks still count once.
+    p_visitor_hash:
+      (await ipHash(secret, "share-visitor")) ??
+      createHmac("sha256", secret).update("share-visitor:local").digest("hex"),
   });
   if (error) {
     console.error("[share] record_share_click failed", error.code);

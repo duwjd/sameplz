@@ -27,7 +27,29 @@ export function clearFlowCookies(
 }
 
 /** Login failed or was cancelled: back to where the user was, with a code the popup understands. */
-export function loginFailed(request: NextRequest, next: string, code: string) {
+export function loginFailed(
+  request: NextRequest,
+  next: string,
+  code: string,
+  stage?: string,
+  error?: unknown,
+) {
+  if (stage) {
+    // Server log only (Vercel). Codes and messages, never tokens, secrets or profile data.
+    const e = (error ?? {}) as {
+      code?: unknown;
+      status?: unknown;
+      message?: unknown;
+    };
+    console.error(
+      `[auth] ${request.nextUrl.pathname} failed at ${stage}`,
+      JSON.stringify({
+        code: e.code ?? error ?? null,
+        status: e.status ?? null,
+        message: e.message ?? null,
+      }),
+    );
+  }
   return NextResponse.redirect(
     new URL(withAuthError(next, code), request.nextUrl.origin),
   );

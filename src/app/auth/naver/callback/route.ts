@@ -50,9 +50,13 @@ export async function GET(request: NextRequest) {
     return done(loginFailed(request, next, "provider_unavailable"));
   }
   const token = await exchangeNaverCode({ ...config, code, state });
-  if ("error" in token) return done(loginFailed(request, next, "server_error"));
+  if ("error" in token)
+    return done(
+      loginFailed(request, next, "server_error", "naver_token", token.error),
+    );
   const profile = await fetchNaverProfile(token.accessToken);
-  if (!profile) return done(loginFailed(request, next, "server_error"));
+  if (!profile)
+    return done(loginFailed(request, next, "server_error", "naver_profile"));
 
   const email = placeholderEmail(profile.id);
   const admin = createAdminClient();
@@ -71,7 +75,15 @@ export async function GET(request: NextRequest) {
     },
   });
   if (created.error && created.error.code !== "email_exists")
-    return done(loginFailed(request, next, "server_error"));
+    return done(
+      loginFailed(
+        request,
+        next,
+        "server_error",
+        "admin_create_user",
+        created.error,
+      ),
+    );
 
   const link = await admin.auth.admin.generateLink({
     type: "magiclink",
@@ -79,19 +91,38 @@ export async function GET(request: NextRequest) {
   });
   const tokenHash = link.data.properties?.hashed_token;
   if (link.error || !tokenHash)
-    return done(loginFailed(request, next, "server_error"));
+    return done(
+      loginFailed(
+        request,
+        next,
+        "server_error",
+        "admin_generate_link",
+        link.error,
+      ),
+    );
 
   // Identity is the Naver id, not the email string: refuse an account that owns this placeholder
   // email but was not created by this Naver login (pre-registration takeover, security review).
   if (link.data.user?.app_metadata?.naver_id !== profile.id)
-    return done(loginFailed(request, next, "server_error"));
+    return done(
+      loginFailed(
+        request,
+        next,
+        "server_error",
+        "naver_id_mismatch",
+        undefined,
+      ),
+    );
 
   const supabase = await createClient();
   const { error } = await supabase.auth.verifyOtp({
     type: "magiclink",
     token_hash: tokenHash,
   });
-  if (error) return done(loginFailed(request, next, "server_error"));
+  if (error)
+    return done(
+      loginFailed(request, next, "server_error", "verify_otp", error),
+    );
 
   return done(await loginSucceeded(request, next));
 }

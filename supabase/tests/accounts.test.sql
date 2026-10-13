@@ -2,7 +2,7 @@
 -- consent ledger and accept_signup_terms (F7-9, D5). Uses seed users.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(23);
+select plan(24);
 
 create or replace function pg_temp.login_as(uid uuid) returns void language plpgsql as $$
 begin
@@ -84,16 +84,19 @@ select throws_ok($$ update public.consent_events set version = 'x' $$, 'P0001', 
 select throws_ok($$ delete from auth.users where id = '00000000-0000-0000-0000-000000000001' $$, '23503', null,
           'withdrawal is soft delete: consent proof blocks hard account deletion');
 
--- D4-B: Naver placeholder emails belong only to the matching naver_id
-select throws_ok($$ insert into auth.users (id, aud, role, email)
-                    values ('00000000-0000-0000-0000-0000000000b1', 'authenticated', 'authenticated',
-                            'n_0123456789abcdef0123456789abcdef@naver.users.sameplz.invalid') $$,
-          'P0001', 'PLACEHOLDER_EMAIL_RESERVED', 'placeholder email cannot be pre-registered without naver_id');
+-- D4-B: Naver placeholder emails belong only to the matching naver_id (GoTrue createUser order:
+-- insert with provider-email metadata, then update app_metadata with naver_id).
 select lives_ok($$ insert into auth.users (id, aud, role, email, raw_app_meta_data)
                    values ('00000000-0000-0000-0000-0000000000b2', 'authenticated', 'authenticated',
                            'n_' || left(encode(sha256(convert_to('naver:NAVER123', 'UTF8')), 'hex'), 32) || '@naver.users.sameplz.invalid',
-                           '{"provider":"naver","naver_id":"NAVER123"}') $$,
-          'matching naver_id may own its placeholder email');
+                           '{"provider":"email","providers":["email"]}') $$,
+          'createUser step 1: insert with provider-email metadata is allowed');
+select lives_ok($$ update auth.users set raw_app_meta_data = '{"provider":"naver","naver_id":"NAVER123"}'
+                   where id = '00000000-0000-0000-0000-0000000000b2' $$,
+          'createUser step 2: matching naver_id is accepted');
+select throws_ok($$ update auth.users set raw_app_meta_data = '{"provider":"naver","naver_id":"SOMEONE_ELSE"}'
+                    where id = '00000000-0000-0000-0000-0000000000b2' $$,
+          'P0001', 'PLACEHOLDER_EMAIL_RESERVED', 'naver_id that does not match the placeholder is rejected');
 select throws_ok($$ update auth.users set email = 'n_ffffffffffffffffffffffffffffffff@naver.users.sameplz.invalid'
                     where id = '00000000-0000-0000-0000-0000000000a2' $$,
           'P0001', 'PLACEHOLDER_EMAIL_RESERVED', 'cannot switch an account to someone else''s placeholder');

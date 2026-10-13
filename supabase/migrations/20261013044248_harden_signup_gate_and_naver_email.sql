@@ -51,6 +51,12 @@ alter policy creator_waitlist_insert_own on public.creator_waitlist
 
 -- ---------------------------------------------------------------- Naver placeholder ownership
 -- n_<first 32 hex of sha256('naver:' || naver_id)>@naver.users.sameplz.invalid (src/lib/auth/naver.ts)
+-- GoTrue's admin createUser inserts the row first (app_metadata = provider email) and writes the
+-- custom app_metadata (naver_id) in a follow-up update, so INSERT cannot be judged here. Guarded:
+--   * UPDATE that sets / keeps a placeholder email: app_metadata.naver_id must match it
+--     (no switching an account into someone else's placeholder).
+--   * Pre-registered placeholders (public signup) never get a naver_id, and /auth/naver/callback
+--     refuses accounts whose naver_id differs — so they cannot take over a Naver user.
 create or replace function private.guard_placeholder_email()
 returns trigger
 language plpgsql
@@ -61,6 +67,11 @@ declare
   naver_id text := new.raw_app_meta_data ->> 'naver_id';
 begin
   if new.email is null or lower(new.email) not like '%.invalid' then
+    return new;
+  end if;
+  -- Still the initial provider-email metadata from createUser: wait for the follow-up update.
+  if naver_id is null and old.email is not distinct from new.email
+     and coalesce(old.raw_app_meta_data ->> 'naver_id', '') = '' then
     return new;
   end if;
   if naver_id is null
@@ -74,5 +85,5 @@ $$;
 revoke execute on function private.guard_placeholder_email() from public, anon, authenticated;
 
 create trigger guard_placeholder_email
-  before insert or update of email, raw_app_meta_data on auth.users
+  before update of email, raw_app_meta_data on auth.users
   for each row execute function private.guard_placeholder_email();

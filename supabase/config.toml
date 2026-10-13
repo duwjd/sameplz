@@ -335,6 +335,17 @@ skip_nonce_check = false
 # If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
 email_optional = false
 
+# Google: basic scopes (openid, email, profile) only, so no Google verification is needed.
+# Keys live in supabase/.env (gitignored): SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID, _SECRET.
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+url = ""
+skip_nonce_check = false
+email_optional = false
+
 # Kakao personal app (not a Biz app): no account_email consent, so users have no email.
 # Keys live in supabase/.env (gitignored): SUPABASE_AUTH_EXTERNAL_KAKAO_CLIENT_ID (REST API key), _SECRET.
 [auth.external.kakao]

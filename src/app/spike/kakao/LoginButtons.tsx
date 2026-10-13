@@ -25,6 +25,18 @@ export function LoginButtons({ signedIn }: { signedIn: boolean }) {
       <a href="/auth/naver?next=/spike/kakao">
         네이버로 로그인 (B: 서버 + Admin API)
       </a>
+      <button
+        onClick={() =>
+          supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: {
+              redirectTo: `${window.location.origin}/auth/callback?next=/spike/kakao`,
+            },
+          })
+        }
+      >
+        구글로 로그인 (Supabase 기본)
+      </button>
       {signedIn && (
         <button
           onClick={async () => {

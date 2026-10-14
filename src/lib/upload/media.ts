@@ -29,6 +29,11 @@ export function isOwnMediaPath(path: string, ownerId: string) {
   return Boolean(m && m[1] === ownerId);
 }
 
+/** The stored type matches the extension the server minted for this path. */
+export function extMatchesMime(path: string, mime: MediaMime) {
+  return path.endsWith(`.${MEDIA_MIME[mime]}`);
+}
+
 /** Public URL for a stored path; null for seed placeholders or paths we did not mint. */
 export function mediaUrl(path: string | null | undefined): string | null {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -55,8 +60,13 @@ export function nearestRatio(
 
 /** True when the first bytes match the declared type (Storage only checks the declared MIME). */
 export function sniffMatches(mime: MediaMime, head: Uint8Array): boolean {
-  const at = (offset: number, sig: number[]) => sig.every((b, i) => head[offset + i] === b);
-  const ascii = (offset: number, s: string) => at(offset, Array.from(s, (c) => c.charCodeAt(0)));
+  const at = (offset: number, sig: number[]) =>
+    sig.every((b, i) => head[offset + i] === b);
+  const ascii = (offset: number, s: string) =>
+    at(
+      offset,
+      Array.from(s, (c) => c.charCodeAt(0)),
+    );
   switch (mime) {
     case "image/png":
       return at(0, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);

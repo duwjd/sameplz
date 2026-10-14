@@ -7,6 +7,8 @@ import {
   createSkillZipTarget,
   deleteMyDraft,
   hitUploadLimit,
+  hitUploadTargetLimit,
+  storeRebuiltSkillZip,
   readSkillZip,
   saveMyDraft,
   submitVersion,
@@ -120,6 +122,8 @@ export async function createMediaUpload(input: {
         ? "영상은 50MB까지 올릴 수 있어요."
         : "이미지는 10MB까지 올릴 수 있어요.",
     };
+  if (!(await hitUploadTargetLimit(gate.viewer)))
+    return { ok: false, message: submitCopy("RATE_LIMITED").message };
   const target = await createMediaUploadTarget(gate.viewer, mime);
   return target
     ? { ok: true, ...target }
@@ -136,6 +140,8 @@ export async function createSkillZipUpload(input: {
     return { ok: false, message: "zip은 5MB까지 올릴 수 있어요." };
   const gate = await creator();
   if (!gate.ok) return { ok: false, message: submitCopy(gate.reason).message };
+  if (!(await hitUploadTargetLimit(gate.viewer)))
+    return { ok: false, message: submitCopy("RATE_LIMITED").message };
   const target = await createSkillZipTarget(gate.viewer, "skill");
   return target
     ? { ok: true, ...target }
@@ -160,6 +166,8 @@ export async function inspectSkillZipUpload(input: {
   if (!parsed.success) return { ok: false, message: SKILL_ERRORS.ZIP_INVALID };
   const gate = await creator();
   if (!gate.ok) return { ok: false, message: submitCopy(gate.reason).message };
+  if (!(await hitUploadTargetLimit(gate.viewer)))
+    return { ok: false, message: submitCopy("RATE_LIMITED").message };
   const bytes = await readSkillZip(gate.viewer, parsed.data.path);
   if (!bytes)
     return { ok: false, message: submitCopy("SKILL_INVALID").message };
@@ -201,7 +209,10 @@ const fail = (
   };
 };
 
-/** Server-authoritative skill package: the stored zip is re-read, never the client's summary. */
+/**
+ * Server-authoritative skill package: the uploaded zip is re-read and inspected, and buyers get the
+ * zip rebuilt from the checked entries (stored after the checks pass), never the uploaded bytes.
+ */
 async function skillPackage(
   viewer: Viewer,
   form: UploadForm,
@@ -217,12 +228,9 @@ async function skillPackage(
       hasScripts: r.hasScripts,
       sha256: r.sha256,
       texts: r.texts,
-      file: {
-        path: zip.path,
-        filename: `${r.name}.zip`,
-        size: bytes.byteLength,
-        sha256: r.sha256,
-      },
+      file: null,
+      rebuilt: { name: r.name, bytes: r.rebuilt },
+      unscanned: r.unscanned,
       fileCount: r.files.length,
     };
   }
@@ -252,7 +260,8 @@ export async function submitRecipe(input: {
     const errors = validateStep(step, form);
     if (errors.length) return fail("INVALID", { step, errors });
   }
-  if (!(await hitUploadLimit(viewer))) return fail("RATE_LIMITED");
+  const limit = await hitUploadLimit(viewer);
+  if (limit === "RATE_LIMITED") return fail("RATE_LIMITED");
   if (!(await verifyMedia(viewer, form.media))) return fail("MEDIA_INVALID");
 
   let skill: SkillPackage | null = null;
@@ -279,7 +288,20 @@ export async function submitRecipe(input: {
   });
   if (l1.result === "fail")
     return fail("CHECK_FAILED", { step: 5, findings: l1.findings });
-  const l2 = await runLayer2(texts, layer2OptionsFromEnv());
+  if (skill?.unscanned) {
+    l1.findings.push({
+      code: "R08",
+      severity: "review",
+      step: 2,
+      field: "skill.zip",
+      note: "파일이 커서 자동 검사를 다 못 했어요. 사람이 확인해요.",
+    });
+    l1.result = "review";
+  }
+  const l2 = await runLayer2(texts, {
+    ...layer2OptionsFromEnv(),
+    budgetExhausted: limit === "JUDGE_BUDGET",
+  });
   if (l2.result === "fail")
     return fail("CHECK_FAILED", {
       step: 5,
@@ -290,6 +312,23 @@ export async function submitRecipe(input: {
     { layer: 1, result: l1.result, findings: l1.findings, checker: "rules-v1" },
     { layer: 2, result: l2.result, findings: l2.findings, checker: l2.checker },
   ];
+  if (skill?.rebuilt) {
+    const path = await storeRebuiltSkillZip(
+      viewer,
+      skill.rebuilt.name,
+      skill.rebuilt.bytes,
+    );
+    if (!path) return fail("SKILL_INVALID");
+    skill = {
+      ...skill,
+      file: {
+        path,
+        filename: `${skill.rebuilt.name}.zip`,
+        size: skill.rebuilt.bytes.byteLength,
+        sha256: skill.sha256,
+      },
+    };
+  }
   const contentSha256 =
     skill?.sha256 ??
     (await sha256Hex(

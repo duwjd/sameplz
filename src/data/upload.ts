@@ -10,6 +10,7 @@ import {
   mediaKindOf,
   mediaUrl,
   sniffMatches,
+  extMatchesMime,
   type MediaMime,
 } from "@/lib/upload/media";
 import {
@@ -130,6 +131,7 @@ export async function verifyMedia(
     if (!isOwnMediaPath(m.path, viewer.id)) return false;
     const info = await objectInfo(MEDIA_BUCKET, m.path);
     if (!info || !Object.hasOwn(MEDIA_MIME, info.mime)) return false;
+    if (!extMatchesMime(m.path, info.mime as MediaMime)) return false;
     const kind = mediaKindOf(info.mime as MediaMime);
     if (kind !== m.kind) return false;
     if (
@@ -148,7 +150,10 @@ async function headBytes(path: string): Promise<Uint8Array> {
   const url = mediaUrl(path);
   if (!url) return new Uint8Array();
   try {
-    const res = await fetch(url, { headers: { range: "bytes=0-31" }, cache: "no-store" });
+    const res = await fetch(url, {
+      headers: { range: "bytes=0-31" },
+      cache: "no-store",
+    });
     if (!res.ok) return new Uint8Array();
     return new Uint8Array(await res.arrayBuffer()).subarray(0, 32);
   } catch {
@@ -172,12 +177,42 @@ export async function readSkillZip(
   return bytes.byteLength <= MAX_SKILL_ZIP_BYTES ? bytes : null;
 }
 
-/** Paid layer 2 runs per submit: 20 per user per hour (public.hit_upload_limit). */
-export async function hitUploadLimit(viewer: Viewer): Promise<boolean> {
+/**
+ * Paid layer 2 runs per submit (public.hit_upload_limit): "ok", "RATE_LIMITED" (per-user cap), or
+ * "JUDGE_BUDGET" (global daily budget spent → submit without layer 2, i.e. human review).
+ */
+export async function hitUploadLimit(
+  viewer: Viewer,
+): Promise<"ok" | "RATE_LIMITED" | "JUDGE_BUDGET"> {
   const { data, error } = await createAdminClient().rpc("hit_upload_limit", {
     p_user: viewer.id,
   });
+  if (error) return "RATE_LIMITED";
+  return data === "RATE_LIMITED" || data === "JUDGE_BUDGET" ? data : "ok";
+}
+
+/** Signed upload URLs: 60 per user per hour (public.hit_upload_target_limit). */
+export async function hitUploadTargetLimit(viewer: Viewer): Promise<boolean> {
+  const { data, error } = await createAdminClient().rpc(
+    "hit_upload_target_limit",
+    {
+      p_user: viewer.id,
+    },
+  );
   return !error && data === true;
+}
+
+/** Stores the server-rebuilt skill zip (the file buyers download) under a fresh server path. */
+export async function storeRebuiltSkillZip(
+  viewer: Viewer,
+  name: string,
+  bytes: Uint8Array,
+) {
+  const path = `${viewer.id}/${crypto.randomUUID()}/${name}.zip`;
+  const { error } = await createAdminClient()
+    .storage.from(FILES_BUCKET)
+    .upload(path, bytes, { contentType: "application/zip", upsert: false });
+  return error ? null : path;
 }
 
 export type SubmitOutcome =

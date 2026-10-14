@@ -13,8 +13,11 @@ export interface SkillPackage {
   sha256: string;
   /** Texts inside the zip (besides SKILL.md) for the checks. */
   texts: { path: string; text: string }[];
-  /** The stored zip, offered to buyers as the attachment. */
+  /** The stored zip, offered to buyers as the attachment (set once the checks pass). */
   file: { path: string; filename: string; size: number; sha256: string } | null;
+  /** Server-rebuilt zip awaiting storage, and whether some text was too large to check. */
+  rebuilt?: { name: string; bytes: Uint8Array };
+  unscanned?: boolean;
   fileCount: number;
 }
 

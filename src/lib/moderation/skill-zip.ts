@@ -1,6 +1,7 @@
-// F5-5 skill package checks. The central directory is read directly (fflate does not expose the
-// encryption flag or Unix mode bits), then entries are inflated with fflate within fixed limits.
-import { strFromU8, unzipSync } from "fflate";
+// F5-5 skill package checks. The zip is parsed here (central directory + local headers, cross-checked),
+// every entry is inflated with a hard size bound and a CRC check, and buyers get a zip REBUILT from
+// the entries that passed — never the uploaded bytes, so anything the checks skipped cannot ship.
+import { Inflate, strFromU8, zipSync, type Zippable } from "fflate";
 import { MAX_SKILL_ZIP_BYTES } from "@/lib/validation/upload";
 
 export const SKILL_ERRORS = {
@@ -12,6 +13,7 @@ export const SKILL_ERRORS = {
   ZIP_NESTED: "zip 안에 다른 압축 파일을 넣을 수 없어요.",
   EXECUTABLE: "실행 파일은 넣을 수 없어요.",
   SYMLINK_OUTSIDE: "폴더 밖을 가리키는 링크는 넣을 수 없어요.",
+  SYMLINK: "링크(심볼릭 링크)는 넣을 수 없어요. 실제 파일로 바꿔 주세요.",
   SKILL_MD_MISSING: "폴더 안에 SKILL.md가 없어요.",
   NAME_MISMATCH: "폴더 이름과 SKILL.md의 name이 같아야 해요.",
   FRONTMATTER_INVALID:
@@ -37,8 +39,12 @@ export type SkillZipInspection =
       description: string;
       skillMd: string;
       hasScripts: boolean;
-      /** content_sha256 of the zip bytes. */
+      /** content_sha256 of `rebuilt`. */
       sha256: string;
+      /** The zip buyers receive: only checked entries, no junk, no links. */
+      rebuilt: Uint8Array;
+      /** A text entry was too large to check → the version goes to human review. */
+      unscanned: boolean;
       /** Text entries for the layer 1 / layer 2 checks. */
       texts: { path: string; text: string }[];
       files: { path: string; size: number }[];
@@ -53,8 +59,6 @@ const EXEC_EXT =
   /\.(exe|dll|so|dylib|bin|msi|com|scr|app|dmg|deb|rpm|class|o|elf|wasm)$/i;
 const SCRIPT_EXT =
   /\.(sh|bash|zsh|fish|py|js|mjs|cjs|ts|ps1|psm1|rb|pl|php|bat|cmd|lua)$/i;
-const TEXT_EXT =
-  /\.(md|markdown|txt|json|ya?ml|csv|tsv|toml|ini|html?|xml|sh|bash|zsh|py|js|mjs|cjs|ts|ps1|rb|pl|php|bat|cmd|lua)$/i;
 
 const fail = (code: SkillError) => ({
   ok: false as const,
@@ -127,12 +131,38 @@ export async function inspectSkillMd(md: string): Promise<SkillMdInspection> {
 
 interface CentralEntry {
   name: string;
-  encrypted: boolean;
-  symlink: boolean;
+  nameBytes: Uint8Array;
+  flags: number;
+  method: number;
+  crc: number;
+  compSize: number;
   size: number;
+  localOffset: number;
+  symlink: boolean;
+  exec: boolean;
 }
 
-/** Central directory entries, or null when this is not a (non-zip64) zip. */
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(data: Uint8Array) {
+  let c = 0xffffffff;
+  for (let i = 0; i < data.length; i++)
+    c = CRC_TABLE[(c ^ data[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+const sameBytes = (a: Uint8Array, b: Uint8Array) =>
+  a.length === b.length && a.every((x, i) => x === b[i]);
+
+/** Central directory entries, or null for anything ambiguous (zip64, multi-disk, count mismatch). */
 function readCentralDirectory(bytes: Uint8Array): CentralEntry[] | null {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let eocd = -1;
@@ -143,32 +173,92 @@ function readCentralDirectory(bytes: Uint8Array): CentralEntry[] | null {
     }
   }
   if (eocd < 0) return null;
+  if (eocd >= 20 && view.getUint32(eocd - 20, true) === 0x07064b50) return null; // zip64 locator
+  if (
+    view.getUint16(eocd + 4, true) !== 0 ||
+    view.getUint16(eocd + 6, true) !== 0
+  )
+    return null; // multi-disk
+  const diskCount = view.getUint16(eocd + 8, true);
   const count = view.getUint16(eocd + 10, true);
   const offset = view.getUint32(eocd + 16, true);
-  if (count === 0xffff || offset === 0xffffffff) return null; // zip64: not supported
+  if (diskCount !== count || count === 0xffff || offset === 0xffffffff)
+    return null;
   const entries: CentralEntry[] = [];
   let p = offset;
   for (let n = 0; n < count; n++) {
-    if (p + 46 > bytes.length || view.getUint32(p, true) !== 0x02014b50)
-      return null;
+    if (p + 46 > eocd || view.getUint32(p, true) !== 0x02014b50) return null;
     const madeByOs = view.getUint16(p + 4, true) >> 8;
-    const flags = view.getUint16(p + 8, true);
-    const size = view.getUint32(p + 24, true);
     const nameLen = view.getUint16(p + 28, true);
     const extraLen = view.getUint16(p + 30, true);
     const commentLen = view.getUint16(p + 32, true);
     const attrs = view.getUint32(p + 38, true);
-    if (p + 46 + nameLen > bytes.length) return null;
-    const name = strFromU8(bytes.subarray(p + 46, p + 46 + nameLen));
+    if (p + 46 + nameLen > eocd) return null;
+    const nameBytes = bytes.subarray(p + 46, p + 46 + nameLen);
+    const mode = attrs >>> 16;
     entries.push({
-      name,
-      encrypted: (flags & 1) === 1,
-      symlink: madeByOs === 3 && ((attrs >>> 16) & 0o170000) === 0o120000,
-      size,
+      name: strFromU8(nameBytes),
+      nameBytes,
+      flags: view.getUint16(p + 8, true),
+      method: view.getUint16(p + 10, true),
+      crc: view.getUint32(p + 16, true),
+      compSize: view.getUint32(p + 20, true),
+      size: view.getUint32(p + 24, true),
+      localOffset: view.getUint32(p + 42, true),
+      symlink: madeByOs === 3 && (mode & 0o170000) === 0o120000,
+      exec:
+        madeByOs === 3 &&
+        (mode & 0o170000) === 0o100000 &&
+        (mode & 0o111) !== 0,
     });
     p += 46 + nameLen + extraLen + commentLen;
   }
   return entries;
+}
+
+/** One entry's bytes: local header must agree with the central one; inflate stops past the declared size. */
+function extract(bytes: Uint8Array, e: CentralEntry): Uint8Array | null {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const lo = e.localOffset;
+  if (lo + 30 > bytes.length || view.getUint32(lo, true) !== 0x04034b50)
+    return null;
+  if (
+    (view.getUint16(lo + 6, true) & 1) !== (e.flags & 1) ||
+    view.getUint16(lo + 8, true) !== e.method
+  )
+    return null;
+  const nameLen = view.getUint16(lo + 26, true);
+  const extraLen = view.getUint16(lo + 28, true);
+  if (!sameBytes(bytes.subarray(lo + 30, lo + 30 + nameLen), e.nameBytes))
+    return null;
+  const start = lo + 30 + nameLen + extraLen;
+  if (start + e.compSize > bytes.length) return null;
+  const comp = bytes.subarray(start, start + e.compSize);
+
+  let data: Uint8Array;
+  if (e.method === 0) {
+    if (e.compSize !== e.size) return null;
+    data = comp;
+  } else if (e.method === 8) {
+    const out = new Uint8Array(e.size);
+    let total = 0;
+    try {
+      const inf = new Inflate((chunk) => {
+        if (total + chunk.length > e.size) throw new Error("over");
+        out.set(chunk, total);
+        total += chunk.length;
+      });
+      const STEP = 16 * 1024;
+      if (comp.length === 0) inf.push(comp, true);
+      for (let i = 0; i < comp.length; i += STEP)
+        inf.push(comp.subarray(i, i + STEP), i + STEP >= comp.length);
+    } catch {
+      return null;
+    }
+    if (total !== e.size) return null;
+    data = out;
+  } else return null;
+  return crc32(data) === e.crc ? data : null;
 }
 
 const isJunk = (name: string) =>
@@ -207,61 +297,62 @@ function insideRoot(linkPath: string, target: string) {
   return parts.length >= 1;
 }
 
+const utf8 = new TextDecoder("utf-8", { fatal: true });
+function asText(data: Uint8Array): string | null {
+  try {
+    return utf8.decode(data);
+  } catch {
+    return null;
+  }
+}
+
 export async function inspectSkillZip(
   bytes: Uint8Array,
 ): Promise<SkillZipInspection> {
   if (bytes.byteLength > MAX_SKILL_ZIP_BYTES) return fail("ZIP_TOO_LARGE");
   const central = readCentralDirectory(bytes);
   if (!central || central.length === 0) return fail("ZIP_INVALID");
+  if (central.some((e) => e.flags & 1)) return fail("ZIP_ENCRYPTED");
+  // Junk is dropped outright: never inflated, never checked, never rebuilt into the sold zip.
   const entries = central.filter((e) => !isJunk(e.name));
   if (entries.length > MAX_ENTRIES) return fail("ZIP_TOO_LARGE");
   if (entries.reduce((s, e) => s + e.size, 0) > MAX_TOTAL_BYTES)
     return fail("ZIP_TOO_LARGE");
-  if (central.some((e) => e.encrypted)) return fail("ZIP_ENCRYPTED");
 
-  // Layout: one top folder, no absolute / traversal / backslash paths.
+  // Layout: one top folder, no absolute / traversal / backslash / hidden-character / duplicate names.
   const roots = new Set<string>();
+  const seen = new Set<string>();
   for (const e of entries) {
     const segs = e.name.replace(/\/$/, "").split("/");
+    const key = e.name.replace(/\/$/, "").toLowerCase();
     if (
       e.name.startsWith("/") ||
       e.name.includes("\\") ||
       segs.some((s) => s === "" || s === "." || s === "..") ||
-      /[\u0000-\u001f]/.test(e.name)
+      /[\p{Cc}\p{Cf}]/u.test(e.name) ||
+      seen.has(key)
     )
       return fail("ZIP_LAYOUT");
+    seen.add(key);
     if (segs.length < 2 && !e.name.endsWith("/")) return fail("ZIP_LAYOUT");
     roots.add(segs[0]);
   }
   if (roots.size !== 1) return fail("ZIP_LAYOUT");
   const root = [...roots][0];
 
-  let files: Record<string, Uint8Array>;
-  try {
-    const wanted = new Set(entries.map((e) => e.name));
-    files = unzipSync(bytes, {
-      filter: (f) => wanted.has(f.name) && f.originalSize <= MAX_TOTAL_BYTES,
-    });
-  } catch {
-    return fail("ZIP_INVALID");
-  }
-  const actualTotal = Object.values(files).reduce(
-    (s, d) => s + d.byteLength,
-    0,
-  );
-  if (actualTotal > MAX_TOTAL_BYTES) return fail("ZIP_TOO_LARGE");
-
   let hasScripts = false;
+  let unscanned = false;
+  const kept: Zippable = {};
   const texts: { path: string; text: string }[] = [];
   const listed: { path: string; size: number }[] = [];
   for (const e of [...entries].sort((a, b) => (a.name < b.name ? -1 : 1))) {
     if (e.name.endsWith("/")) continue;
-    const data = files[e.name];
+    const data = extract(bytes, e);
     if (!data) return fail("ZIP_INVALID");
-    if (e.symlink) {
-      if (!insideRoot(e.name, strFromU8(data))) return fail("SYMLINK_OUTSIDE");
-      continue;
-    }
+    if (e.symlink)
+      return fail(
+        insideRoot(e.name, strFromU8(data)) ? "SYMLINK" : "SYMLINK_OUTSIDE",
+      );
     if (NESTED_EXT.test(e.name) || startsWith(data, [0x50, 0x4b, 0x03, 0x04]))
       return fail("ZIP_NESTED");
     if (
@@ -269,27 +360,43 @@ export async function inspectSkillZip(
       EXEC_MAGIC.some((sig) => startsWith(data, sig))
     )
       return fail("EXECUTABLE");
-    if (e.name.startsWith(`${root}/scripts/`) || SCRIPT_EXT.test(e.name))
+    if (
+      e.name.startsWith(`${root}/scripts/`) ||
+      SCRIPT_EXT.test(e.name) ||
+      e.exec ||
+      startsWith(data, [0x23, 0x21]) // "#!"
+    )
       hasScripts = true;
-    if (TEXT_EXT.test(e.name) && data.byteLength <= MAX_TEXT_BYTES)
-      texts.push({ path: e.name, text: new TextDecoder().decode(data) });
+    // Every UTF-8 file is checked whatever its extension; too large to check → human review.
+    const text = asText(data);
+    if (text !== null) {
+      if (data.byteLength <= MAX_TEXT_BYTES) texts.push({ path: e.name, text });
+      else unscanned = true;
+    }
+    kept[e.name] = data;
     listed.push({ path: e.name, size: data.byteLength });
   }
 
-  const skillMdBytes = files[`${root}/SKILL.md`];
+  const skillMdBytes = kept[`${root}/SKILL.md`] as Uint8Array | undefined;
   if (!skillMdBytes) return fail("SKILL_MD_MISSING");
   const skillMd = new TextDecoder().decode(skillMdBytes);
   const md = await inspectSkillMd(skillMd);
   if (!md.ok) return md;
   if (md.name !== root) return fail("NAME_MISMATCH");
 
+  const rebuilt = zipSync(kept, {
+    level: 6,
+    mtime: new Date("2026-01-01T00:00:00Z"),
+  });
   return {
     ok: true,
     name: md.name,
     description: md.description,
     skillMd,
     hasScripts: hasScripts || md.hasScripts,
-    sha256: await sha256Hex(bytes),
+    sha256: await sha256Hex(rebuilt),
+    rebuilt,
+    unscanned,
     texts,
     files: listed,
   };

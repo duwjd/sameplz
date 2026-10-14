@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { extMatchesMime, isOwnMediaPath, mediaUrl, nearestRatio, sniffMatches } from "./media";
+import {
+  extMatchesMime,
+  isOwnMediaPath,
+  mediaUrl,
+  nearestRatio,
+  sniffMatches,
+} from "./media";
 
 const OWNER = "00000000-0000-0000-0000-000000000001";
 const FILE = "0f0e0d0c-0b0a-4908-8706-050403020100";
 const bytes = (...xs: (number | string)[]) =>
-  new Uint8Array(xs.flatMap((x) => (typeof x === "string" ? Array.from(x, (c) => c.charCodeAt(0)) : [x])));
+  new Uint8Array(
+    xs.flatMap((x) =>
+      typeof x === "string" ? Array.from(x, (c) => c.charCodeAt(0)) : [x],
+    ),
+  );
 
 describe("UP-05 media paths", () => {
   it("accepts only server-minted paths under the owner's folder", () => {
@@ -32,12 +42,22 @@ describe("UP-05 media paths", () => {
   });
 
   it("sniffMatches checks magic bytes against the declared type", () => {
-    expect(sniffMatches("image/png", bytes(0x89, "PNG", 0x0d, 0x0a, 0x1a, 0x0a))).toBe(true);
+    expect(
+      sniffMatches("image/png", bytes(0x89, "PNG", 0x0d, 0x0a, 0x1a, 0x0a)),
+    ).toBe(true);
     expect(sniffMatches("image/png", bytes("<html>"))).toBe(false);
-    expect(sniffMatches("image/jpeg", bytes(0xff, 0xd8, 0xff, 0xe0))).toBe(true);
-    expect(sniffMatches("image/webp", bytes("RIFF", 0, 0, 0, 0, "WEBP"))).toBe(true);
-    expect(sniffMatches("video/mp4", bytes(0, 0, 0, 0x18, "ftypisom"))).toBe(true);
-    expect(sniffMatches("video/webm", bytes(0x1a, 0x45, 0xdf, 0xa3))).toBe(true);
+    expect(sniffMatches("image/jpeg", bytes(0xff, 0xd8, 0xff, 0xe0))).toBe(
+      true,
+    );
+    expect(sniffMatches("image/webp", bytes("RIFF", 0, 0, 0, 0, "WEBP"))).toBe(
+      true,
+    );
+    expect(sniffMatches("video/mp4", bytes(0, 0, 0, 0x18, "ftypisom"))).toBe(
+      true,
+    );
+    expect(sniffMatches("video/webm", bytes(0x1a, 0x45, 0xdf, 0xa3))).toBe(
+      true,
+    );
     expect(sniffMatches("image/gif", bytes("GIF89a"))).toBe(true);
   });
 

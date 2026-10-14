@@ -241,7 +241,8 @@ export function validateStep(
       err("media", `결과물은 ${MAX_MEDIA}개까지 올릴 수 있어요.`);
     // Alt text is required: screen readers and the visible 「AI 생성」 caption depend on it.
     form.media.forEach((m, i) => {
-      if (blank(m.alt)) err(`media.${i}.alt`, `결과물 ${i + 1}을 설명하는 글을 적어 주세요.`);
+      if (blank(m.alt))
+        err(`media.${i}.alt`, `결과물 ${i + 1}을 설명하는 글을 적어 주세요.`);
     });
   }
 

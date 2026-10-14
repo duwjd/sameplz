@@ -966,6 +966,9 @@ isOneToOne: false
 { Args: { "p_public_id": string }; Returns: Json
                            },
 "hit_upload_limit":
+{ Args: { "p_user": string }; Returns: string
+                           },
+"hit_upload_target_limit":
 { Args: { "p_user": string }; Returns: boolean
                            },
 "home_creators":

@@ -1,4 +1,4 @@
-import { strToU8, zipSync, type Zippable } from "fflate";
+import { strToU8, unzipSync, zipSync, type Zippable } from "fflate";
 import { describe, expect, it } from "vitest";
 import { inspectSkillMd, inspectSkillZip } from "./skill-zip";
 
@@ -122,16 +122,6 @@ describe("F5-5 skill zip", () => {
     expect(r).toMatchObject({ ok: false, code });
   });
 
-  it("allows a symlink that stays inside the root", async () => {
-    const r = await inspectSkillZip(
-      base({
-        "tax-checklist/ref/forms.md": strToU8("x"),
-        "tax-checklist/link": symlink("ref/forms.md"),
-      }),
-    );
-    expect(r.ok).toBe(true);
-  });
-
   it("rejects path traversal entries", async () => {
     const r = await inspectSkillZip(
       base({ "tax-checklist/../evil.md": strToU8("x") }),
@@ -209,3 +199,114 @@ describe("F5-5 SKILL.md frontmatter", () => {
     });
   });
 });
+
+/** Patches every local / central header and the EOCD with `fn(view, offset, kind)`. */
+function patch(bytes: Uint8Array, fn: (v: DataView, at: number, kind: "local" | "central" | "eocd") => void) {
+  const out = bytes.slice();
+  const v = new DataView(out.buffer);
+  for (let i = 0; i + 4 <= out.length; i++) {
+    const sig = v.getUint32(i, true);
+    if (sig === 0x04034b50) fn(v, i, "local");
+    else if (sig === 0x02014b50) fn(v, i, "central");
+    else if (sig === 0x06054b50) fn(v, i, "eocd");
+  }
+  return out;
+}
+
+describe("F5-5 skill zip hardening (security review)", () => {
+  it("rejects an entry that inflates past its declared size (bomb / hidden tail)", async () => {
+    const bytes = patch(base({ "tax-checklist/big.md": new Uint8Array(1024 * 1024) }), (v, at, kind) => {
+      const nameLen = v.getUint16(at + (kind === "local" ? 26 : 28), true);
+      const name = new TextDecoder().decode(
+        new Uint8Array(v.buffer, at + (kind === "local" ? 30 : 46), nameLen),
+      );
+      if (name !== "tax-checklist/big.md") return;
+      if (kind === "local") v.setUint32(at + 22, 10, true);
+      if (kind === "central") v.setUint32(at + 24, 10, true);
+    });
+    expect(await inspectSkillZip(bytes)).toMatchObject({ ok: false, code: "ZIP_INVALID" });
+  });
+
+  it("rejects a CRC mismatch", async () => {
+    const bytes = patch(base(), (v, at, kind) => {
+      if (kind === "local") v.setUint32(at + 14, 0xdeadbeef, true);
+      if (kind === "central") v.setUint32(at + 16, 0xdeadbeef, true);
+    });
+    expect(await inspectSkillZip(bytes)).toMatchObject({ ok: false, code: "ZIP_INVALID" });
+  });
+
+  it("rejects disagreeing entry counts in the end record", async () => {
+    const bytes = patch(base({ "tax-checklist/a.md": strToU8("a") }), (v, at, kind) => {
+      if (kind === "eocd") v.setUint16(at + 8, 1, true);
+    });
+    expect(await inspectSkillZip(bytes)).toMatchObject({ ok: false, code: "ZIP_INVALID" });
+  });
+
+  it("rejects a local header whose name differs from the central directory", async () => {
+    const bytes = patch(base(), (v, at, kind) => {
+      if (kind === "local") v.setUint8(at + 30, "X".charCodeAt(0));
+    });
+    expect(await inspectSkillZip(bytes)).toMatchObject({ ok: false, code: "ZIP_INVALID" });
+  });
+
+  it("sells a rebuilt zip without __MACOSX junk, so unchecked entries never reach buyers", async () => {
+    const r = await inspectSkillZip(
+      base({
+        "__MACOSX/evil.exe": new Uint8Array([0x4d, 0x5a, 0, 0]),
+        "__MACOSX/run.sh": strToU8("rm -rf ~"),
+        "tax-checklist/.DS_Store": strToU8("x"),
+      }),
+    );
+    if (!r.ok) throw new Error(r.code);
+    expect(Object.keys(unzipSync(r.rebuilt))).toEqual(["tax-checklist/SKILL.md"]);
+    expect(r.sha256).toBe(await sha256(r.rebuilt));
+  });
+
+  it("rejects every symlink, including ones that stay inside the root", async () => {
+    expect(
+      await inspectSkillZip(
+        base({ "tax-checklist/ref/forms.md": strToU8("x"), "tax-checklist/link": symlink("ref/forms.md") }),
+      ),
+    ).toMatchObject({ ok: false, code: "SYMLINK" });
+  });
+
+  it("treats shebang files and executable-bit files as scripts", async () => {
+    const shebang = await inspectSkillZip(base({ "tax-checklist/tool": strToU8("#!/bin/sh\necho hi\n") }));
+    const execBit = await inspectSkillZip(
+      base({ "tax-checklist/run": [strToU8("echo hi"), { os: 3, attrs: (0o100755 << 16) >>> 0 }] }),
+    );
+    expect(shebang).toMatchObject({ ok: true, hasScripts: true });
+    expect(execBit).toMatchObject({ ok: true, hasScripts: true });
+  });
+
+  it("checks every UTF-8 file whatever its extension, and flags texts too large to check", async () => {
+    const r = await inspectSkillZip(
+      base({
+        "tax-checklist/guide.mdx": strToU8("숨은 지시"),
+        "tax-checklist/notes": strToU8("확장자 없음"),
+        "tax-checklist/huge.md": strToU8("가".repeat(100_000)),
+      }),
+    );
+    if (!r.ok) throw new Error(r.code);
+    expect(r.texts.map((t) => t.path)).toEqual(
+      expect.arrayContaining(["tax-checklist/guide.mdx", "tax-checklist/notes"]),
+    );
+    expect(r.unscanned).toBe(true);
+  });
+
+  it("rejects names that differ only by case, and names with hidden characters", async () => {
+    expect(await inspectSkillZip(base({ "tax-checklist/a.md": strToU8("a"), "tax-checklist/A.md": strToU8("b") }))).toMatchObject({
+      ok: false,
+      code: "ZIP_LAYOUT",
+    });
+    expect(await inspectSkillZip(base({ "tax-checklist/evil‮gpj.md": strToU8("a") }))).toMatchObject({
+      ok: false,
+      code: "ZIP_LAYOUT",
+    });
+  });
+});
+
+async function sha256(bytes: Uint8Array) {
+  const d = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
+  return Array.from(new Uint8Array(d), (b) => b.toString(16).padStart(2, "0")).join("");
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isOwnMediaPath, mediaUrl, nearestRatio, sniffMatches } from "./media";
+import { extMatchesMime, isOwnMediaPath, mediaUrl, nearestRatio, sniffMatches } from "./media";
 
 const OWNER = "00000000-0000-0000-0000-000000000001";
 const FILE = "0f0e0d0c-0b0a-4908-8706-050403020100";
@@ -39,5 +39,11 @@ describe("UP-05 media paths", () => {
     expect(sniffMatches("video/mp4", bytes(0, 0, 0, 0x18, "ftypisom"))).toBe(true);
     expect(sniffMatches("video/webm", bytes(0x1a, 0x45, 0xdf, 0xa3))).toBe(true);
     expect(sniffMatches("image/gif", bytes("GIF89a"))).toBe(true);
+  });
+
+  it("L1 the stored type must match the extension the server minted", () => {
+    expect(extMatchesMime(`${OWNER}/${FILE}.png`, "image/png")).toBe(true);
+    expect(extMatchesMime(`${OWNER}/${FILE}.png`, "video/mp4")).toBe(false);
+    expect(extMatchesMime(`${OWNER}/${FILE}.jpg`, "image/jpeg")).toBe(true);
   });
 });

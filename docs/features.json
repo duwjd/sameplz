@@ -665,7 +665,7 @@
       "acceptance": "「하는 일·안 하는 일」 양식, 키 미포함 확인 체크. 반려 시 사유 + 「고쳐서 다시 제출」",
       "week": 4,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F5-7",
@@ -678,7 +678,7 @@
       "acceptance": "변경 내용이 비면 제출 불가. 카테고리 변경 불가. 승인된 버전 수정은 트리거가 거부",
       "week": 4,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F5-8",
@@ -728,7 +728,7 @@
       "scn": [
         "my-page-tour"
       ],
-      "passes": false,
+      "passes": true,
       "mvp_note": "MVP: 「내 레시피」 — 목록·상태·조회수·다운로드·SAME 수, 공유 링크 유입 수. 매출·유입별 매출·쿠폰은 유료 전환 단계"
     },
     {
@@ -745,7 +745,7 @@
       "scn": [
         "first-sale-registration"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F6-1",

@@ -23,6 +23,7 @@ import {
   type RecipeDetail,
 } from "@/lib/recipe/detail";
 import { mediaUrl } from "@/lib/upload/media";
+import { countRecipeView } from "@/data/seller";
 
 const SITE = "https://sameplz.vercel.app";
 
@@ -42,7 +43,9 @@ export async function generateMetadata(
   const description =
     recipe.summary || `${recipe.creator.nickname}님의 AI 레시피예요.`;
   // First uploaded image result as the share card (videos have no still to show).
-  const cover = recipe.media.find((m) => m.kind === "image" && mediaUrl(m.path));
+  const cover = recipe.media.find(
+    (m) => m.kind === "image" && mediaUrl(m.path),
+  );
   return {
     title: `${recipe.title} · SAMEPLZ`,
     description,
@@ -57,7 +60,11 @@ export async function generateMetadata(
       title: recipe.title,
       description,
       ...(cover
-        ? { images: [{ url: mediaUrl(cover.path)!, alt: cover.alt ?? recipe.title }] }
+        ? {
+            images: [
+              { url: mediaUrl(cover.path)!, alt: cover.alt ?? recipe.title },
+            ],
+          }
         : {}),
     },
   };
@@ -83,6 +90,7 @@ function panelProps(recipe: RecipeDetail) {
 
 async function ViewerPanel({ recipe }: { recipe: RecipeDetail }) {
   const state = await getRecipeViewerState(recipe.id);
+  await countRecipeView(recipe.public_id, state.isOwner);
   return <RecipeActions recipe={panelProps(recipe)} state={state} />;
 }
 
@@ -93,8 +101,8 @@ async function StopViewerNote({ recipe }: { recipe: RecipeDetail }) {
     return (
       <>
         <Callout color="hint" title="판매를 멈춘 내 레시피예요">
-          이미 받은 사람은 계속 쓸 수 있어요. 다시 여는 건 판매자 센터에서 할
-          수 있어요.
+          이미 받은 사람은 계속 쓸 수 있어요. 다시 여는 건 판매자 센터에서 할 수
+          있어요.
         </Callout>
         <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
           <RecipeBody recipe={recipe} />

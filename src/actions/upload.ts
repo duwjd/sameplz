@@ -348,5 +348,7 @@ export async function submitRecipe(input: {
   // Detail and every popularity-ordered list may now include this recipe (W3 review requirement).
   updateTag(recipeTag(outcome.publicId));
   updateTag("rankings");
+  updateTag("collections");
+  updateTag("sitemap");
   return outcome;
 }

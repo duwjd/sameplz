@@ -5,6 +5,7 @@ import { useState, type CSSProperties } from "react";
 import { Button, Chip } from "@/components/ds";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { setWaitlist } from "@/actions/seller";
+import { WAITLIST_CONSENT_COPY } from "@/lib/seller/waitlist";
 
 const CATS = [
   { value: "prompt", label: "프롬프트" },
@@ -64,8 +65,7 @@ export function WaitlistCard({
           lineHeight: 1.6,
         }}
       >
-        지금은 무료로만 올릴 수 있어요. 알림을 신청하면 유료 판매가 열릴 때
-        알림으로 알려 드려요.
+        {WAITLIST_CONSENT_COPY}
       </p>
       {!joined && (
         <div

@@ -1,4 +1,8 @@
 import "server-only";
+import { createHmac } from "node:crypto";
+import { after } from "next/server";
+import { ipHash } from "@/lib/abuse/fingerprint";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { hasSupabaseEnv } from "@/lib/supabase/public";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -61,8 +65,9 @@ export async function getMyRecipes(days: SellerDays): Promise<MyRecipeDTO[]> {
       : "private",
     versionNo: r.version_no ?? null,
     pendingVersionNo: r.pending_version_no ?? null,
+    // The latest version's rejection (a live recipe can have a rejected new version).
     reject:
-      r.status === "rejected"
+      r.reject_code || r.status === "rejected"
         ? {
             code: isRejectCode(r.reject_code) ? r.reject_code : null,
             note: r.reject_note ?? null,
@@ -221,4 +226,30 @@ export async function getMyWaitlist(): Promise<{
     .select("categories")
     .maybeSingle();
   return { joined: Boolean(data), categories: data?.categories ?? [] };
+}
+
+/**
+ * F5-10 views, counted server-side while rendering the dynamic part of the detail page (no public
+ * endpoint to hammer). One per visitor per KST day in SQL (IP HMAC). Owners are not counted. On Vercel
+ * a request without the platform IP header is not counted; locally a fixed key keeps it countable.
+ */
+export async function countRecipeView(
+  publicId: string,
+  isOwner: boolean,
+): Promise<void> {
+  const secret = process.env.SUPABASE_SECRET_KEY;
+  if (isOwner || !secret || !hasSupabaseEnv()) return;
+  const hash =
+    (await ipHash(secret, "recipe-view")) ??
+    (process.env.VERCEL
+      ? null
+      : createHmac("sha256", secret).update("recipe-view:local").digest("hex"));
+  if (!hash) return;
+  after(async () => {
+    const { error } = await createAdminClient().rpc("record_recipe_view", {
+      p_public_id: publicId,
+      p_visitor_hash: hash,
+    });
+    if (error) console.error("[seller] record_recipe_view failed", error.code);
+  });
 }

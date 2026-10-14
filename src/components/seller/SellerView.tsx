@@ -257,7 +257,7 @@ function RecipeRow({ row, days }: { row: MyRecipeDTO; days: SellerDays }) {
         </div>
       </header>
 
-      {row.status === "rejected" && (
+      {row.reject && (
         <Callout
           color="danger"
           title={reject ? `반려 사유: ${reject.title}` : "반려됐어요"}

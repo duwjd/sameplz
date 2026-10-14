@@ -2,10 +2,9 @@
 // PRM-06 / AGT-06 / SKL-07 (F2-1): one main button per viewer state, plus like, link copy and follow.
 // The initial state comes from the server (Suspense hole); a login replay (F7-1) refreshes it.
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { getMyFollowing, toggleFollow } from "@/actions/follow";
 import { claimFreeRecipe, toggleRecipeLike } from "@/actions/recipe";
-import { recordRecipeView } from "@/actions/seller";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { BuyPanel, Button, type BuyPanelState } from "@/components/ds";
 import type { RecipeViewerState } from "@/data/recipe";
@@ -55,14 +54,6 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
     setEntitlementId(state.entitlement?.id ?? null);
     setLiked(state.liked);
   }
-
-  // F5-10 views: once per page load for visitors (owners are not counted). One per visitor per day in SQL.
-  const viewed = useRef(false);
-  useEffect(() => {
-    if (viewed.current || state.isOwner) return;
-    viewed.current = true;
-    void recordRecipeView({ publicId: recipe.publicId });
-  }, [state.isOwner, recipe.publicId]);
 
   // A replayed claim/follow happened in AuthProvider → re-read the server state.
   useEffect(() => {
@@ -168,7 +159,6 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
       notify(`복사가 막혀 있어요. 주소를 직접 복사해 주세요: ${url}`);
     }
   };
-
 
   const openLibrary = () => {
     if (!entitlementId) return;

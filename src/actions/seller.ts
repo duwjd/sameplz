@@ -1,17 +1,11 @@
 "use server";
-import { createHmac } from "node:crypto";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 import { recipeTag } from "@/data/recipe";
 import { readOwnOriginal, type OwnOriginalDTO } from "@/data/secrets";
-import { ipHash } from "@/lib/abuse/fingerprint";
 import { getViewer, type Viewer } from "@/lib/auth/account";
-import { isPublicId } from "@/lib/recipe/detail";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { WAITLIST_CONSENT_VERSION } from "@/lib/seller/waitlist";
 import { createClient } from "@/lib/supabase/server";
-
-/** Version of the 「유료 판매 오픈 알림 신청」 wording the creator agreed to (F5-14). */
-const WAITLIST_CONSENT_VERSION = "2026-10-waitlist-v1";
 
 type Gate =
   | { ok: true; viewer: Viewer }
@@ -69,6 +63,8 @@ export async function setRecipeVisibility(input: {
   // The detail page and every popularity list change with visibility.
   updateTag(recipeTag(r.public_id));
   updateTag("rankings");
+  updateTag("collections");
+  updateTag("sitemap");
   return { ok: true, status: r.status };
 }
 
@@ -155,13 +151,24 @@ export async function setWaitlist(input: {
       ? { ok: false, reason: "FAILED" }
       : { ok: true, joined: false };
   }
-  const { error } = await supabase.from("creator_waitlist").insert({
+  const row = {
     user_id: gate.viewer.id,
     categories: [...new Set(parsed.data.categories ?? [])],
     consent_version: WAITLIST_CONSENT_VERSION,
-  });
-  // Already on the list (unique user_id) counts as joined.
-  if (error && error.code !== "23505") return { ok: false, reason: "FAILED" };
+  };
+  let { error } = await supabase.from("creator_waitlist").insert(row);
+  // Already on the list: re-record the current wording version and categories (RLS has no UPDATE
+  // policy, so replace the own row).
+  if (error?.code === "23505") {
+    const del = await supabase
+      .from("creator_waitlist")
+      .delete()
+      .eq("user_id", gate.viewer.id);
+    ({ error } = del.error
+      ? del
+      : await supabase.from("creator_waitlist").insert(row));
+  }
+  if (error) return { ok: false, reason: "FAILED" };
   return { ok: true, joined: true };
 }
 
@@ -180,24 +187,4 @@ export async function loadOwnOriginal(input: {
   if (!gate.ok) return { ok: false };
   const original = await readOwnOriginal(parsed.data.recipeId);
   return original ? { ok: true, original } : { ok: false };
-}
-
-// ---------------------------------------------------------------- views (F5-10)
-
-/** One view per visitor per KST day (IP HMAC; owners are not counted by the caller). */
-export async function recordRecipeView(input: {
-  publicId: string;
-}): Promise<void> {
-  const parsed = z
-    .object({ publicId: z.string().refine(isPublicId) })
-    .safeParse(input);
-  const secret = process.env.SUPABASE_SECRET_KEY;
-  if (!parsed.success || !secret) return;
-  const { error } = await createAdminClient().rpc("record_recipe_view", {
-    p_public_id: parsed.data.publicId,
-    p_visitor_hash:
-      (await ipHash(secret, "recipe-view")) ??
-      createHmac("sha256", secret).update("recipe-view:local").digest("hex"),
-  });
-  if (error) console.error("[seller] record_recipe_view failed", error.code);
 }

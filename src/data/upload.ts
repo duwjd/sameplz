@@ -8,6 +8,8 @@ import {
   MEDIA_MIME,
   isOwnMediaPath,
   mediaKindOf,
+  mediaUrl,
+  sniffMatches,
   type MediaMime,
 } from "@/lib/upload/media";
 import {
@@ -135,8 +137,23 @@ export async function verifyMedia(
       info.size > (kind === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)
     )
       return false;
+    if (!sniffMatches(info.mime as MediaMime, await headBytes(m.path)))
+      return false;
   }
   return true;
+}
+
+/** First bytes of a public result file (Range request; the bucket is public). */
+async function headBytes(path: string): Promise<Uint8Array> {
+  const url = mediaUrl(path);
+  if (!url) return new Uint8Array();
+  try {
+    const res = await fetch(url, { headers: { range: "bytes=0-31" }, cache: "no-store" });
+    if (!res.ok) return new Uint8Array();
+    return new Uint8Array(await res.arrayBuffer()).subarray(0, 32);
+  } catch {
+    return new Uint8Array();
+  }
 }
 
 /** Bytes of an uploaded skill zip (own path, size-capped) for server-side inspection. */

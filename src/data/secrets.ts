@@ -1,7 +1,9 @@
 // The only module allowed to read hidden originals (recipe_version_secrets via open_original,
-// private.play_prompts later). Never cached; the result goes only to the entitlement holder.
+// private.play_prompts via play_prompt_for_submit). Never cached; originals go only to the
+// entitlement holder, and playground prompts only to start_run and the provider.
 import "server-only";
 import type { Viewer } from "@/lib/auth/account";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export interface OriginalDTO {
@@ -114,4 +116,33 @@ export async function readOwnOriginal(
     skillMd: o.skill_md ?? "",
     agentConfig,
   };
+}
+
+/**
+ * PLAY (F4-2): the prompt body of a version, read on the server to render a run. Callers check the
+ * mode first (own recipe / received live free recipe); start_run checks it again. Does not mark the
+ * original opened. The text and its rendering go only to start_run and the provider.
+ */
+export async function promptBodyForRun(
+  versionId: string,
+): Promise<string | null> {
+  const { data, error } = await createAdminClient()
+    .from("recipe_version_secrets")
+    .select("prompt_body")
+    .eq("version_id", versionId)
+    .maybeSingle();
+  if (error || !data?.prompt_body) return null;
+  return data.prompt_body;
+}
+
+/** PLAY (F4-3): the rendered prompt of a queued cell, for (re)submission to the provider. */
+export async function renderedPromptForSubmit(
+  cellId: string,
+): Promise<string | null> {
+  const { data, error } = await createAdminClient().rpc(
+    "play_prompt_for_submit",
+    { p_cell: cellId },
+  );
+  if (error || typeof data !== "string" || !data) return null;
+  return data;
 }

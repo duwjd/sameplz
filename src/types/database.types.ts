@@ -1227,6 +1227,9 @@ isOneToOne: false
 "recipe_search_doc":
 { Args: { "nickname": string,"search_tags": (string)[],"summary": string,"title": string }; Returns: (string)[]
                            },
+"record_play_input_block":
+{ Args: { "p_user": string }; Returns: boolean
+                           },
 "record_recipe_view":
 { Args: { "p_public_id": string,"p_visitor_hash": string }; Returns: undefined
                            },

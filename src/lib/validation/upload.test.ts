@@ -183,6 +183,12 @@ describe("F5-1 step validation", () => {
     );
   });
 
+  it("UP-05 every result needs alt text", () => {
+    const form = prompt();
+    form.media = [{ ...form.media[0], alt: " " }];
+    expect(fields(form, 3)).toEqual(["media.0.alt"]);
+  });
+
   it("F5-7 step 4: a new version needs a changelog", () => {
     expect(fields({ ...prompt(), recipeId: "a" }, 4)).toEqual(["changelog"]);
     expect(

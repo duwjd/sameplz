@@ -56,8 +56,9 @@ export default function UploadPage() {
           레시피 올리기
         </h1>
         <p style={{ margin: 0, fontSize: 14, color: "var(--sp-fg-secondary)" }}>
-          카테고리 → 내용 → 결과물 → 공개 범위 → 검사 순서로 5분이면 올려요.
-          지금은 무료로만 올릴 수 있어요.
+          카테고리 → 내용 → 결과물 → 공개 범위 → 검사 순서로 올려요. 검사를
+          통과하면 바로 공개되고, 에이전트는 1~2일 안에 사람이 확인해요. 지금은
+          무료로만 올릴 수 있어요.
         </p>
       </header>
       <Suspense fallback={<UploadSkeleton />}>

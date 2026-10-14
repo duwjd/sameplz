@@ -55,6 +55,14 @@ export const ariaFor = (field: string, errors: Errors) => ({
   "aria-describedby": errors[field] ? eid(field) : undefined,
 });
 
+/** aria wiring for a radio / chip group bound to `field` (focus target for errors). */
+export const groupAria = (field: string, label: string, errors: Errors) => ({
+  id: fid(field),
+  "aria-label": label,
+  "aria-invalid": errors[field] ? true : undefined,
+  "aria-describedby": errors[field] ? eid(field) : undefined,
+});
+
 /** Editable list of short lines (agent flow, does / does-not, prepare). */
 export function LineList({
   field,
@@ -131,6 +139,7 @@ export function CodeChips({
   onChange,
   max,
   errors,
+  label,
 }: {
   field: string;
   options: { code: string; label: string }[];
@@ -138,12 +147,14 @@ export function CodeChips({
   onChange: (v: string[]) => void;
   max: number;
   errors: Errors;
+  label: string;
 }) {
   return (
     <div
       id={fid(field)}
       tabIndex={-1}
       role="group"
+      aria-label={label}
       aria-describedby={errors[field] ? eid(field) : undefined}
       style={{ display: "flex", flexWrap: "wrap", gap: 8, outline: "none" }}
     >

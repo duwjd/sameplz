@@ -39,6 +39,7 @@ import {
   ariaFor,
   CodeChips,
   FormField,
+  groupAria,
   LineList,
   fid,
   type Errors,
@@ -110,28 +111,27 @@ export function StepCategory({
         required
         errors={errors}
       >
-        <div id={fid("category")} tabIndex={-1} style={{ outline: "none" }}>
-          <RadioCardGroup
-            value={form.category ?? undefined}
-            onChange={(v) =>
-              !locked &&
-              patch({
-                category: v as UploadForm["category"],
-                promptKind: v === "prompt" ? form.promptKind : null,
-              })
-            }
-          >
-            {CATEGORY_CARDS.map((c) => (
-              <RadioCard
-                key={c.value}
-                value={c.value}
-                title={c.title}
-                description={c.description}
-                disabled={locked && form.category !== c.value}
-              />
-            ))}
-          </RadioCardGroup>
-        </div>
+        <RadioCardGroup
+          {...groupAria("category", "어떤 레시피인가요?", errors)}
+          value={form.category ?? undefined}
+          onChange={(v) =>
+            !locked &&
+            patch({
+              category: v as UploadForm["category"],
+              promptKind: v === "prompt" ? form.promptKind : null,
+            })
+          }
+        >
+          {CATEGORY_CARDS.map((c) => (
+            <RadioCard
+              key={c.value}
+              value={c.value}
+              title={c.title}
+              description={c.description}
+              disabled={locked && form.category !== c.value}
+            />
+          ))}
+        </RadioCardGroup>
       </FormField>
       {locked && <p style={hint}>새 버전에서는 카테고리를 바꿀 수 없어요.</p>}
       {form.category === "prompt" && (
@@ -141,19 +141,27 @@ export function StepCategory({
           required
           errors={errors}
         >
-          <div id={fid("promptKind")} tabIndex={-1} style={{ outline: "none" }}>
-            <RadioCardGroup
-              direction="row"
-              value={form.promptKind ?? undefined}
-              onChange={(v) =>
-                patch({ promptKind: v as UploadForm["promptKind"] })
-              }
-            >
-              {KIND_CARDS.map((k) => (
-                <RadioCard key={k.value} value={k.value} title={k.title} />
-              ))}
-            </RadioCardGroup>
-          </div>
+          <RadioCardGroup
+            {...groupAria(
+              "promptKind",
+              "무엇을 만드는 프롬프트인가요?",
+              errors,
+            )}
+            direction="row"
+            value={form.promptKind ?? undefined}
+            onChange={(v) =>
+              patch({ promptKind: v as UploadForm["promptKind"] })
+            }
+          >
+            {KIND_CARDS.map((k) => (
+              <RadioCard
+                key={k.value}
+                value={k.value}
+                title={k.title}
+                style={{ flex: "1 1 96px", whiteSpace: "nowrap" }}
+              />
+            ))}
+          </RadioCardGroup>
         </FormField>
       )}
     </div>
@@ -212,6 +220,7 @@ export function StepContent(props: StepProps) {
         errors={errors}
       >
         <CodeChips
+          label="어떤 일에 쓰나요?"
           field="jobCodes"
           options={options.jobs}
           value={form.jobCodes}
@@ -228,6 +237,7 @@ export function StepContent(props: StepProps) {
           errors={errors}
         >
           <CodeChips
+            label="쓰는 도구"
             field="toolCodes"
             options={tools}
             value={form.toolCodes}
@@ -337,6 +347,7 @@ function PromptFields({ form, patch, errors }: StepProps) {
               >
                 <TextInput
                   {...ariaFor(`prompt.variables.${i}.description`, errors)}
+                  aria-label={`[${v.name}] 설명`}
                   value={v.description}
                   maxLength={120}
                   placeholder="예: 사진 속 사람의 직업"
@@ -357,6 +368,7 @@ function PromptFields({ form, patch, errors }: StepProps) {
               >
                 <TextInput
                   {...ariaFor(`prompt.variables.${i}.example`, errors)}
+                  aria-label={`[${v.name}] 예시`}
                   value={v.example}
                   maxLength={80}
                   placeholder="예: 개발자"
@@ -498,6 +510,7 @@ function SkillFields({ form, patch, errors }: StepProps) {
         errors={errors}
       >
         <RadioCardGroup
+          aria-label="스킬을 어떻게 올릴까요?"
           direction="row"
           value={s.source}
           onChange={(v) => setSkill({ source: v as "md" | "zip" })}
@@ -940,7 +953,7 @@ export function StepMedia({ form, patch, errors }: StepProps) {
           color="secondary"
           disabled={busy > 0 || media.length >= MAX_MEDIA}
           onClick={() => fileRef.current?.click()}
-          style={{ alignSelf: "flex-start" }}
+          style={{ alignSelf: "flex-start", whiteSpace: "nowrap" }}
         >
           {busy > 0 ? (
             <Spinner size="sm" />
@@ -991,6 +1004,7 @@ export function StepMedia({ form, patch, errors }: StepProps) {
             <FormField
               field={`media.${i}.alt`}
               label={`결과물 ${i + 1} 설명`}
+              required
               description="화면 낭독기와 검색에 쓰여요."
               errors={errors}
             >
@@ -1054,6 +1068,7 @@ export function StepVisibility({ form, patch, errors }: StepProps) {
     <div style={stack}>
       <FormField field="visibility" label="공개 범위" required errors={errors}>
         <RadioCardGroup
+          {...groupAria("visibility", "공개 범위", errors)}
           value={form.visibility}
           onChange={(v) => patch({ visibility: v as "public" | "private" })}
         >

@@ -155,10 +155,11 @@ function ResultGallery({ recipe }: { recipe: RecipeDetail }) {
                 topLeft={aiBadge}
               />
             )}
-            {m.alt && (
+            {(m.alt || m.ai) && (
               <figcaption style={{ ...hintStyle, marginTop: 6 }}>
-                {m.alt}
-                {m.ai ? " · AI로 만든 결과물이에요" : ""}
+                {[m.alt, m.ai ? "AI로 만든 결과물이에요" : null]
+                  .filter(Boolean)
+                  .join(" · ")}
               </figcaption>
             )}
           </figure>

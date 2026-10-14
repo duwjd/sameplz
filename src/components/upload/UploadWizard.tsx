@@ -175,7 +175,13 @@ export function UploadWizard({
       goTo(asStep(r.step ?? 2), r.errors[0].field);
       return;
     }
+    // Findings also mark their fields, so 「고치러 가기」 lands on a field showing the problem.
+    if (r.findings?.length)
+      setErrors(
+        toErrors(r.findings.map((f) => ({ field: f.field, message: f.note }))),
+      );
     setResult(r);
+    setFocusField("check-result");
   }
 
   function startOver() {
@@ -192,36 +198,40 @@ export function UploadWizard({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {pendingDraft && (
-        <Callout color="primary" title="쓰던 초안이 있어요">
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <span>
-              {kstTime(pendingDraft.updatedAt)}에 저장한 초안이에요. 이어서
-              쓸까요?
-            </span>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Button
-                onClick={() => {
-                  setForm(pendingDraft.form);
-                  setStep(asStep(Math.min(pendingDraft.step, 4)));
-                  setPendingDraft(null);
-                }}
-              >
-                이어서 쓰기
-              </Button>
-              <Button
-                variant="outline"
-                color="secondary"
-                onClick={async () => {
-                  setPendingDraft(null);
-                  const r = await discardDraft();
-                  setSaved(r.ok ? "discarded" : "idle");
-                }}
-              >
-                새로 시작
-              </Button>
+        <div role="status">
+          <Callout color="primary" title="쓰던 초안이 있어요">
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <span>
+                {kstTime(pendingDraft.updatedAt)}에 저장한 초안이에요. 이어서
+                쓸까요?
+              </span>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Button
+                  onClick={() => {
+                    setForm(pendingDraft.form);
+                    setStep(asStep(Math.min(pendingDraft.step, 4)));
+                    setPendingDraft(null);
+                    setFocusField("step-title");
+                  }}
+                >
+                  이어서 쓰기
+                </Button>
+                <Button
+                  variant="outline"
+                  color="secondary"
+                  onClick={async () => {
+                    setPendingDraft(null);
+                    setFocusField("step-title");
+                    const r = await discardDraft();
+                    setSaved(r.ok ? "discarded" : "idle");
+                  }}
+                >
+                  새로 시작
+                </Button>
+              </div>
             </div>
-          </div>
-        </Callout>
+          </Callout>
+        </div>
       )}
 
       <Stepper steps={STEPS.map((label) => ({ label }))} current={step - 1} />
@@ -238,7 +248,13 @@ export function UploadWizard({
         >
           <h2
             id="up-step-title"
-            style={{ margin: 0, fontSize: 20, fontWeight: 700 }}
+            tabIndex={-1}
+            style={{
+              margin: 0,
+              fontSize: 20,
+              fontWeight: 700,
+              outline: "none",
+            }}
           >
             {step}. {STEPS[step - 1]}
           </h2>
@@ -366,13 +382,20 @@ function StepCheck({
   const findings = result.findings ?? [];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <Callout color="danger" title={result.message}>
-        {findings.length
-          ? "아래 항목을 고친 뒤 다시 올려 주세요."
-          : result.step
-            ? ""
-            : "잠시 뒤 다시 시도해 주세요."}
-      </Callout>
+      <div
+        id="up-check-result"
+        role="alert"
+        tabIndex={-1}
+        style={{ outline: "none" }}
+      >
+        <Callout color="danger" title={result.message}>
+          {findings.length
+            ? "아래 항목을 고친 뒤 다시 올려 주세요."
+            : result.step
+              ? ""
+              : "잠시 뒤 다시 시도해 주세요."}
+        </Callout>
+      </div>
       {result.step && result.step < 5 && !findings.length && (
         <Button
           variant="outline"
@@ -481,32 +504,39 @@ function SubmitDone({
       ? "1~2일 안에 확인하고 결과를 알려 드려요. 확인이 끝나면 고른 공개 범위로 올라가요."
       : "나만 볼 수 있어요. 공개로 바꾸면 마켓에 올라가요.";
   return (
-    <EmptyState
-      icon={live ? "CheckCircleOutlineIcon" : "InfoCircleOutlineIcon"}
-      title={title}
-      description={description}
-      actions={
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            flexWrap: "wrap",
-            justifyContent: "center",
-          }}
-        >
-          {live && (
-            <Link
-              href={`/r/${result.publicId}`}
-              style={{ textDecoration: "none" }}
-            >
-              <Button>상세 화면 보기</Button>
-            </Link>
-          )}
-          <Button variant="outline" color="secondary" onClick={onAnother}>
-            다른 레시피 올리기
-          </Button>
-        </div>
-      }
-    />
+    <div
+      role="status"
+      tabIndex={-1}
+      ref={(el) => el?.focus()}
+      style={{ outline: "none" }}
+    >
+      <EmptyState
+        icon={live ? "CheckCircleOutlineIcon" : "InfoCircleOutlineIcon"}
+        title={title}
+        description={description}
+        actions={
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              flexWrap: "wrap",
+              justifyContent: "center",
+            }}
+          >
+            {live && (
+              <Link
+                href={`/r/${result.publicId}`}
+                style={{ textDecoration: "none" }}
+              >
+                <Button>상세 화면 보기</Button>
+              </Link>
+            )}
+            <Button variant="outline" color="secondary" onClick={onAnother}>
+              다른 레시피 올리기
+            </Button>
+          </div>
+        }
+      />
+    </div>
   );
 }

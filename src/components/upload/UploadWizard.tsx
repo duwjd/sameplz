@@ -9,7 +9,9 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import { useRouter } from "next/navigation";
 import { Button, Callout, EmptyState, Icon, Stepper } from "@/components/ds";
+import { sentence } from "@/lib/upload/messages";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   discardDraft,
@@ -17,7 +19,13 @@ import {
   submitRecipe,
   type SubmitResult,
 } from "@/actions/upload";
-import { REJECT_COPY, type Finding } from "@/lib/moderation/reject-codes";
+import { loadOwnOriginal } from "@/actions/seller";
+import { WaitlistCard } from "@/components/seller/WaitlistCard";
+import {
+  REJECT_COPY,
+  type Finding,
+  type RejectCode,
+} from "@/lib/moderation/reject-codes";
 import {
   emptyUploadForm,
   validateStep,
@@ -81,14 +89,30 @@ export function UploadGuest() {
   );
 }
 
+/** 「고쳐서 다시 제출」 / 「새 버전 올리기」: the latest version, without its original. */
+export interface UploadEdit {
+  form: UploadForm;
+  versionNo: number;
+  reject: { code: RejectCode | null; note: string | null } | null;
+}
+
 export function UploadWizard({
   draft,
   options,
+  edit = null,
+  blocked = null,
+  waitlist,
 }: {
   draft: UploadDraft | null;
   options: UploadOptions;
+  edit?: UploadEdit | null;
+  /** Server says this recipe cannot take a new version right now (stopped / under review). */
+  blocked?: { title: string; description: string } | null;
+  waitlist: { joined: boolean; categories: string[] };
 }) {
-  const [form, setForm] = useState<UploadForm>(emptyUploadForm);
+  const router = useRouter();
+  const base = useCallback(() => edit?.form ?? emptyUploadForm(), [edit]);
+  const [form, setForm] = useState<UploadForm>(base);
   const [step, setStep] = useState<Step>(1);
   const [errors, setErrors] = useState<Errors>({});
   const [pendingDraft, setPendingDraft] = useState<UploadDraft | null>(draft);
@@ -106,6 +130,25 @@ export function UploadWizard({
   };
   const dirty = useRef(false);
 
+  // New version / resubmit: the owner's original arrives through a server action, never as a prop.
+  const loadOriginal = useCallback(async () => {
+    if (!edit?.form.recipeId) return;
+    const r = await loadOwnOriginal({ recipeId: edit.form.recipeId });
+    if (!r.ok) return;
+    setForm((f) => ({
+      ...f,
+      prompt: { ...f.prompt, body: f.prompt.body || r.original.promptBody },
+      skill: { ...f.skill, skillMd: f.skill.skillMd || r.original.skillMd },
+      agent: { ...f.agent, config: f.agent.config || r.original.agentConfig },
+    }));
+  }, [edit]);
+  const loaded = useRef(false);
+  useEffect(() => {
+    if (loaded.current || draft) return;
+    loaded.current = true;
+    void loadOriginal();
+  }, [draft, loadOriginal]);
+
   const patch = useCallback((p: Partial<UploadForm>) => {
     dirty.current = true;
     setForm((f) => ({ ...f, ...p }));
@@ -122,14 +165,15 @@ export function UploadWizard({
 
   // UP-08 autosave while writing (not while the resume question is open, not after submit).
   useEffect(() => {
-    if (!dirty.current || pendingDraft || result?.ok) return;
+    // Never while submitting: a late save would race the submit's own draft cleanup.
+    if (!dirty.current || pendingDraft || result?.ok || submitting) return;
     const t = setTimeout(async () => {
       setSaved("saving");
       const r = await saveDraft({ form, step });
       setSaved(r.ok ? "saved" : "error");
     }, SAVE_DELAY_MS);
     return () => clearTimeout(t);
-  }, [form, step, pendingDraft, result]);
+  }, [form, step, pendingDraft, result, submitting]);
 
   useEffect(() => {
     const field = focusRef.current;
@@ -166,6 +210,14 @@ export function UploadWizard({
     const r = await submitRecipe({ form });
     setSubmitting(false);
     if (r.ok) {
+      // New versions report in the seller center: this page re-renders as "under review" right
+      // after the submit, so the done screen must not depend on this component surviving.
+      if (form.recipeId) {
+        router.replace(
+          `/my/seller?submitted=${r.review ? "review" : r.status === "live" ? "live" : "private"}`,
+        );
+        return;
+      }
       setResult(r);
       window.scrollTo({ top: 0 });
       return;
@@ -186,6 +238,7 @@ export function UploadWizard({
 
   function startOver() {
     setForm(emptyUploadForm());
+    window.history.replaceState(null, "", "/my/seller/upload");
     setStep(1);
     setErrors({});
     setResult(null);
@@ -194,6 +247,19 @@ export function UploadWizard({
   }
 
   if (result?.ok) return <SubmitDone result={result} onAnother={startOver} />;
+  if (blocked)
+    return (
+      <EmptyState
+        icon="InfoCircleOutlineIcon"
+        title={blocked.title}
+        description={blocked.description}
+        actions={
+          <Link href="/my/seller" style={{ textDecoration: "none" }}>
+            <Button>내 레시피로 가기</Button>
+          </Link>
+        }
+      />
+    );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -222,7 +288,13 @@ export function UploadWizard({
                   onClick={async () => {
                     setPendingDraft(null);
                     setFocusField("step-title");
-                    const r = await discardDraft();
+                    if (edit) {
+                      setForm(base());
+                      void loadOriginal();
+                    }
+                    const r = await discardDraft({
+                      recipeId: edit?.form.recipeId ?? null,
+                    });
                     setSaved(r.ok ? "discarded" : "idle");
                   }}
                 >
@@ -234,7 +306,36 @@ export function UploadWizard({
         </div>
       )}
 
-      <Stepper steps={STEPS.map((label) => ({ label }))} current={step - 1} />
+      {edit && (
+        <Callout
+          color={edit.reject ? "danger" : "hint"}
+          title={
+            edit.reject
+              ? `반려 사유: ${edit.reject.code ? REJECT_COPY[edit.reject.code].title : "확인이 필요해요"}`
+              : `v${edit.versionNo + 1}을 올려요`
+          }
+        >
+          {edit.reject
+            ? `${sentence(edit.reject.note ?? (edit.reject.code ? REJECT_COPY[edit.reject.code].fix : ""))} 고친 뒤 4단계에 바뀐 점을 적어 주세요.`
+            : "지난 버전 내용을 불러왔어요. 카테고리는 바꿀 수 없고, 4단계에 바뀐 점을 적어야 해요. 받은 사람은 골라서 업데이트해요."}
+        </Callout>
+      )}
+      {/* 390px cannot fit five labels: phones get the current step as text. */}
+      <div className="hidden md:block">
+        <Stepper steps={STEPS.map((label) => ({ label }))} current={step - 1} />
+      </div>
+      <p
+        className="md:hidden"
+        style={{
+          margin: 0,
+          fontSize: 14,
+          fontWeight: 600,
+          color: "var(--sp-fg-secondary)",
+        }}
+      >
+        {step}/5단계 · {STEPS[step - 1]}
+        {step < 5 ? ` → 다음: ${STEPS[step]}` : ""}
+      </p>
 
       <section aria-labelledby="up-step-title" style={card}>
         <header
@@ -300,12 +401,15 @@ export function UploadWizard({
           />
         )}
         {step === 4 && (
-          <StepVisibility
-            form={form}
-            patch={patch}
-            errors={errors}
-            options={options}
-          />
+          <>
+            <StepVisibility
+              form={form}
+              patch={patch}
+              errors={errors}
+              options={options}
+            />
+            <WaitlistCard initial={waitlist} compact />
+          </>
         )}
         {step === 5 && (
           <StepCheck
@@ -531,6 +635,14 @@ function SubmitDone({
                 <Button>상세 화면 보기</Button>
               </Link>
             )}
+            <Link href="/my/seller" style={{ textDecoration: "none" }}>
+              <Button
+                variant={live ? "outline" : "fill"}
+                color={live ? "secondary" : undefined}
+              >
+                내 레시피 보기
+              </Button>
+            </Link>
             <Button variant="outline" color="secondary" onClick={onAnother}>
               다른 레시피 올리기
             </Button>

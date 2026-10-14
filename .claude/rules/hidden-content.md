@@ -12,6 +12,7 @@ paths:
 
 1. `recipe_version_secrets`와 `private.play_prompts`는 `src/data/secrets.ts` 안에서만 select 한다. 다른 파일에서 테이블 이름이 보이면 PostToolUse 훅이 경고한다.
 2. 클라이언트 컴포넌트(`'use client'`)에 원문을 props로 넘기지 않는다. RSC 페이로드도 브라우저로 간다.
+   - 예외: 작성자 본인이 쓰는 중인 원문(올리기 초안 `recipe_drafts`, 「새 버전 올리기」·「고쳐서 다시 제출」 미리 채우기)은 본인에게만 간다. 초안은 본인 RLS로만 읽고, 지난 버전 원문은 `loadOwnOriginal` 서버 액션 → `src/data/secrets.ts`로만 꺼낸다. 캐시하지 않는다.
 3. 레시피 키만으로 사용자별 결과를 캐시하지 않는다(`"use cache"`, `unstable_cache`, fetch 캐시 모두).
 4. 공급자 응답 객체를 그대로 반환하지 않는다. 필요한 필드만 DTO로 매핑한다.
 5. Sentry `beforeSend`에서 `prompt`, `input`, `variables`, `body` 필드를 지운다. PostHog 이벤트 속성에도 넣지 않는다.

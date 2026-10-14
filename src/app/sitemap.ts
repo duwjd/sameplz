@@ -1,12 +1,15 @@
 import type { MetadataRoute } from "next";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient, hasSupabaseEnv } from "@/lib/supabase/public";
 
 const SITE = "https://sameplz.vercel.app";
 
-async function liveRecipes(): Promise<{ public_id: string; updated_at: string }[]> {
+async function liveRecipes(): Promise<
+  { public_id: string; updated_at: string }[]
+> {
   "use cache";
   cacheLife("hours");
+  cacheTag("sitemap");
   if (!hasSupabaseEnv()) return [];
   const { data, error } = await createPublicClient()
     .from("recipes")

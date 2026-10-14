@@ -31,21 +31,29 @@ export interface DraftDTO {
   updatedAt: string;
 }
 
-/** UP-08: the viewer's draft for a new recipe (RLS: own rows only). */
-export async function getMyDraft(): Promise<DraftDTO | null> {
+type DraftQuery = {
+  is: (c: "recipe_id", v: null) => unknown;
+  eq: (c: "recipe_id", v: string) => unknown;
+};
+/** One draft per new recipe (recipe_id null) and one per existing recipe (new version). */
+const byRecipe = <Q extends DraftQuery>(q: Q, recipeId: string | null) =>
+  (recipeId ? q.eq("recipe_id", recipeId) : q.is("recipe_id", null)) as Q;
+
+/** UP-08: the viewer's draft for a new recipe, or for a new version of `recipeId` (RLS: own rows). */
+export async function getMyDraft(
+  recipeId: string | null = null,
+): Promise<DraftDTO | null> {
   if (!hasSupabaseEnv()) return null;
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("recipe_drafts")
-    .select("payload,step,updated_at")
-    .is("recipe_id", null)
-    .maybeSingle();
+  const { data } = await byRecipe(
+    supabase.from("recipe_drafts").select("payload,step,updated_at"),
+    recipeId,
+  ).maybeSingle();
   if (!data) return null;
-  return {
-    form: UploadFormSchema.parse(data.payload ?? {}),
-    step: data.step,
-    updatedAt: data.updated_at,
-  };
+  const form = UploadFormSchema.parse(data.payload ?? {});
+  // A draft always belongs to the recipe it is filed under.
+  form.recipeId = recipeId;
+  return { form, step: data.step, updatedAt: data.updated_at };
 }
 
 export async function saveMyDraft(
@@ -54,26 +62,26 @@ export async function saveMyDraft(
   step: number,
 ) {
   const supabase = await createClient();
+  const recipeId = form.recipeId ?? null;
   const row = { payload: form, step, category: form.category };
-  const { data: existing } = await supabase
-    .from("recipe_drafts")
-    .select("id")
-    .is("recipe_id", null)
-    .maybeSingle();
+  const { data: existing } = await byRecipe(
+    supabase.from("recipe_drafts").select("id"),
+    recipeId,
+  ).maybeSingle();
   const { error } = existing
     ? await supabase.from("recipe_drafts").update(row).eq("id", existing.id)
     : await supabase
         .from("recipe_drafts")
-        .insert({ ...row, owner_id: viewer.id });
+        .insert({ ...row, owner_id: viewer.id, recipe_id: recipeId });
   return !error;
 }
 
-export async function deleteMyDraft() {
+export async function deleteMyDraft(recipeId: string | null = null) {
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("recipe_drafts")
-    .delete()
-    .is("recipe_id", null);
+  const { error } = await byRecipe(
+    supabase.from("recipe_drafts").delete(),
+    recipeId,
+  );
   return !error;
 }
 

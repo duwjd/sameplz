@@ -75,3 +75,43 @@ export async function openOriginal(
     watermark,
   };
 }
+
+export interface OwnOriginalDTO {
+  promptBody: string;
+  skillMd: string;
+  /** Agent original as the wizard shows it: JSON text, or the plain instructions it was made from. */
+  agentConfig: string;
+}
+
+/**
+ * UP-08 / F5-6 / F5-7: the owner's own latest original, to prefill 「고쳐서 다시 제출」 and
+ * 「새 버전 올리기」. my_recipe_original is owner-only (NOT_FOUND otherwise). Never cached; returned
+ * only to the owner through a server action.
+ */
+export async function readOwnOriginal(
+  recipeId: string,
+): Promise<OwnOriginalDTO | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_recipe_original", {
+    p_recipe: recipeId,
+  });
+  if (error || !data) return null;
+  const o = data as {
+    prompt_body: string | null;
+    skill_md: string | null;
+    agent_config: unknown;
+  };
+  const cfg = o.agent_config;
+  const agentConfig =
+    cfg && typeof cfg === "object" && !Array.isArray(cfg)
+      ? Object.keys(cfg).length === 1 &&
+        typeof (cfg as { instructions?: unknown }).instructions === "string"
+        ? (cfg as { instructions: string }).instructions
+        : JSON.stringify(cfg, null, 2)
+      : "";
+  return {
+    promptBody: o.prompt_body ?? "",
+    skillMd: o.skill_md ?? "",
+    agentConfig,
+  };
+}

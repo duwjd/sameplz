@@ -160,11 +160,6 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
     }
   };
 
-  const sellerCenterLater = () =>
-    notify(
-      "판매자 센터는 아직 준비하고 있어요. 열리면 여기서 새 버전을 올릴 수 있어요.",
-    );
-
   const openLibrary = () => {
     if (!entitlementId) return;
     markOpenIntent(entitlementId);
@@ -195,8 +190,8 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
         onLike={onLike}
         onShare={onShare}
         onFollow={onFollow}
-        onEdit={sellerCenterLater}
-        onSeller={sellerCenterLater}
+        onEdit={() => router.push(`/my/seller/upload?recipe=${recipe.id}`)}
+        onSeller={() => router.push("/my/seller")}
         style={{ position: "sticky", top: 88 }}
       />
       {/* PRM: on mobile the main button stays reachable as a bottom bar (desktop: display none). */}

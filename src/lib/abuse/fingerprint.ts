@@ -14,17 +14,21 @@ function hmac(secret: string, value: string) {
 /** Client IP from the platform proxy headers. */
 export async function clientIp(): Promise<string | null> {
   const h = await headers();
-  // Vercel sets x-vercel-forwarded-for / x-real-ip itself; x-forwarded-for's first hop is the last resort.
-  return (
+  // Vercel sets x-vercel-forwarded-for / x-real-ip itself. A client-sent x-forwarded-for is trusted
+  // only off Vercel (local dev / CI), where nothing else is available.
+  const platform =
     h.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
     h.get("x-real-ip")?.trim() ||
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    null
-  );
+    null;
+  if (platform || process.env.VERCEL) return platform;
+  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
 }
 
 /** HMAC of the IP for a purpose ("share-visitor", "ip"); null on loopback or unknown. */
-export async function ipHash(secret: string, purpose = "ip"): Promise<string | null> {
+export async function ipHash(
+  secret: string,
+  purpose = "ip",
+): Promise<string | null> {
   const ip = await clientIp();
   if (!ip || LOOPBACK.has(ip)) return null;
   return hmac(secret, `${purpose}:${ip}`);

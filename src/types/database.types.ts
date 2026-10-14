@@ -77,6 +77,26 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"auto_checks": {
+                  Row: {
+                    "checker": string,"created_at": string,"findings": NonNullable<Json>,"id": number,"layer": number,"result": string,"version_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "checker"?: string,"created_at"?: string,"findings"?: NonNullable<Json>,"id"?: never,"layer": number,"result": string,"version_id": string
+                  }
+                  Update: {
+                    "checker"?: string,"created_at"?: string,"findings"?: NonNullable<Json>,"id"?: never,"layer"?: number,"result"?: string,"version_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "auto_checks_version_id_fkey"
+      columns: ["version_id"]
+isOneToOne: false
+      referencedRelation: "recipe_versions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"banners": {
                   Row: {
                     "active": boolean,"alt_text": string | null,"created_at": string,"cta_href": string | null,"cta_label": string | null,"eyebrow": string,"id": string,"media_id": string | null,"name": string,"sort": number,"subtitle": string,"title": string
@@ -555,6 +575,38 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"recipe_drafts": {
+                  Row: {
+                    "category": string | null,"id": string,"owner_id": string,"payload": NonNullable<Json>,"recipe_id": string | null,"step": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "category"?: string | null,"id"?: string,"owner_id": string,"payload"?: NonNullable<Json>,"recipe_id"?: string | null,"step"?: number,"updated_at"?: string
+                  }
+                  Update: {
+                    "category"?: string | null,"id"?: string,"owner_id"?: string,"payload"?: NonNullable<Json>,"recipe_id"?: string | null,"step"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "recipe_drafts_owner_id_fkey"
+      columns: ["owner_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "recipe_drafts_recipe_id_fkey"
+      columns: ["recipe_id"]
+isOneToOne: false
+      referencedRelation: "mv_recipe_popularity"
+      referencedColumns: ["recipe_id"]
+    },{
+      foreignKeyName: "recipe_drafts_recipe_id_fkey"
+      columns: ["recipe_id"]
+isOneToOne: false
+      referencedRelation: "recipes"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"recipe_likes": {
                   Row: {
                     "created_at": string,"recipe_id": string,"user_id": string
@@ -655,14 +707,14 @@ isOneToOne: true
                   ]
                 },"recipe_versions": {
                   Row: {
-                    "approved_at": string | null,"changelog": string,"content_sha256": string | null,"created_at": string,"has_scripts": boolean,"id": string,"public_meta": NonNullable<Json>,"recipe_id": string,"review_status": string,"version_no": number
+                    "approved_at": string | null,"changelog": string,"content_sha256": string | null,"created_at": string,"has_scripts": boolean,"header": Json | null,"id": string,"public_meta": NonNullable<Json>,"recipe_id": string,"review_status": string,"version_no": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "approved_at"?: string | null,"changelog"?: string,"content_sha256"?: string | null,"created_at"?: string,"has_scripts"?: boolean,"id"?: string,"public_meta"?: NonNullable<Json>,"recipe_id": string,"review_status"?: string,"version_no": number
+                    "approved_at"?: string | null,"changelog"?: string,"content_sha256"?: string | null,"created_at"?: string,"has_scripts"?: boolean,"header"?: Json | null,"id"?: string,"public_meta"?: NonNullable<Json>,"recipe_id": string,"review_status"?: string,"version_no": number
                   }
                   Update: {
-                    "approved_at"?: string | null,"changelog"?: string,"content_sha256"?: string | null,"created_at"?: string,"has_scripts"?: boolean,"id"?: string,"public_meta"?: NonNullable<Json>,"recipe_id"?: string,"review_status"?: string,"version_no"?: number
+                    "approved_at"?: string | null,"changelog"?: string,"content_sha256"?: string | null,"created_at"?: string,"has_scripts"?: boolean,"header"?: Json | null,"id"?: string,"public_meta"?: NonNullable<Json>,"recipe_id"?: string,"review_status"?: string,"version_no"?: number
                   }
                   Relationships: [
                     {
@@ -673,6 +725,32 @@ isOneToOne: false
       referencedColumns: ["recipe_id"]
     },{
       foreignKeyName: "recipe_versions_recipe_id_fkey"
+      columns: ["recipe_id"]
+isOneToOne: false
+      referencedRelation: "recipes"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"recipe_views": {
+                  Row: {
+                    "day": string,"recipe_id": string,"visitor_hash": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "day": string,"recipe_id": string,"visitor_hash": string
+                  }
+                  Update: {
+                    "day"?: string,"recipe_id"?: string,"visitor_hash"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "recipe_views_recipe_id_fkey"
+      columns: ["recipe_id"]
+isOneToOne: false
+      referencedRelation: "mv_recipe_popularity"
+      referencedColumns: ["recipe_id"]
+    },{
+      foreignKeyName: "recipe_views_recipe_id_fkey"
       columns: ["recipe_id"]
 isOneToOne: false
       referencedRelation: "recipes"
@@ -720,6 +798,38 @@ isOneToOne: false
       columns: ["owner_id"]
 isOneToOne: false
       referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"review_queue": {
+                  Row: {
+                    "created_at": string,"decided_at": string | null,"decided_by": string | null,"id": number,"reason": string,"recipe_id": string,"reject_code": string | null,"reject_note": string | null,"requested_visibility": string,"state": string,"version_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"id"?: never,"reason": string,"recipe_id": string,"reject_code"?: string | null,"reject_note"?: string | null,"requested_visibility": string,"state"?: string,"version_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"id"?: never,"reason"?: string,"recipe_id"?: string,"reject_code"?: string | null,"reject_note"?: string | null,"requested_visibility"?: string,"state"?: string,"version_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "review_queue_recipe_id_fkey"
+      columns: ["recipe_id"]
+isOneToOne: false
+      referencedRelation: "mv_recipe_popularity"
+      referencedColumns: ["recipe_id"]
+    },{
+      foreignKeyName: "review_queue_recipe_id_fkey"
+      columns: ["recipe_id"]
+isOneToOne: false
+      referencedRelation: "recipes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "review_queue_version_id_fkey"
+      columns: ["version_id"]
+isOneToOne: false
+      referencedRelation: "recipe_versions"
       referencedColumns: ["id"]
     }
                   ]
@@ -832,6 +942,9 @@ isOneToOne: false
             "accept_signup_terms":
 { Args: { "p_terms_version": string }; Returns: Json
                            },
+"admin_decide_review":
+{ Args: { "p_actor": string,"p_code"?: string,"p_decision": string,"p_note"?: string,"p_version": string }; Returns: Json
+                           },
 "apply_update":
 { Args: { "p_entitlement_id": string }; Returns: Json
                            },
@@ -840,6 +953,9 @@ isOneToOne: false
                            },
 "complete_signup_credits":
 { Args: { "p_device_hash": string,"p_ip_hash": string,"p_user": string }; Returns: Json
+                           },
+"create_share_link":
+{ Args: { "p_code": string,"p_recipe": string }; Returns: Json
                            },
 "file_for_download":
 { Args: { "p_file_id": string,"p_version_id": string }; Returns: {
@@ -885,11 +1001,19 @@ isOneToOne: false
 "my_recipe_state":
 { Args: { "p_recipe_id": string }; Returns: Json
                            },
+"my_recipes":
+{ Args: { "p_days"?: number }; Returns: {
+              "category": string,"downloads": number,"link_clicks": number,"links": Json,"pending_version_no": number,"prompt_kind": string,"public_id": string,"recipe_id": string,"reject_code": string,"reject_note": string,"same_count": number,"status": string,"title": string,"updated_at": string,"version_no": number,"views": number
+            }[]
+                           },
 "open_original":
 { Args: { "p_entitlement_id": string }; Returns: Json
                            },
 "recipe_search_doc":
 { Args: { "nickname": string,"search_tags": (string)[],"summary": string,"title": string }; Returns: (string)[]
+                           },
+"record_recipe_view":
+{ Args: { "p_public_id": string,"p_visitor_hash": string }; Returns: undefined
                            },
 "record_share_click":
 { Args: { "p_code": string,"p_public_id": string,"p_visitor_hash": string }; Returns: string
@@ -904,10 +1028,16 @@ isOneToOne: false
               "category": string,"creator_handle": string,"creator_nickname": string,"downloads": number,"filters": Json,"job_codes": (string)[],"likes": number,"popularity": number,"price_krw": number,"prompt_kind": string,"public_id": string,"published_at": string,"same_count": number,"score": number,"summary": string,"title": string,"tool_codes": (string)[],"total_count": number
             }[]
                            },
+"set_recipe_visibility":
+{ Args: { "p_recipe": string,"p_visibility": string }; Returns: Json
+                           },
 "similar_recipes":
 { Args: { "p_limit"?: number,"p_public_id": string }; Returns: {
               "category": string,"creator_handle": string,"creator_nickname": string,"downloads": number,"filters": Json,"job_codes": (string)[],"likes": number,"price_krw": number,"prompt_kind": string,"public_id": string,"same_count": number,"summary": string,"title": string,"tool_codes": (string)[]
             }[]
+                           },
+"submit_recipe_version":
+{ Args: { "p_owner": string,"p_payload": Json }; Returns: Json
                            }
           }
           Enums: {

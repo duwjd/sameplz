@@ -48,6 +48,23 @@ create unique index model_prices_one_active on public.model_prices (model_id) wh
 alter table public.model_prices enable row level security;
 revoke all on public.model_prices from anon, authenticated;
 
+-- A price version never changes once written (F4-1): new prices are a new version; only `active` toggles.
+create or replace function private.model_prices_immutable()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.model_id <> old.model_id or new.price_version <> old.price_version or new.rule <> old.rule then
+    raise exception using errcode = 'P0001', message = 'PRICE_IMMUTABLE';
+  end if;
+  return new;
+end;
+$$;
+revoke execute on function private.model_prices_immutable() from public, anon, authenticated;
+create trigger model_prices_immutable before update on public.model_prices
+  for each row execute function private.model_prices_immutable();
+
 -- One cell = one image or one video. Unknown keys / disallowed values / missing price → INVALID_PARAMS.
 -- credits = ceil(USD × 805) (D17), at least 1. Returns the filled params too.
 create or replace function private.quote_cell(p_model text, p_params jsonb, p_refs integer default 0)
@@ -101,6 +118,9 @@ begin
   end if;
   if pr.rule ->> 'unit' = 'second' then
     usd := usd * (filled ->> 'duration')::numeric;
+    if usd is null then   -- per-second price without a duration (catalog error): never price it at 1C
+      raise exception using errcode = 'P0001', message = 'INVALID_PARAMS';
+    end if;
   end if;
   usd := usd + coalesce((pr.rule ->> 'per_reference_usd')::numeric, 0) * coalesce(p_refs, 0);
   credits := greatest(1, ceil(usd * 805))::integer;
@@ -138,8 +158,10 @@ begin
     if jsonb_typeof(c) <> 'object' or jsonb_typeof(c -> 'model') <> 'string' then
       raise exception using errcode = 'P0001', message = 'INVALID_PARAMS';
     end if;
-    n := case when jsonb_typeof(c -> 'count') = 'number' then (c ->> 'count')::numeric::integer
-              when c -> 'count' is null then 1 end;
+    n := case when c -> 'count' is null then 1
+              when jsonb_typeof(c -> 'count') = 'number' and (c ->> 'count')::numeric between 1 and 4
+                   and (c ->> 'count')::numeric = trunc((c ->> 'count')::numeric)
+                then (c ->> 'count')::numeric::integer end;
     select m.kind into kind from public.models m where m.id = c ->> 'model';
     if n is null or n < 1 or n > 4 or (kind = 'video' and n <> 1) then
       raise exception using errcode = 'P0001', message = 'INVALID_PARAMS';
@@ -166,8 +188,17 @@ stable
 security definer
 set search_path = ''
 as $$
+declare
+  q jsonb := private.quote_cells(p_cells, p_refs);
+  lim integer := (select daily_limit from private.credit_policy());
+  remaining integer := greatest(lim - coalesce(private.used_today((select auth.uid())), 0), 0);
 begin
-  return private.quote_cells(p_cells, p_refs);
+  return q || jsonb_build_object(
+    'cells', (select jsonb_agg(e || jsonb_build_object('exceeds_daily_limit', (e ->> 'credits')::integer > lim)
+                               order by o)
+                from jsonb_array_elements(q -> 'cells') with ordinality as x(e, o)),
+    'daily_limit', lim, 'remaining_today', remaining,
+    'exceeds_remaining', (q ->> 'total')::integer > remaining);
 end;
 $$;
 
@@ -186,6 +217,7 @@ create table public.play_runs (
   check (mode <> 'blank' or recipe_version_id is null)
 );
 create index play_runs_user_idx on public.play_runs (user_id, created_at desc);
+create index play_runs_recipe_version_idx on public.play_runs (recipe_version_id) where recipe_version_id is not null;
 
 create table public.play_cells (
   id uuid primary key default gen_random_uuid(),
@@ -210,7 +242,11 @@ create table public.play_cells (
   delete_after timestamptz,
   created_at timestamptz not null default now()
 );
+alter table public.play_cells add constraint play_cells_price_fk
+  foreign key (model_id, price_version) references public.model_prices (model_id, price_version);
 create index play_cells_run_idx on public.play_cells (run_id);
+create index play_cells_user_idx on public.play_cells (user_id, created_at desc);
+create index play_cells_model_price_idx on public.play_cells (model_id, price_version);
 create index play_cells_queued_idx on public.play_cells (next_attempt_at) where status = 'queued';
 create index play_cells_deadline_idx on public.play_cells (deadline_at) where status in ('submitted', 'running');
 create index play_cells_delete_idx on public.play_cells (delete_after) where result_path is not null and saved_at is null;
@@ -233,14 +269,22 @@ create table public.play_refs (
   delete_after timestamptz not null default now() + interval '24 hours'
 );
 create index play_refs_delete_idx on public.play_refs (delete_after);
+create index play_refs_user_idx on public.play_refs (user_id);
 
 create table public.face_consents (
   id bigint generated always as identity primary key,
   run_id uuid not null references public.play_runs (id) on delete cascade,
   ref_id uuid references public.play_refs (id) on delete set null,
   user_id uuid not null references public.profiles (id) on delete cascade,
+  notice_version text not null default 'play-face-v1',
   consented_at timestamptz not null default now()
 );
+create index face_consents_run_idx on public.face_consents (run_id);
+create index face_consents_user_idx on public.face_consents (user_id);
+create index face_consents_ref_idx on public.face_consents (ref_id);
+-- Consent evidence (F4-8): append-only like consent_events.
+create trigger face_consents_append_only before update or delete on public.face_consents
+  for each row execute function private.reject_update_delete();
 
 create table public.generation_webhook_inbox (
   provider text not null,
@@ -249,6 +293,8 @@ create table public.generation_webhook_inbox (
   received_at timestamptz not null default now(),
   primary key (provider, event_key)
 );
+create index generation_webhook_inbox_cell_idx on public.generation_webhook_inbox (cell_id);
+create index generation_webhook_inbox_received_idx on public.generation_webhook_inbox (received_at);
 
 alter table public.play_runs enable row level security;
 alter table public.play_cells enable row level security;
@@ -257,6 +303,7 @@ alter table public.face_consents enable row level security;
 alter table public.generation_webhook_inbox enable row level security;
 revoke all on public.play_runs, public.play_cells, public.play_refs, public.face_consents,
   public.generation_webhook_inbox from anon, authenticated;
+revoke all on sequence public.face_consents_id_seq from anon, authenticated;
 grant select on public.play_runs to authenticated;
 -- Token hash and provider id stay server-side.
 grant select (id, run_id, model_id, params, price_credits, status, error_code, result_path, saved_at,
@@ -272,7 +319,7 @@ create policy play_refs_select_own on public.play_refs for select to authenticat
 -- ---------------------------------------------------------------- storage (D19)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('play-refs', 'play-refs', false, 10485760, array['image/png', 'image/jpeg', 'image/webp']),
-       ('play-results', 'play-results', false, 209715200,
+       ('play-results', 'play-results', false, 52428800,
         array['image/png', 'image/jpeg', 'image/webp', 'video/mp4', 'video/webm'])
 on conflict (id) do update
   set public = excluded.public, file_size_limit = excluded.file_size_limit,
@@ -291,7 +338,7 @@ create policy play_run_owner_receives on realtime.messages for select to authent
 create or replace function public.start_run(
   p_user uuid, p_client_request_id uuid, p_mode text, p_recipe_version_id uuid, p_variables jsonb,
   p_cells jsonb, p_price_versions jsonb, p_reference_ids uuid[], p_face_consent boolean,
-  p_rendered_prompt text, p_ip_hash text, p_device_hash text)
+  p_rendered_prompt text, p_ip_hash text, p_device_hash text, p_expected_total integer default null)
 returns jsonb
 language plpgsql
 security definer
@@ -346,7 +393,7 @@ begin
                      join public.recipes r on r.id = v.recipe_id
                      join public.entitlements e on e.recipe_id = r.id
                     where v.id = p_recipe_version_id and v.review_status = 'approved' and r.category = 'prompt'
-                      and e.user_id = p_user and e.revoked_at is null) then
+                      and r.status = 'live' and e.user_id = p_user and e.revoked_at is null) then
       return jsonb_build_object('ok', false, 'reason', 'NOT_ENTITLED');
     end if;
   end if;
@@ -374,6 +421,10 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'PRICE_CHANGED');
   end if;
   total := (q ->> 'total')::integer;
+  -- The quote the user saw (F4-1): also catches a changed default or allowed value within a price version.
+  if p_expected_total is not null and p_expected_total <> total then
+    return jsonb_build_object('ok', false, 'reason', 'PRICE_CHANGED');
+  end if;
 
   reason := private.check_run_allowed(p_user, total, p_ip_hash, p_device_hash);   -- rate buckets persist
   if reason is not null then
@@ -411,7 +462,11 @@ begin
   exception when sqlstate 'P0001' then
     get stacked diagnostics detail = pg_exception_detail;
     if sqlerrm = 'HOLD_FAILED' then
-      return (detail::jsonb - 'credits') || jsonb_build_object('ok', false);
+      if detail::jsonb ->> 'reason' = 'INSUFFICIENT_CREDITS' then   -- shortfall for the whole run
+        return jsonb_build_object('ok', false, 'reason', 'INSUFFICIENT_CREDITS',
+                                  'shortfall', greatest(total - private.spendable_credits(p_user), 1));
+      end if;
+      return jsonb_build_object('ok', false, 'reason', detail::jsonb ->> 'reason');
     end if;
     raise;
   end;
@@ -422,8 +477,10 @@ $$;
 
 -- ---------------------------------------------------------------- terminal transition (F4-5, FM-4~9/14)
 -- The only exit for a cell: claim the terminal state once, settle once, broadcast the whitelist only.
+-- Each call is its own transaction: never finish cells of several users in one call (lock order
+-- cell → account → generation_budget would deadlock with start_run and the monthly grant).
 create or replace function public.finish_cell(p_cell uuid, p_status text, p_error_code text default null,
-                                              p_result_path text default null)
+                                              p_result_path text default null, p_provider_billed boolean default false)
 returns jsonb
 language plpgsql
 security definer
@@ -433,6 +490,8 @@ declare
   c public.play_cells%rowtype;
   s jsonb;
   outcome text;
+  code text := case when p_error_code ~ '^[A-Z_]{2,40}$' then p_error_code
+                    when p_error_code is not null then 'PROVIDER_ERROR' end;
 begin
   if p_status is null or p_status not in ('succeeded', 'failed', 'blocked', 'canceled', 'expired') then
     raise exception using errcode = 'P0001', message = 'INVALID_OUTCOME';
@@ -442,7 +501,7 @@ begin
   end if;
   update public.play_cells
      set status = p_status,
-         error_code = case when p_status = 'succeeded' then null else p_error_code end,
+         error_code = case when p_status = 'succeeded' then null else code end,
          result_path = case when p_status = 'succeeded' then p_result_path end,
          finished_at = now(),
          delete_after = case when p_status = 'succeeded' then created_at + interval '30 days' end
@@ -454,11 +513,26 @@ begin
   outcome := case p_status when 'succeeded' then 'success' when 'blocked' then 'safety_blocked'
                            when 'canceled' then 'canceled' else 'model_error' end;
   s := private.settle_cell(p_cell, outcome);
+  -- The user gets the credits back, but a provider that billed anyway still spends the budget (D12).
+  if coalesce(p_provider_billed, false) and p_status <> 'succeeded' then
+    update public.generation_budget
+       set spent = spent + c.price_credits, updated_at = now()
+     where month = (select private.kst_month(h.created_at) from public.credit_holds h where h.cell_id = p_cell);
+  end if;
   if p_status = 'blocked' then
     perform private.record_moderation_block(c.user_id);
   end if;
-  perform realtime.send(jsonb_build_object('cell_id', c.id, 'status', c.status, 'error_code', c.error_code),
-                        'cell', 'run:' || c.run_id::text, true);
+  -- The rendered prompt is only needed while a cell may still be (re)submitted.
+  if not exists (select 1 from public.play_cells x
+                  where x.run_id = c.run_id and x.status in ('queued', 'submitted', 'running')) then
+    delete from private.play_prompts where run_id = c.run_id;
+  end if;
+  begin   -- a UI hint: never let a failed broadcast undo the settlement
+    perform realtime.send(jsonb_build_object('cell_id', c.id, 'status', c.status, 'error_code', c.error_code),
+                          'cell', 'run:' || c.run_id::text, true);
+  exception when others then
+    null;
+  end;
   return jsonb_build_object('finished', true, 'captured', coalesce((s ->> 'captured')::integer, 0));
 end;
 $$;
@@ -486,7 +560,7 @@ begin
   end if;
   update public.play_cells
      set attempts = attempts + 1, webhook_token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex'),
-         next_attempt_at = now() + interval '2 minutes'   -- a crash before mark_cell_submitted retries later
+         next_attempt_at = now() + interval '5 minutes'   -- lease: a crash before mark_cell_submitted retries later
    where id = p_cell;
   select * into m from public.models where id = c.model_id;
   select * into r from public.play_runs where id = c.run_id;
@@ -523,7 +597,8 @@ as $$
 begin
   update public.play_cells
      set next_attempt_at = now() + make_interval(mins => greatest(attempts, 1)),
-         error_code = p_error_code
+         error_code = case when p_error_code ~ '^[A-Z_]{2,40}$' then p_error_code
+                           when p_error_code is not null then 'PROVIDER_ERROR' end
    where id = p_cell and status = 'queued';
   return found;
 end;
@@ -591,27 +666,31 @@ end;
 $$;
 
 -- ---------------------------------------------------------------- sweeper (FM-7/8/17/21, D19)
--- Called each minute by /api/cron/play-sweeper. Cells queued for over 10 minutes are failed here
--- (credits returned); the rest are returned for the app to resubmit / poll / delete files.
+-- Called each minute by /api/cron/play-sweeper. Read-only: it lists work, and the app finishes /
+-- resubmits / polls each cell in its own call (one transaction per cell, see finish_cell).
+--   finish: queued > 10 min with the submit lease over → failed PROVIDER_UNAVAILABLE;
+--           submitted/running > 24 h past the deadline (provider lookups kept failing) → expired TIMEOUT.
 create or replace function public.sweep_targets()
 returns jsonb
-language plpgsql
+language sql
+stable
 security definer
 set search_path = ''
 as $$
-declare
-  x record;
-begin
-  for x in select id from public.play_cells
-            where status = 'queued' and created_at < now() - interval '10 minutes'
-            order by created_at limit 100
-  loop
-    perform public.finish_cell(x.id, 'failed', 'PROVIDER_UNAVAILABLE');
-  end loop;
-  return jsonb_build_object(
+  select jsonb_build_object(
+    'finish', (select coalesce(jsonb_agg(jsonb_build_object('cell', s.id, 'status', s.st, 'error_code', s.code)
+                                         order by s.created_at), '[]'::jsonb)
+                 from (select id, created_at, 'failed' as st, 'PROVIDER_UNAVAILABLE' as code from public.play_cells
+                        where status = 'queued' and created_at < now() - interval '10 minutes' and next_attempt_at <= now()
+                       union all
+                       select id, created_at, 'expired', 'TIMEOUT' from public.play_cells
+                        where status in ('submitted', 'running') and deadline_at < now() - interval '24 hours'
+                       order by created_at limit 100) s),
     'resubmit', (select coalesce(jsonb_agg(id order by next_attempt_at), '[]'::jsonb) from (
                    select id, next_attempt_at from public.play_cells
-                    where status = 'queued' and next_attempt_at <= now() order by next_attempt_at limit 50) s),
+                    where status = 'queued' and next_attempt_at <= now()
+                      and created_at >= now() - interval '10 minutes'
+                    order by next_attempt_at limit 50) s),
     'poll', (select coalesce(jsonb_agg(jsonb_build_object('cell', s.id, 'provider_request_id', s.provider_request_id,
                                                           'endpoint', s.endpoint, 'provider', s.provider,
                                                           'deadline_at', s.deadline_at) order by s.deadline_at), '[]'::jsonb)
@@ -627,11 +706,11 @@ begin
     'expired_results', (select coalesce(jsonb_agg(jsonb_build_object('id', id, 'path', result_path)), '[]'::jsonb)
                           from (select id, result_path from public.play_cells
                                  where result_path is not null and saved_at is null and delete_after <= now()
-                                 order by delete_after limit 100) s));
-end;
+                                 order by delete_after limit 100) s))
 $$;
 
--- After the files are removed from Storage: drop the ref rows / clear result paths.
+-- After the files are removed from Storage: drop the ref rows / clear result paths. Pass only the ids
+-- whose files were actually deleted, so a failed delete is retried on the next sweep.
 create or replace function public.purge_play_files(p_ref_ids uuid[], p_cell_ids uuid[])
 returns void
 language plpgsql
@@ -642,6 +721,7 @@ begin
   delete from public.play_refs where id = any (coalesce(p_ref_ids, '{}')) and delete_after <= now();
   update public.play_cells set result_path = null
    where id = any (coalesce(p_cell_ids, '{}')) and saved_at is null and delete_after <= now();
+  delete from public.generation_webhook_inbox where received_at < now() - interval '30 days';
 end;
 $$;
 
@@ -690,7 +770,8 @@ as $$
 begin
   update public.play_cells
      set saved_at = case when p_saved then now() end,
-         delete_after = case when p_saved then null else created_at + interval '30 days' end
+         delete_after = case when p_saved then null
+                             else greatest(created_at + interval '30 days', now() + interval '1 day') end
    where id = p_cell and user_id = (select auth.uid()) and status = 'succeeded' and result_path is not null;
   return found;
 end;
@@ -714,16 +795,16 @@ revoke execute on function public.quote_play(jsonb, integer) from public, anon;
 grant execute on function public.quote_play(jsonb, integer) to authenticated;
 
 revoke execute on function
-  public.start_run(uuid, uuid, text, uuid, jsonb, jsonb, jsonb, uuid[], boolean, text, text, text),
-  public.finish_cell(uuid, text, text, text), public.claim_cell_submit(uuid),
+  public.start_run(uuid, uuid, text, uuid, jsonb, jsonb, jsonb, uuid[], boolean, text, text, text, integer),
+  public.finish_cell(uuid, text, text, text, boolean), public.claim_cell_submit(uuid),
   public.mark_cell_submitted(uuid, text), public.requeue_cell(uuid, text), public.mark_cell_running(uuid),
   public.verify_cell_token(uuid, text), public.attach_provider_request(uuid, text),
   public.record_webhook_event(text, text, uuid), public.sweep_targets(), public.purge_play_files(uuid[], uuid[]),
   public.create_play_ref(uuid, text, text, integer), public.play_prompt_for_submit(uuid)
   from public, anon, authenticated;
 grant execute on function
-  public.start_run(uuid, uuid, text, uuid, jsonb, jsonb, jsonb, uuid[], boolean, text, text, text),
-  public.finish_cell(uuid, text, text, text), public.claim_cell_submit(uuid),
+  public.start_run(uuid, uuid, text, uuid, jsonb, jsonb, jsonb, uuid[], boolean, text, text, text, integer),
+  public.finish_cell(uuid, text, text, text, boolean), public.claim_cell_submit(uuid),
   public.mark_cell_submitted(uuid, text), public.requeue_cell(uuid, text), public.mark_cell_running(uuid),
   public.verify_cell_token(uuid, text), public.attach_provider_request(uuid, text),
   public.record_webhook_event(text, text, uuid), public.sweep_targets(), public.purge_play_files(uuid[], uuid[]),
@@ -763,12 +844,16 @@ select cron.schedule('sameplz-play-sweeper', '* * * * *', 'select private.call_p
 
 -- ---------------------------------------------------------------- production budget (D12)
 -- 2026-10-15 decision: $50 per month ≈ 40,250C. Existing rows (local seed) are left alone.
-insert into public.generation_budget (month, cap_credits, state)
-values (private.kst_month(), 40250, 'open'), ((private.kst_month() + interval '1 month')::date, 40250, 'open')
-on conflict (month) do nothing;
+-- actor: nil uuid = migration (no profile row). 'budget_init' = first cap of a month, not a manual change.
+with ins as (
+  insert into public.generation_budget (month, cap_credits, state)
+  values (private.kst_month(), 40250, 'open'), ((private.kst_month() + interval '1 month')::date, 40250, 'open')
+  on conflict (month) do nothing
+  returning month)
 insert into public.admin_actions (actor_id, action, target_type, target_id, reason, detail)
-values ('00000000-0000-0000-0000-000000000000', 'budget_set', 'generation_budget', private.kst_month()::text,
-        'D12 운영 상한 결정(2026-10-15)', jsonb_build_object('cap_credits', 40250, 'usd', 50));
+select '00000000-0000-0000-0000-000000000000', 'budget_init', 'generation_budget', ins.month::text,
+       'D12 운영 상한 결정(2026-10-15)', jsonb_build_object('cap_credits', 40250, 'usd', 50)
+  from ins;
 
 -- ---------------------------------------------------------------- catalog (D8, 2026-10-15)
 -- fal endpoints and list prices from fal model pages (2026-10-15). GPT Image and Seedance bill by tokens;

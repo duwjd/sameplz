@@ -4,7 +4,7 @@
 -- Credits are ceil(usd × 805) (D17); every expected number below is worked out in a comment.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(193);
+select plan(245);
 
 -- ---------------------------------------------------------------- helpers
 create or replace function pg_temp.login_as(uid uuid) returns void language plpgsql as $$
@@ -30,16 +30,16 @@ end $$;
 
 -- Users A..L. A owns recipe 04 and holds recipe 12 (free); B is a stranger; C has not acknowledged the AI notice;
 -- D has only 10C; E hits the rate limit; F the budget; G the daily limit; H the atomic rollback; I settlement;
--- J sweeper; K has not confirmed 18+; L the submit/webhook RPCs.
+-- J sweeper; K has not confirmed 18+; L the submit/webhook RPCs; M the whole-run shortfall.
 insert into auth.users (id, instance_id, aud, role, email, raw_app_meta_data, raw_user_meta_data)
 select ('00000000-0000-0000-0000-00000000c' || lpad(n::text, 3, '0'))::uuid, '00000000-0000-0000-0000-000000000000',
        'authenticated', 'authenticated', 'play-' || n || '@sameplz.test', '{"provider":"email"}', '{"name":"플레이테스트"}'
-from generate_series(1, 12) n;
+from generate_series(1, 13) n;
 
 create temp table t (k text primary key, v text);
 grant all on t to anon, authenticated, service_role;
 insert into t
-select chr(64 + n), ('00000000-0000-0000-0000-00000000c' || lpad(n::text, 3, '0')) from generate_series(1, 12) n;
+select chr(64 + n), ('00000000-0000-0000-0000-00000000c' || lpad(n::text, 3, '0')) from generate_series(1, 13) n;
 create or replace function pg_temp.u(k text) returns uuid language sql as $$ select v::uuid from t where t.k = $1 $$;
 
 create temp table res (k text primary key, v jsonb);
@@ -73,6 +73,9 @@ insert into public.entitlements (user_id, recipe_id, version_id, source)
 values (pg_temp.u('A'), 'aaaaaaaa-0000-0000-0000-000000000012', 'bbbbbbbb-0000-0000-0000-000000000012', 'free');
 insert into public.entitlements (user_id, recipe_id, version_id, source, revoked_at)
 values (pg_temp.u('A'), 'aaaaaaaa-0000-0000-0000-000000000013', 'bbbbbbbb-0000-0000-0000-000000000013', 'free', now());
+-- A also holds seed recipe 15, which is stopped (status 'stopped'): free mode needs recipes.status = 'live'.
+insert into public.entitlements (user_id, recipe_id, version_id, source)
+values (pg_temp.u('A'), 'aaaaaaaa-0000-0000-0000-000000000015', 'bbbbbbbb-0000-0000-0000-000000000015', 'free');
 
 -- Own fixture models and prices (no dependence on seed models). USD → credits = ceil(usd × 805).
 -- Reference support: ref_endpoint/ref_param/ref_max > 0 (edit / image-to-video endpoint); null/null/0 = takes no reference.
@@ -91,7 +94,13 @@ insert into public.models (id, provider, endpoint, ref_endpoint, ref_param, ref_
  ('test-reprice', 'mock', 'mock/test-reprice', null, null, 0, 'image', '테스트 재가격',
   '{"quality":{"values":["low"],"default":"low"}}', 60, true, 9005),
  ('test-off', 'mock', 'mock/test-off', null, null, 0, 'image', '테스트 꺼짐',
-  '{"quality":{"values":["low"],"default":"low"}}', 60, false, 9006);
+  '{"quality":{"values":["low"],"default":"low"}}', 60, false, 9006),
+ -- default changes between quote and run (same price_version): p_expected_total catches it
+ ('test-drift', 'mock', 'mock/test-drift', null, null, 0, 'image', '테스트 기본값',
+  '{"quality":{"values":["low","high"],"default":"low"}}', 60, true, 9007),
+ -- unit second without a duration param: unpriceable
+ ('test-persec', 'mock', 'mock/test-persec', null, null, 0, 'video', '테스트 초당',
+  '{"resolution":{"values":["480p"],"default":"480p"}}', 600, true, 9008);
 insert into public.model_prices (model_id, price_version, rule, active) values
  -- test-image (unit image), key order quality|image_size:
  --   low|square_hd 0.01 → 8.05 → 9      low|portrait_4_3 0.012 → 9.66 → 10
@@ -105,7 +114,10 @@ insert into public.model_prices (model_id, price_version, rule, active) values
  ('test-video', 1, '{"unit":"second","keys":["resolution","generate_audio"],"usd":{"480p|false":0.05,"480p|true":0.08,"720p|false":0.1,"720p|true":0.13}}', true),
  ('test-video-ref', 1, '{"unit":"second","keys":["resolution","generate_audio"],"usd":{"480p|false":0.05,"480p|true":0.08,"720p|false":0.1,"720p|true":0.13},"per_reference_usd":0.02}', true),
  ('test-reprice', 1, '{"unit":"image","keys":["quality"],"usd":{"low":0.01}}', true),
- ('test-off', 1, '{"unit":"image","keys":["quality"],"usd":{"low":0.01}}', true);
+ ('test-off', 1, '{"unit":"image","keys":["quality"],"usd":{"low":0.01}}', true),
+ -- test-drift: low 0.01 → 8.05 → 9;  high 0.2 → 161
+ ('test-drift', 1, '{"unit":"image","keys":["quality"],"usd":{"low":0.01,"high":0.2}}', true),
+ ('test-persec', 1, '{"unit":"second","keys":["resolution"],"usd":{"480p":0.05}}', true);
 
 -- References: ra (A, fresh), rb (B, fresh), re (A, 25 hours old = expired). delete_after is created_at + 24h by
 -- default or generated; the DO block also pushes it back for the plain-column case.
@@ -131,14 +143,15 @@ end $$;
 -- Named-argument call pins the start_run interface; every call gets fresh ip/device hashes.
 create or replace function pg_temp.run(who text, cid_n int, mode text, ver uuid, cells jsonb, models text[],
                                        refs uuid[] default '{}', face boolean default false,
-                                       prompt text default 'rendered prompt', vars jsonb default '{}')
+                                       prompt text default 'rendered prompt', vars jsonb default '{}', exp int default null)
 returns jsonb language plpgsql as $$
 begin
   return public.start_run(p_user => pg_temp.u(who), p_client_request_id => pg_temp.cid(cid_n), p_mode => mode,
                           p_recipe_version_id => ver, p_variables => vars, p_cells => cells,
                           p_price_versions => pg_temp.pv(variadic models), p_reference_ids => refs,
                           p_face_consent => face, p_rendered_prompt => prompt,
-                          p_ip_hash => pg_temp.h(gen_random_uuid()::text), p_device_hash => pg_temp.h(gen_random_uuid()::text));
+                          p_ip_hash => pg_temp.h(gen_random_uuid()::text), p_device_hash => pg_temp.h(gen_random_uuid()::text),
+                          p_expected_total => exp);
 end $$;
 create or replace function pg_temp.cell(k text, i int) returns uuid language sql as $$
   select (v -> 'cell_ids' ->> $2)::uuid from res where res.k = $1 $$;
@@ -157,18 +170,19 @@ end $$;
 -- A refused start_run: reason as expected, and runs, cells, holds, ledger, consents, prompts, budget, balances unchanged.
 -- (rate_limit_buckets are deliberately not in the snapshot: their increment stays.)
 create or replace function pg_temp.fail_case(d text, who text, cid_n int, mode text, ver uuid, cells jsonb, models text[],
-                                             refs uuid[], face boolean, reason text, stale_pv jsonb default null)
+                                             refs uuid[], face boolean, reason text, stale_pv jsonb default null, exp int default null)
 returns setof text language plpgsql as $$
 declare v jsonb;
 begin
   insert into sn values (d, pg_temp.snap()) on conflict (k) do update set s = excluded.s;
   if stale_pv is null then
-    v := pg_temp.run(who, cid_n, mode, ver, cells, models, refs, face);
+    v := pg_temp.run(who, cid_n, mode, ver, cells, models, refs, face, exp => exp);
   else
     v := public.start_run(p_user => pg_temp.u(who), p_client_request_id => pg_temp.cid(cid_n), p_mode => mode,
                           p_recipe_version_id => ver, p_variables => '{}', p_cells => cells, p_price_versions => stale_pv,
                           p_reference_ids => refs, p_face_consent => face, p_rendered_prompt => 'rendered prompt',
-                          p_ip_hash => pg_temp.h(gen_random_uuid()::text), p_device_hash => pg_temp.h(gen_random_uuid()::text));
+                          p_ip_hash => pg_temp.h(gen_random_uuid()::text), p_device_hash => pg_temp.h(gen_random_uuid()::text),
+                          p_expected_total => exp);
   end if;
   insert into res values (d, v) on conflict (k) do update set v = excluded.v;
   return next is(coalesce(v ->> 'ok', '?') || ':' || coalesce(v ->> 'reason', '-'), 'false:' || reason, d || ' → ' || reason);
@@ -214,11 +228,26 @@ select ok((select not public and file_size_limit = 10485760
              and not exists (select 1 from unnest(allowed_mime_types) m where m not like 'image/%')
            from storage.buckets where id = 'play-refs'),
           'PLAY-schema play-refs bucket: private, 10MB, images only');
-select ok((select not public and file_size_limit = 209715200
+select ok((select not public and file_size_limit = 52428800
              and exists (select 1 from unnest(allowed_mime_types) m where m like 'image/%')
              and exists (select 1 from unnest(allowed_mime_types) m where m like 'video/%')
            from storage.buckets where id = 'play-results'),
-          'PLAY-schema play-results bucket: private, 200MB, images and video');
+          'PLAY-schema play-results bucket: private, 50MB, images and video');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.play_cells'::regclass and contype = 'f'
+                   and confrelid = 'public.model_prices'::regclass),
+          'PLAY-schema play_cells (model_id, price_version) references model_prices');
+select throws_ok($$ update public.model_prices set rule = '{"unit":"image","keys":[],"usd":{}}' where model_id = 'test-image' $$,
+                 'P0001', 'PRICE_IMMUTABLE', 'PLAY-schema a price rule cannot be edited (insert a new version)');
+select throws_ok($$ update public.model_prices set price_version = 7 where model_id = 'test-off' $$,
+                 'P0001', 'PRICE_IMMUTABLE', 'PLAY-schema a price_version cannot be renumbered');
+select throws_ok($$ update public.model_prices set model_id = 'test-tiny' where model_id = 'test-off' $$,
+                 'P0001', 'PRICE_IMMUTABLE', 'PLAY-schema a price row cannot move to another model');
+select lives_ok($$ update public.model_prices set active = false where model_id = 'test-off'; update public.model_prices set active = true where model_id = 'test-off' $$,
+                'PLAY-schema toggling active is allowed');
+select ok(exists (select 1 from public.admin_actions where action = 'budget_init' and target_type = 'generation_budget'
+                   and (detail ->> 'cap_credits')::int = 40250)
+          and not exists (select 1 from public.admin_actions where action = 'budget_set'),
+          'D12 the production budget row is logged as budget_init (only when it was inserted)');
 select is((select schedule from cron.job where jobname = 'sameplz-play-sweeper'), '* * * * *',
           'PLAY-cron sweeper runs every minute');
 select ok((select command like '%call_play_sweeper%' from cron.job where jobname = 'sameplz-play-sweeper'),
@@ -267,6 +296,20 @@ select throws_ok($$ select public.quote_play('[{"model":"test-video","params":{"
                  'P0001', 'INVALID_PARAMS', 'quote video duration 7s is INVALID_PARAMS');
 select throws_ok($$ select public.quote_play('[{"model":"test-off","params":{},"count":1}]') $$,
                  'P0001', 'INVALID_PARAMS', 'quote disabled model is INVALID_PARAMS');
+select throws_ok($$ select public.quote_play('[{"model":"test-persec","params":{},"count":1}]') $$,
+                 'P0001', 'INVALID_PARAMS', 'quote a per-second model without a duration param is INVALID_PARAMS');
+select throws_ok($$ select public.quote_play('[{"model":"test-tiny","params":{},"count":2.5}]') $$,
+                 'P0001', 'INVALID_PARAMS', 'quote count 2.5 is INVALID_PARAMS');
+select throws_ok($$ select public.quote_play('[{"model":"test-tiny","params":{},"count":1e10}]') $$,
+                 'P0001', 'INVALID_PARAMS', 'quote count 1e10 is INVALID_PARAMS, not a numeric overflow');
+select ok((select q ->> 'daily_limit' = '135' and q ->> 'remaining_today' = '135' and q ->> 'exceeds_remaining' = 'false'
+           from (select public.quote_play('[{"model":"test-image","params":{"quality":"medium"},"count":3}]') q) x),
+          'F4-16 quote carries daily_limit 135, remaining_today 135 and exceeds_remaining false (129 ≤ 135)');
+select is(public.quote_play('[{"model":"test-image","params":{"quality":"medium"},"count":4}]') ->> 'exceeds_remaining', 'true',
+          'F4-16 quote 4 × 43 = 172 exceeds the remaining 135');
+select ok((select q -> 'cells' -> 0 ->> 'exceeds_daily_limit' = 'false' and q -> 'cells' -> 1 ->> 'exceeds_daily_limit' = 'true'
+           from (select public.quote_play('[{"model":"test-image","params":{"quality":"medium"},"count":1},{"model":"test-video","params":{},"count":1}]') q) x),
+          'F4-16 per-cell exceeds_daily_limit: 43C no, a 202C video yes');
 select throws_ok($$ select * from private.quote_cell('test-tiny', '{}'::jsonb, 0) $$, '42501', null,
                  'PLAY-authz clients cannot call private.quote_cell');
 select pg_temp.as_postgres();
@@ -300,6 +343,13 @@ select * from pg_temp.fail_case('F4-8 FACE_CONSENT_REQUIRED', 'A', 9, 'blank', n
 select * from pg_temp.fail_case('FM-pre INVALID_PARAMS', 'A', 10, 'blank', null,
   '[{"model":"test-image","params":{"quality":"ultra"},"count":1}]', array['test-image'], '{}', false, 'INVALID_PARAMS');
 
+select * from pg_temp.fail_case('FM-pre NOT_ENTITLED free of a stopped recipe', 'A', 17, 'free', 'bbbbbbbb-0000-0000-0000-000000000015',
+  '[{"model":"test-tiny","params":{},"count":1}]', array['test-tiny'], '{}', false, 'NOT_ENTITLED');
+select * from pg_temp.fail_case('FM-pre INVALID_PARAMS count 2.5', 'A', 19, 'blank', null,
+  '[{"model":"test-tiny","params":{},"count":2.5}]', array['test-tiny'], '{}', false, 'INVALID_PARAMS');
+select * from pg_temp.fail_case('FM-pre INVALID_PARAMS count 1e10', 'A', 20, 'blank', null,
+  '[{"model":"test-tiny","params":{},"count":1e10}]', array['test-tiny'], '{}', false, 'INVALID_PARAMS');
+
 -- FM-20 price changed between quote and run.
 update public.model_prices set active = false where model_id = 'test-reprice' and price_version = 1;
 insert into public.model_prices (model_id, price_version, rule, active)
@@ -307,6 +357,11 @@ values ('test-reprice', 2, '{"unit":"image","keys":["quality"],"usd":{"low":0.02
 select * from pg_temp.fail_case('FM-20 PRICE_CHANGED', 'A', 11, 'blank', null,
   '[{"model":"test-reprice","params":{},"count":1}]', array['test-reprice'], '{}', false, 'PRICE_CHANGED', '{"test-reprice":1}'::jsonb);
 select is((select count(*) from public.play_cells where model_id = 'test-reprice'), 0::bigint, 'FM-20 no cell was created at the old price');
+
+-- FM-20 same price_version, but the default param changed (low → high) after the quote said 9C.
+update public.models set params = '{"quality":{"values":["low","high"],"default":"high"}}' where id = 'test-drift';
+select * from pg_temp.fail_case('FM-20 PRICE_CHANGED via p_expected_total', 'A', 18, 'blank', null,
+  '[{"model":"test-drift","params":{},"count":1}]', array['test-drift'], '{}', false, 'PRICE_CHANGED', null, 9);
 
 select * from pg_temp.fail_case('F4-16 ADULT_REQUIRED', 'K', 12, 'blank', null,
   '[{"model":"test-tiny","params":{},"count":1}]', array['test-tiny'], '{}', false, 'ADULT_REQUIRED');
@@ -332,7 +387,7 @@ update public.generation_budget set state = 'open' where month = private.kst_mon
 -- A: own mode, test-tiny low with one reference = 9C, face consent.
 insert into res select 'a_own', pg_temp.run('A', 21, 'own', 'bbbbbbbb-0000-0000-0000-000000000004',
   '[{"model":"test-tiny","params":{},"count":1}]', array['test-tiny'], array['f0000000-0000-0000-0000-000000000001']::uuid[], true,
-  'SECRET-RENDERED-A1', '{"배경":"카페"}');
+  'SECRET-RENDERED-A1', '{"배경":"카페"}', exp => 9);
 select ok((select (v ->> 'ok')::boolean and (v ->> 'total')::int = 9 and jsonb_array_length(v -> 'cell_ids') = 1
                   and v ->> 'run_id' is not null from res where k = 'a_own'),
           'PLAY-run start_run returns ok, run_id, one cell id and total 9 (tiny + 1 reference)');
@@ -357,6 +412,10 @@ select is((select count(*) from public.face_consents where run_id = pg_temp.runi
           'F4-8 face consent recorded per run and reference');
 select is((select rendered from private.play_prompts where run_id = pg_temp.runid('a_own')), 'SECRET-RENDERED-A1',
           'hidden-content rendered prompt is stored server-side per run');
+select is((select notice_version from public.face_consents where run_id = pg_temp.runid('a_own')), 'play-face-v1',
+          'F4-8 face consent stores the notice version shown');
+select throws_ok($$ update public.face_consents set consented_at = now() $$, 'P0001', 'APPEND_ONLY', 'F4-8 face consents cannot be updated');
+select throws_ok($$ delete from public.face_consents $$, 'P0001', 'APPEND_ONLY', 'F4-8 face consents cannot be deleted');
 select is(public.play_prompt_for_submit(pg_temp.cell('a_own', 0)), 'SECRET-RENDERED-A1',
           'hidden-content play_prompt_for_submit returns the rendered prompt for the cell');
 
@@ -405,6 +464,14 @@ select ok((select (v ->> 'ok')::boolean and (v ->> 'total')::int = 129 from res 
           and (select held from public.credit_accounts where user_id = pg_temp.u('G')) = 129,
           'INV-C21 3 × 43 = 129 ≤ 135 holds 129C');
 
+select pg_temp.login_as(pg_temp.u('G'));
+select ok((select q ->> 'remaining_today' = '6' and q ->> 'exceeds_remaining' = 'true'
+           from (select public.quote_play('[{"model":"test-image","params":{"quality":"low"},"count":1}]') q) x),
+          'F4-16 after 129C used: remaining_today 6, a 9C quote exceeds it');
+select is(public.quote_play('[{"model":"test-tiny","params":{},"count":1}]') ->> 'exceeds_remaining', 'false',
+          'F4-16 a 1C quote fits the remaining 6');
+select pg_temp.as_postgres();
+
 -- ---------------------------------------------------------------- F4-16 rate limit (E): five runs, the sixth is refused
 -- check_run_allowed also counts per user, so distinct ip/device hashes do not help.
 select is((select count(*) from generate_series(1, 5) i
@@ -442,6 +509,23 @@ select ok(coalesce(pg_temp.run('H', 41, 'blank', null, '[{"model":"test-tiny","p
           'FM-atomic retry with the same client_request_id is a fresh run (the failed one left no row)');
 select is((select count(*) from public.credit_holds where user_id = pg_temp.u('H') and state = 'held'), 3::bigint,
           'FM-atomic the retry holds all three cells');
+
+-- ---------------------------------------------------------------- whole-run shortfall (M)
+-- After two holds a concurrent spend leaves only 4C spendable: the third 9C hold fails. Run total 27, spendable 4 → 23.
+create or replace function public.zz_drain_after_two() returns trigger language plpgsql as $$
+begin
+  if (select count(*) from public.credit_holds where user_id = new.user_id) = 2 then
+    update public.credit_lots set remaining = held + 4 where user_id = new.user_id and kind = 'monthly_grant';
+  end if;
+  return null;
+end $$;
+create trigger zz_drain_after_two after insert on public.credit_holds for each row execute function public.zz_drain_after_two();
+select * from pg_temp.fail_case('FM-1 hold failure mid-run', 'M', 61, 'blank', null,
+  '[{"model":"test-image","params":{"quality":"low"},"count":3}]', array['test-image'], '{}', false, 'INSUFFICIENT_CREDITS');
+drop trigger zz_drain_after_two on public.credit_holds;
+drop function public.zz_drain_after_two();
+select ok((select (v ->> 'shortfall')::int >= 1 from res where k = 'FM-1 hold failure mid-run'),
+          'FM-1 a mid-run hold failure reports a positive shortfall (exact whole-run value cannot be pinned: the trigger''s drain is rolled back with the block)');
 
 -- ---------------------------------------------------------------- settlement (I): FM-4/5/6/9/14
 -- I: cells [image low 9C, image low 9C, tiny 1C] = 19C.
@@ -526,6 +610,37 @@ select set_config('realtime.topic', 'run:' || pg_temp.runid('i_run1'), true);
 select is(pg_temp.cnt('select count(*) from realtime.messages where topic = ' || quote_literal('run:' || pg_temp.runid('i_run1'))), 0::bigint, 'PLAY-realtime anon cannot read run topics');
 select pg_temp.as_postgres();
 
+-- ---------------------------------------------------------------- provider-billed failures, prompt cleanup (I, third run)
+-- 3 × tiny (1C each). m0 blocked & billed, m1 failed & not billed, m2 failed & billed with a provider error text.
+insert into res select 'i_run3', pg_temp.run('I', 53, 'blank', null, '[{"model":"test-tiny","params":{},"count":3}]', array['test-tiny'],
+  prompt => 'SECRET-I3');
+insert into res values ('spent3', (select to_jsonb(spent) from public.generation_budget where month = private.kst_month()));
+select public.finish_cell(p_cell => pg_temp.cell('i_run3', 0), p_status => 'blocked', p_error_code => 'SAFETY_BLOCKED',
+                          p_result_path => null, p_provider_billed => true);
+select ok((select h.state = 'released' and h.outcome = 'safety_blocked' from public.credit_holds h where h.cell_id = pg_temp.cell('i_run3', 0))
+          and (select spent - (select (v #>> '{}')::int from res where k = 'spent3') from public.generation_budget where month = private.kst_month()) = 1,
+          'F4-15 blocked & provider-billed: the user is released, the budget still books the 1C as spent');
+select ok(pg_temp.inv_ledger() and pg_temp.inv_held() and pg_temp.inv_budget(),
+          'INV-C20 after a billed release: reserved is back to Σ held holds');
+select public.finish_cell(p_cell => pg_temp.cell('i_run3', 1), p_status => 'failed', p_error_code => 'PROVIDER_ERROR',
+                          p_result_path => null, p_provider_billed => false);
+select is((select spent - (select (v #>> '{}')::int from res where k = 'spent3') from public.generation_budget where month = private.kst_month()), 1,
+          'F4-15 failed & not billed: spent unchanged');
+select ok((select count(*) = 1 from private.play_prompts where run_id = pg_temp.runid('i_run3'))
+          and public.play_prompt_for_submit(pg_temp.cell('i_run3', 2)) = 'SECRET-I3',
+          'hidden-content the rendered prompt stays while any cell of the run is not terminal');
+insert into res select 'i3_fin', public.finish_cell(p_cell => pg_temp.cell('i_run3', 2), p_status => 'failed',
+  p_error_code => 'content_policy_violation', p_result_path => null, p_provider_billed => true);
+select ok((select (v ->> 'finished')::boolean from res where k = 'i3_fin')
+          and (select error_code = 'PROVIDER_ERROR' from public.play_cells where id = pg_temp.cell('i_run3', 2)),
+          'FM-pre a provider error text that is not ^[A-Z_]{2,40}$ is stored as PROVIDER_ERROR and the finish succeeds');
+select is((select spent - (select (v #>> '{}')::int from res where k = 'spent3') from public.generation_budget where month = private.kst_month()), 2,
+          'F4-15 second billed failure books another 1C');
+select is((select count(*) from private.play_prompts where run_id = pg_temp.runid('i_run3')), 0::bigint,
+          'hidden-content the rendered prompt row is deleted once the last cell is terminal');
+select is(public.play_prompt_for_submit(pg_temp.cell('i_run3', 2)), null, 'hidden-content play_prompt_for_submit returns null afterwards');
+select ok(pg_temp.inv_ledger() and pg_temp.inv_held() and pg_temp.inv_budget(), 'INV-C2/C20 after the billed scenario');
+
 -- ---------------------------------------------------------------- submit / webhook RPCs (L)
 insert into res select 'l_run', pg_temp.run('L', 300, 'blank', null, '[{"model":"test-tiny","params":{},"count":2}]', array['test-tiny']);
 insert into res select 'l1_claim', public.claim_cell_submit(p_cell => pg_temp.cell('l_run', 0));
@@ -546,6 +661,8 @@ select ok((select v @> jsonb_build_object('ok', true, 'status', 'queued', 'provi
 select is(public.verify_cell_token(pg_temp.cell('l_run', 0), 'wrong-token'), '{"ok":false}'::jsonb, 'FM-11 wrong token is rejected');
 select is(public.verify_cell_token(pg_temp.cell('l_run', 1), (select v ->> 'token' from res where k = 'l1_claim')), '{"ok":false}'::jsonb,
           'FM-11 a token from another cell is rejected (also before the cell was ever claimed)');
+select is((select next_attempt_at from public.play_cells where id = pg_temp.cell('l_run', 0)), now() + interval '5 minutes',
+          'FM-17 claim_cell_submit takes a 5-minute lease (next_attempt_at = now() + 5 min)');
 -- FM-10 webhook before the provider id is known.
 select public.attach_provider_request(p_cell => pg_temp.cell('l_run', 0), p_provider_request_id => 'req-l1');
 select public.attach_provider_request(p_cell => pg_temp.cell('l_run', 0), p_provider_request_id => 'req-other');
@@ -587,7 +704,9 @@ select ok((select count(*) = 1 from public.generation_webhook_inbox where provid
           'FM-9 the inbox keeps one row per (provider, event_key); another provider is separate');
 -- FM-21 exhaustion on the second cell: three claims, the fourth fails the cell.
 select public.claim_cell_submit(pg_temp.cell('l_run', 1));
-select public.requeue_cell(pg_temp.cell('l_run', 1), 'SUBMIT_FAILED');
+select public.requeue_cell(pg_temp.cell('l_run', 1), 'submit failed');
+select is((select error_code from public.play_cells where id = pg_temp.cell('l_run', 1)), 'PROVIDER_ERROR',
+          'FM-pre requeue_cell stores an error text that is not ^[A-Z_]{2,40}$ as PROVIDER_ERROR');
 update public.play_cells set next_attempt_at = now() where id = pg_temp.cell('l_run', 1);
 select public.claim_cell_submit(pg_temp.cell('l_run', 1));
 select public.requeue_cell(pg_temp.cell('l_run', 1), 'SUBMIT_FAILED');
@@ -625,10 +744,19 @@ select pg_temp.as_postgres();
 select ok((select saved_at is null and delete_after = created_at + interval '30 days' from public.play_cells where id = pg_temp.cell('i_run1', 0)),
           'D19 unsaving restores delete_after = created_at + 30 days');
 
+update public.play_cells set created_at = now() - interval '40 days' where id = pg_temp.cell('i_run1', 0);
+select pg_temp.login_as(pg_temp.u('I'));
+select public.save_play_cell(pg_temp.cell('i_run1', 0), true);
+select public.save_play_cell(pg_temp.cell('i_run1', 0), false);
+select pg_temp.as_postgres();
+select is((select delete_after from public.play_cells where id = pg_temp.cell('i_run1', 0)), now() + interval '1 day',
+          'D19 unsaving an old result gives one more day: delete_after = greatest(created_at + 30d, now() + 1 day)');
+
 -- ---------------------------------------------------------------- sweeper (J)
--- J cells (4 × tiny, 2 × image low; index = cell_ids order): j0 succeeded & past delete_after, j1 succeeded & saved, j2 queued 11 minutes (stale), j3 submitted past deadline,
--- j4 queued & due (resubmit), j5 submitted with time left.
-insert into res select 'j_run', pg_temp.run('J', 400, 'blank', null, '[{"model":"test-tiny","params":{},"count":4},{"model":"test-image","params":{"quality":"low"},"count":2}]', array['test-tiny', 'test-image']);
+-- J cells (4 × tiny, 4 × image low; index = cell_ids order): j0 succeeded & past delete_after, j1 succeeded & saved,
+-- j2 queued 11 minutes (stale), j3 submitted 1h past deadline (poll only), j4 queued & due (resubmit),
+-- j5 submitted with time left, j6 queued 11 minutes but claimed (lease in the future), j7 submitted 25h past deadline.
+insert into res select 'j_run', pg_temp.run('J', 400, 'blank', null, '[{"model":"test-tiny","params":{},"count":4},{"model":"test-image","params":{"quality":"low"},"count":4}]', array['test-tiny', 'test-image']);
 select public.finish_cell(pg_temp.cell('j_run', 0), 'succeeded', null, 'j/0.png');
 select public.finish_cell(pg_temp.cell('j_run', 1), 'succeeded', null, 'j/1.png');
 select pg_temp.login_as(pg_temp.u('J'));
@@ -637,8 +765,12 @@ select pg_temp.as_postgres();
 update public.play_cells set delete_after = now() - interval '1 day' where id = pg_temp.cell('j_run', 0);
 update public.play_cells set created_at = now() - interval '11 minutes' where id = pg_temp.cell('j_run', 2);
 select public.mark_cell_submitted(pg_temp.cell('j_run', 3), 'req-j3');
-update public.play_cells set deadline_at = now() - interval '1 second' where id = pg_temp.cell('j_run', 3);
+update public.play_cells set deadline_at = now() - interval '1 hour' where id = pg_temp.cell('j_run', 3);
 select public.mark_cell_submitted(pg_temp.cell('j_run', 5), 'req-j5');
+update public.play_cells set created_at = now() - interval '11 minutes', next_attempt_at = now() + interval '5 minutes'
+ where id = pg_temp.cell('j_run', 6);
+select public.mark_cell_submitted(pg_temp.cell('j_run', 7), 'req-j7');
+update public.play_cells set deadline_at = now() - interval '25 hours' where id = pg_temp.cell('j_run', 7);
 insert into res select 'sweep', public.sweep_targets();
 select ok((select (v -> 'poll')::text like '%' || pg_temp.cell('j_run', 3)::text || '%' and (v -> 'poll')::text not like '%' || pg_temp.cell('j_run', 5)::text || '%'
           from res where k = 'sweep'),
@@ -647,13 +779,28 @@ select ok((select e @> '{"provider_request_id":"req-j3","endpoint":"mock/test-ti
            from res, jsonb_array_elements(v -> 'poll') e where k = 'sweep' and e ->> 'cell' = pg_temp.cell('j_run', 3)::text),
           'FM-7 poll target carries provider_request_id, endpoint, provider');
 select ok((select (v -> 'resubmit')::text like '%' || pg_temp.cell('j_run', 4)::text || '%'
-          and (v -> 'resubmit')::text not like '%' || pg_temp.cell('j_run', 2)::text || '%'
           and (v -> 'resubmit')::text not like '%' || pg_temp.cell('j_run', 0)::text || '%'
           from res where k = 'sweep'),
-          'FM-17 a due queued cell is resubmitted; stale and finished cells are not');
-select ok((select status = 'failed' and error_code = 'PROVIDER_UNAVAILABLE' from public.play_cells where id = pg_temp.cell('j_run', 2))
-          and (select state = 'released' and outcome = 'model_error' from public.credit_holds where cell_id = pg_temp.cell('j_run', 2)),
-          'FM-17 a cell queued over 10 minutes is failed (PROVIDER_UNAVAILABLE) and released by the sweep');
+          'FM-17 a due queued cell is resubmitted; finished cells are not');
+select ok((select (v -> 'finish') @> jsonb_build_array(jsonb_build_object('cell', pg_temp.cell('j_run', 2),
+                      'status', 'failed', 'error_code', 'PROVIDER_UNAVAILABLE')) from res where k = 'sweep'),
+          'FM-17 a cell queued over 10 minutes with an expired lease is listed in finish as failed / PROVIDER_UNAVAILABLE');
+select ok((select status = 'queued' from public.play_cells where id = pg_temp.cell('j_run', 2))
+          and (select state = 'held' from public.credit_holds where cell_id = pg_temp.cell('j_run', 2)),
+          'FM-17 sweep_targets finishes nothing itself: the stale cell is still queued and held');
+select ok((select (v -> 'finish')::text not like '%' || pg_temp.cell('j_run', 6)::text || '%' from res where k = 'sweep'),
+          'M2 a queued cell older than 10 minutes but claimed within its lease is not in finish');
+select ok((select (v -> 'finish') @> jsonb_build_array(jsonb_build_object('cell', pg_temp.cell('j_run', 7),
+                      'status', 'expired', 'error_code', 'TIMEOUT')) from res where k = 'sweep'),
+          'FM-7 a cell 25 hours past its deadline is in finish as expired / TIMEOUT');
+select ok((select (v -> 'finish')::text not like '%' || pg_temp.cell('j_run', 3)::text || '%'
+          and (v -> 'poll')::text like '%' || pg_temp.cell('j_run', 3)::text || '%' from res where k = 'sweep'),
+          'FM-7 a cell 1 hour past its deadline is only a poll target');
+select public.finish_cell(pg_temp.cell('j_run', 2), 'failed', 'PROVIDER_UNAVAILABLE');
+select public.finish_cell(pg_temp.cell('j_run', 7), 'expired', 'TIMEOUT');
+select ok((select state = 'released' and outcome = 'model_error' from public.credit_holds where cell_id = pg_temp.cell('j_run', 2))
+          and (select state = 'released' and outcome = 'model_error' from public.credit_holds where cell_id = pg_temp.cell('j_run', 7)),
+          'FM-17/7 the app finishes the listed cells with finish_cell, which releases the holds');
 select ok((select (v -> 'expired_refs') @> jsonb_build_array(jsonb_build_object('id', 'f0000000-0000-0000-0000-000000000003',
                        'path', pg_temp.u('A') || '/f0000000-0000-0000-0000-000000000003.png'))
           and (v -> 'expired_refs')::text not like '%f0000000-0000-0000-0000-000000000001%'
@@ -665,7 +812,6 @@ select ok((select (v -> 'expired_results') @> jsonb_build_array(jsonb_build_obje
           and (select result_path = 'j/0.png' from public.play_cells where id = pg_temp.cell('j_run', 0))
           from res where k = 'sweep'),
           'D19 sweep lists unsaved results past delete_after as {id,path}; saved ones are not listed; nothing cleared yet');
--- purge on rows that are NOT expired / are saved must leave them alone.
 select public.purge_play_files(array['f0000000-0000-0000-0000-000000000001']::uuid[], array[pg_temp.cell('j_run', 1)]);
 select ok(exists (select 1 from public.play_refs where id = 'f0000000-0000-0000-0000-000000000001')
           and (select result_path = 'j/1.png' and saved_at is not null from public.play_cells where id = pg_temp.cell('j_run', 1)),
@@ -678,8 +824,18 @@ select ok(not exists (select 1 from public.play_refs where id = 'f0000000-0000-0
           'F4-8/D19 purge_play_files deletes the expired reference row and clears the expired unsaved result only');
 select ok((select jsonb_array_length(v -> 'expired_refs') = 0 and jsonb_array_length(v -> 'expired_results') = 0
              and (v -> 'poll')::text like '%' || pg_temp.cell('j_run', 3)::text || '%'
+             and (v -> 'finish')::text not like '%' || pg_temp.cell('j_run', 2)::text || '%'
+             and (v -> 'finish')::text not like '%' || pg_temp.cell('j_run', 7)::text || '%'
            from (select public.sweep_targets() v) x),
-          'FM-9 after the purge a second sweep lists nothing to delete; the overdue cell stays a poll target');
+          'FM-9 after the purge and the finishes a second sweep lists nothing to delete or finish; the overdue cell stays a poll target');
+-- webhook inbox keeps 30 days; any purge call trims it.
+insert into public.generation_webhook_inbox (provider, event_key, cell_id, received_at) values
+  ('fal', 'old-evt', null, now() - interval '31 days'), ('fal', 'recent-evt', null, now() - interval '29 days');
+select public.purge_play_files('{}'::uuid[], '{}'::uuid[]);
+select ok(not exists (select 1 from public.generation_webhook_inbox where event_key = 'old-evt')
+          and exists (select 1 from public.generation_webhook_inbox where event_key = 'recent-evt')
+          and exists (select 1 from public.generation_webhook_inbox where event_key = 'evt-1' and provider = 'fal'),
+          'FM-9 purge_play_files deletes webhook inbox rows older than 30 days and keeps newer ones');
 select ok(pg_temp.inv_ledger() and pg_temp.inv_held() and pg_temp.inv_budget(), 'INV-C2/C20 after the sweep');
 
 -- ---------------------------------------------------------------- reference upload slots (create_play_ref)
@@ -742,6 +898,12 @@ select throws_ok($$ select public.play_prompt_for_submit(gen_random_uuid()) $$, 
                  'hidden-content authenticated cannot read a rendered prompt');
 select throws_ok($$ select count(*) from private.play_prompts $$, '42501', null, 'hidden-content authenticated cannot select private.play_prompts');
 select throws_ok($$ select count(*) from public.model_prices $$, '42501', null, 'PLAY-authz authenticated cannot select model_prices');
+select throws_ok($$ select webhook_token_hash from public.play_cells $$, '42501', null, 'PLAY-authz authenticated cannot read webhook_token_hash');
+select throws_ok($$ select provider_request_id from public.play_cells $$, '42501', null, 'PLAY-authz authenticated cannot read provider_request_id');
+select throws_ok($$ select attempts from public.play_cells $$, '42501', null, 'PLAY-authz authenticated cannot read attempts');
+select throws_ok($$ select count(*) from public.face_consents $$, '42501', null, 'PLAY-authz authenticated cannot read face_consents');
+select throws_ok($$ select count(*) from public.generation_webhook_inbox $$, '42501', null, 'PLAY-authz authenticated cannot read the webhook inbox');
+select throws_ok($$ select nextval('public.face_consents_id_seq') $$, '42501', null, 'PLAY-authz authenticated cannot use face_consents_id_seq');
 select ok((select count(*) = 1 from public.models where id = 'test-image')
           and (select count(*) = 0 from public.models where id = 'test-off'),
           'PLAY-authz clients see enabled models only');

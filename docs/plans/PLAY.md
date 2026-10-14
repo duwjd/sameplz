@@ -159,3 +159,15 @@ PR은 세 개다. 앞 PR이 머지된 뒤 다음을 시작한다.
 | 보관 | 성공하면 `delete_after = +30일`, 저장하면 null, 저장을 풀면 되돌림. 남의 셀은 저장 불가 |
 | 권한 | anon·authenticated는 서버 RPC·`private.play_prompts`·`model_prices`를 못 씀. 본인 run·cell만 보임. 남의 `run:` 토픽 메시지는 안 보임 |
 | Realtime | `finish_cell` 뒤 `realtime.messages` 페이로드 키가 정확히 `cell_id`·`status`·`error_code` |
+
+## PR F가 지킬 SQL 계약 (PR E 검토에서 나온 것)
+
+- `finish_cell`은 셀 하나만 처리하고, 한 번 부를 때 한 트랜잭션이다. 여러 사용자의 셀을 한 RPC·트랜잭션에서 끝내지 않는다. 잠금 순서가 셀 → 계정 → `generation_budget`이라서, 묶으면 `start_run`·월 지급과 교착한다.
+- sweeper는 `sweep_targets()`에서 목록만 받는다. `finish`·`resubmit`·`poll`·만료 파일 목록이고, 셀마다 따로 RPC를 부른다.
+- `claim_cell_submit`의 lease는 5분이다. 공급자 제출 fetch는 그보다 훨씬 짧은 타임아웃(30초)으로 끝낸다.
+- `mark_cell_submitted`가 false를 돌려주면 셀이 이미 끝났다는 뜻이다. 공급자에 취소(`cancel`)를 보낸다.
+- 공급자가 과금했을 수 있는 실패는 `finish_cell(..., p_provider_billed => true)`로 부른다. 대상은 제출 뒤 안전 차단(422), 사후 모더레이션 차단, 결과 내려받기·업로드 실패다. 사용자에게는 크레딧을 돌려주고, 예산에는 쓴 것으로 남긴다.
+- 공급자 오류 원문은 `error_code`에 넣지 않는다. 우리 코드로 바꾼다. `^[A-Z_]{2,40}$`가 아니면 `PROVIDER_ERROR`로 저장된다.
+- `start_run`에는 견적 총액을 `p_expected_total`로 넘긴다. 다르면 `PRICE_CHANGED`(409)다.
+- `purge_play_files`에는 Storage에서 실제로 지운 id만 넘긴다.
+- 레퍼런스 입력 이미지는 gpt-image·nano-banana의 edit에서도 과금되지만, 지금 가격표에는 Grok만 레퍼런스 단가가 있다. 운영 키로 fal 가격 API를 확인할 때 `per_reference_usd`를 넣고 `price_version`을 올린다.

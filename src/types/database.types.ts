@@ -373,14 +373,14 @@ isOneToOne: false
                   ]
                 },"face_consents": {
                   Row: {
-                    "consented_at": string,"id": number,"ref_id": string | null,"run_id": string,"user_id": string
+                    "consented_at": string,"id": number,"notice_version": string,"ref_id": string | null,"run_id": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "consented_at"?: string,"id"?: never,"ref_id"?: string | null,"run_id": string,"user_id": string
+                    "consented_at"?: string,"id"?: never,"notice_version"?: string,"ref_id"?: string | null,"run_id": string,"user_id": string
                   }
                   Update: {
-                    "consented_at"?: string,"id"?: never,"ref_id"?: string | null,"run_id"?: string,"user_id"?: string
+                    "consented_at"?: string,"id"?: never,"notice_version"?: string,"ref_id"?: string | null,"run_id"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -599,6 +599,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "models"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "play_cells_price_fk"
+      columns: ["model_id","price_version"]
+isOneToOne: false
+      referencedRelation: "model_prices"
+      referencedColumns: ["model_id","price_version"]
     },{
       foreignKeyName: "play_cells_run_id_fkey"
       columns: ["run_id"]
@@ -1139,7 +1145,7 @@ isOneToOne: false
             }[]
                            },
 "finish_cell":
-{ Args: { "p_cell": string,"p_error_code"?: string,"p_result_path"?: string,"p_status": string }; Returns: Json
+{ Args: { "p_cell": string,"p_error_code"?: string,"p_provider_billed"?: boolean,"p_result_path"?: string,"p_status": string }; Returns: Json
                            },
 "get_recipe_public":
 { Args: { "p_public_id": string }; Returns: Json
@@ -1255,7 +1261,7 @@ isOneToOne: false
             }[]
                            },
 "start_run":
-{ Args: { "p_cells": Json,"p_client_request_id": string,"p_device_hash": string,"p_face_consent": boolean,"p_ip_hash": string,"p_mode": string,"p_price_versions": Json,"p_recipe_version_id": string,"p_reference_ids": (string)[],"p_rendered_prompt": string,"p_user": string,"p_variables": Json }; Returns: Json
+{ Args: { "p_cells": Json,"p_client_request_id": string,"p_device_hash": string,"p_expected_total"?: number,"p_face_consent": boolean,"p_ip_hash": string,"p_mode": string,"p_price_versions": Json,"p_recipe_version_id": string,"p_reference_ids": (string)[],"p_rendered_prompt": string,"p_user": string,"p_variables": Json }; Returns: Json
                            },
 "submit_recipe_version":
 { Args: { "p_owner": string,"p_payload": Json }; Returns: Json

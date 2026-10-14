@@ -24,7 +24,11 @@ const Meta = z
   .object({
     // prompt
     variables: listOf(
-      z.object({ name: text(30), example: text(80).optional() }),
+      z.object({
+        name: text(30),
+        description: text(120).optional().catch(undefined),
+        example: text(80).optional().catch(undefined),
+      }),
     ),
     settings: listOf(z.object({ label: text(20), value: text(80) })),
     // skill
@@ -125,6 +129,7 @@ const RecipePublic = z.object({
   media: listOf(
     z.object({
       id: z.string(),
+      path: z.string().nullable().catch(null),
       kind: z.enum(["image", "video"]),
       ratio: z.string().nullable().catch(null),
       alt: z.string().nullable().catch(null),

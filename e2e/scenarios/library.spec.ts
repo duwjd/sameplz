@@ -30,7 +30,9 @@ test.describe("LIB 라이브러리", () => {
   test("LIB 받은 게 없으면 갤러리로 안내", async ({ page, context }) => {
     await loginAsNewUser(context, { completeSignup: true });
     await page.goto("/my/library");
-    await expect(page.getByText("아직 받은 게 없어요")).toBeVisible();
+    await expect(
+      page.getByText("아직 받은 게 없어요").filter({ visible: true }),
+    ).toBeVisible();
     await expect(
       page.getByRole("link", { name: "갤러리 구경하기" }),
     ).toHaveAttribute("href", "/#gallery");

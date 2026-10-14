@@ -10,14 +10,18 @@ test.describe("SELL 판매자 센터", () => {
   test("SELL 비회원은 로그인 안내", async ({ page }) => {
     await page.goto("/my/seller");
     await expect(
-      page.getByText("로그인하면 내 레시피를 볼 수 있어요"),
+      page
+        .getByText("로그인하면 내 레시피를 볼 수 있어요")
+        .filter({ visible: true }),
     ).toBeVisible();
   });
 
   test("SELL 올린 게 없으면 빈 화면 + 올리기", async ({ page, context }) => {
     await loginAsNewUser(context, { completeSignup: true });
     await page.goto("/my/seller");
-    await expect(page.getByText("아직 올린 레시피가 없어요")).toBeVisible();
+    await expect(
+      page.getByText("아직 올린 레시피가 없어요").filter({ visible: true }),
+    ).toBeVisible();
     await expect(
       page.getByRole("link", { name: "레시피 올리기" }).first(),
     ).toHaveAttribute("href", "/my/seller/upload");
@@ -33,9 +37,13 @@ test.describe("SELL 판매자 센터", () => {
     await page
       .getByRole("button", { name: "유료 판매 오픈 알림 신청" })
       .click();
-    await expect(page.getByText("신청했어요", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("신청했어요", { exact: true }).filter({ visible: true }),
+    ).toBeVisible();
     await page.reload();
-    await expect(page.getByText("신청했어요", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("신청했어요", { exact: true }).filter({ visible: true }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "신청 취소하기" }).click();
     await expect(
       page.getByRole("button", { name: "유료 판매 오픈 알림 신청" }),
@@ -76,7 +84,9 @@ test.describe("SELL 판매자 센터", () => {
 
     await first.getByRole("link", { name: "고쳐서 다시 제출" }).click();
     await expect(
-      page.getByText("반려 사유: 「하는 일」이 빠졌어요"),
+      page
+        .getByText("반려 사유: 「하는 일」이 빠졌어요")
+        .filter({ visible: true }),
     ).toBeVisible();
     await expect(page.getByRole("radio", { name: /에이전트/ })).toHaveAttribute(
       "aria-checked",
@@ -127,7 +137,9 @@ test.describe("SELL 판매자 센터", () => {
     });
     await page.goto("/my/seller");
     await page.getByRole("link", { name: "새 버전 올리기" }).click();
-    await expect(page.getByText("v2을 올려요")).toBeVisible();
+    await expect(
+      page.getByText("v2을 올려요").filter({ visible: true }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "다음" }).click();
     await expect(page.getByLabel("프롬프트 본문")).toHaveValue(
       /PROMPT-ORIGINAL-MARKER/,

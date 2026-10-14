@@ -264,7 +264,12 @@ function RecipeRow({ row, days }: { row: MyRecipeDTO; days: SellerDays }) {
             style={{ margin: 0, fontSize: 17, fontWeight: 700 }}
           >
             {row.status === "live" || row.status === "stopped" ? (
-              <Link href={`/r/${row.publicId}`} style={{ color: "inherit" }}>
+              <Link
+                href={`/r/${row.publicId}`}
+                // No prefetch: a prefetch racing a visibility change could re-cache the live page.
+                prefetch={false}
+                style={{ color: "inherit" }}
+              >
                 {row.title}
               </Link>
             ) : (

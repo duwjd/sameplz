@@ -29,6 +29,8 @@ test.describe("SCN 1 비회원으로 구경하다 SAME 하기", () => {
       .getByRole("search")
       .getByRole("searchbox", { name: "검색" })
       .press("Enter");
+    // Wait for the market: home can list the same recipe, and clicking it mid-navigation races.
+    await expect(page).toHaveURL(/\/market\?q=/);
     await page
       .getByRole("link", { name: /셀카 → 링크드인 프로필 사진/ })
       .first()

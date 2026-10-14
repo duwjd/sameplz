@@ -18,7 +18,9 @@ test("SCN 7 첫 무료 등록 → 마켓 검색에 뜸 → 유료 판매 오픈 
 
   // Account menu → 판매자 센터 (empty) → 레시피 올리기
   await page.goto("/my/seller");
-  await expect(page.getByText("아직 올린 레시피가 없어요")).toBeVisible();
+  await expect(
+    page.getByText("아직 올린 레시피가 없어요").filter({ visible: true }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "레시피 올리기" }).first().click();
 
   await page.getByRole("radio", { name: /프롬프트/ }).click();
@@ -51,7 +53,9 @@ test("SCN 7 첫 무료 등록 → 마켓 검색에 뜸 → 유료 판매 오픈 
     "true",
   );
   await page.getByRole("button", { name: "유료 판매 오픈 알림 신청" }).click();
-  await expect(page.getByText("신청했어요", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("신청했어요", { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: "검사하고 올리기" }).click();
   await expect(page.getByText("레시피를 공개했어요")).toBeVisible({
@@ -72,5 +76,7 @@ test("SCN 7 첫 무료 등록 → 마켓 검색에 뜸 → 유료 판매 오픈 
       .filter({ hasText: title })
       .getByText("공개 중", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("신청했어요", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("신청했어요", { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
 });

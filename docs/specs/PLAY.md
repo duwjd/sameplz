@@ -68,7 +68,7 @@
 
 ## 데이터 · API
 
-`credit_*`·`play_*` 테이블, RPC `start_run`·`place_hold`·`settle_cell`·`grant_purchase`·`request_paid_refund`·`expire_bonus`, 라우트 `POST /api/play/runs`·`POST /api/webhooks/generation/[provider]`·`/api/cron/play-sweeper`, 비공개 채널 `run:{run_id}`. 크레딧 설계는 로트별 행, 한 트랜잭션 안의 잔액 감소와 원장 기록, `FOR UPDATE` 직렬화, 멱등 키, 무료 크레딧 먼저 쓰기. 단가는 `크레딧 ≈ 공급자 USD × 1,450 × 1.8 ÷ 8.75 ≈ USD × 298`(`.claude/skills/generation-pipeline/models.md`). 실패 처리 24행은 `.claude/skills/generation-pipeline/failure-matrix.md`.
+`credit_*`·`play_*` 테이블, RPC `start_run`·`place_hold`·`settle_cell`·`grant_purchase`·`request_paid_refund`·`expire_bonus`, 라우트 `POST /api/play/runs`·`POST /api/webhooks/generation/[provider]`·`/api/cron/play-sweeper`, 비공개 채널 `run:{run_id}`. 크레딧 설계는 로트별 행, 한 트랜잭션 안의 잔액 감소와 원장 기록, `FOR UPDATE` 직렬화, 멱등 키, 무료 크레딧 먼저 쓰기. 단가는 `크레딧 ≈ 공급자 USD × 1,450 × 1.8 ÷ 8.75 ÷ 0.37 ≈ USD × 805`(D17, 올림)(`.claude/skills/generation-pipeline/models.md`). 실패 처리 24행은 `.claude/skills/generation-pipeline/failure-matrix.md`.
 
 ## 수용 기준
 

@@ -371,6 +371,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"face_consents": {
+                  Row: {
+                    "consented_at": string,"id": number,"notice_version": string,"ref_id": string | null,"run_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "consented_at"?: string,"id"?: never,"notice_version"?: string,"ref_id"?: string | null,"run_id": string,"user_id": string
+                  }
+                  Update: {
+                    "consented_at"?: string,"id"?: never,"notice_version"?: string,"ref_id"?: string | null,"run_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "face_consents_ref_id_fkey"
+      columns: ["ref_id"]
+isOneToOne: false
+      referencedRelation: "play_refs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "face_consents_run_id_fkey"
+      columns: ["run_id"]
+isOneToOne: false
+      referencedRelation: "play_runs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "face_consents_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"follows": {
                   Row: {
                     "created_at": string,"followee_id": string,"follower_id": string
@@ -461,6 +493,26 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"generation_webhook_inbox": {
+                  Row: {
+                    "cell_id": string | null,"event_key": string,"provider": string,"received_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cell_id"?: string | null,"event_key": string,"provider": string,"received_at"?: string
+                  }
+                  Update: {
+                    "cell_id"?: string | null,"event_key"?: string,"provider"?: string,"received_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "generation_webhook_inbox_cell_id_fkey"
+      columns: ["cell_id"]
+isOneToOne: false
+      referencedRelation: "play_cells"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"jobs": {
                   Row: {
                     "code": string,"label": string,"sort": number
@@ -490,6 +542,124 @@ isOneToOne: false
                     {
       foreignKeyName: "media_assets_owner_id_fkey"
       columns: ["owner_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"model_prices": {
+                  Row: {
+                    "active": boolean,"created_at": string,"model_id": string,"price_version": number,"rule": NonNullable<Json>
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"created_at"?: string,"model_id": string,"price_version": number,"rule": NonNullable<Json>
+                  }
+                  Update: {
+                    "active"?: boolean,"created_at"?: string,"model_id"?: string,"price_version"?: number,"rule"?: NonNullable<Json>
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "model_prices_model_id_fkey"
+      columns: ["model_id"]
+isOneToOne: false
+      referencedRelation: "models"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"models": {
+                  Row: {
+                    "created_at": string,"deadline_seconds": number,"enabled": boolean,"endpoint": string,"id": string,"kind": string,"label": string,"params": NonNullable<Json>,"provider": string,"ref_endpoint": string | null,"ref_max": number,"ref_param": string | null,"sort": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"deadline_seconds": number,"enabled"?: boolean,"endpoint": string,"id": string,"kind": string,"label": string,"params"?: NonNullable<Json>,"provider": string,"ref_endpoint"?: string | null,"ref_max"?: number,"ref_param"?: string | null,"sort"?: number
+                  }
+                  Update: {
+                    "created_at"?: string,"deadline_seconds"?: number,"enabled"?: boolean,"endpoint"?: string,"id"?: string,"kind"?: string,"label"?: string,"params"?: NonNullable<Json>,"provider"?: string,"ref_endpoint"?: string | null,"ref_max"?: number,"ref_param"?: string | null,"sort"?: number
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"play_cells": {
+                  Row: {
+                    "attempts": number,"created_at": string,"deadline_at": string | null,"delete_after": string | null,"error_code": string | null,"finished_at": string | null,"id": string,"model_id": string,"next_attempt_at": string,"params": NonNullable<Json>,"price_credits": number,"price_version": number,"provider_request_id": string | null,"result_path": string | null,"run_id": string,"saved_at": string | null,"status": string,"submitted_at": string | null,"user_id": string,"webhook_token_hash": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "attempts"?: number,"created_at"?: string,"deadline_at"?: string | null,"delete_after"?: string | null,"error_code"?: string | null,"finished_at"?: string | null,"id"?: string,"model_id": string,"next_attempt_at"?: string,"params": NonNullable<Json>,"price_credits": number,"price_version": number,"provider_request_id"?: string | null,"result_path"?: string | null,"run_id": string,"saved_at"?: string | null,"status"?: string,"submitted_at"?: string | null,"user_id": string,"webhook_token_hash"?: string | null
+                  }
+                  Update: {
+                    "attempts"?: number,"created_at"?: string,"deadline_at"?: string | null,"delete_after"?: string | null,"error_code"?: string | null,"finished_at"?: string | null,"id"?: string,"model_id"?: string,"next_attempt_at"?: string,"params"?: NonNullable<Json>,"price_credits"?: number,"price_version"?: number,"provider_request_id"?: string | null,"result_path"?: string | null,"run_id"?: string,"saved_at"?: string | null,"status"?: string,"submitted_at"?: string | null,"user_id"?: string,"webhook_token_hash"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "play_cells_model_id_fkey"
+      columns: ["model_id"]
+isOneToOne: false
+      referencedRelation: "models"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "play_cells_price_fk"
+      columns: ["model_id","price_version"]
+isOneToOne: false
+      referencedRelation: "model_prices"
+      referencedColumns: ["model_id","price_version"]
+    },{
+      foreignKeyName: "play_cells_run_id_fkey"
+      columns: ["run_id"]
+isOneToOne: false
+      referencedRelation: "play_runs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "play_cells_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"play_refs": {
+                  Row: {
+                    "created_at": string,"delete_after": string,"id": string,"mime": string,"path": string,"size": number,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"delete_after"?: string,"id"?: string,"mime": string,"path": string,"size": number,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"delete_after"?: string,"id"?: string,"mime"?: string,"path"?: string,"size"?: number,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "play_refs_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"play_runs": {
+                  Row: {
+                    "client_request_id": string,"created_at": string,"face_consent_at": string | null,"id": string,"mode": string,"recipe_version_id": string | null,"reference_ids": (string)[],"user_id": string,"variables": NonNullable<Json>
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "client_request_id": string,"created_at"?: string,"face_consent_at"?: string | null,"id"?: string,"mode": string,"recipe_version_id"?: string | null,"reference_ids"?: (string)[],"user_id": string,"variables"?: NonNullable<Json>
+                  }
+                  Update: {
+                    "client_request_id"?: string,"created_at"?: string,"face_consent_at"?: string | null,"id"?: string,"mode"?: string,"recipe_version_id"?: string | null,"reference_ids"?: (string)[],"user_id"?: string,"variables"?: NonNullable<Json>
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "play_runs_recipe_version_id_fkey"
+      columns: ["recipe_version_id"]
+isOneToOne: false
+      referencedRelation: "recipe_versions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "play_runs_user_id_fkey"
+      columns: ["user_id"]
 isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
@@ -942,17 +1112,29 @@ isOneToOne: false
             "accept_signup_terms":
 { Args: { "p_terms_version": string }; Returns: Json
                            },
+"ack_ai_notice":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
 "admin_decide_review":
 { Args: { "p_actor": string,"p_code"?: string,"p_decision": string,"p_note"?: string,"p_version": string }; Returns: Json
                            },
 "apply_update":
 { Args: { "p_entitlement_id": string }; Returns: Json
                            },
+"attach_provider_request":
+{ Args: { "p_cell": string,"p_provider_request_id": string }; Returns: boolean
+                           },
+"claim_cell_submit":
+{ Args: { "p_cell": string }; Returns: Json
+                           },
 "claim_free_recipe":
 { Args: { "p_recipe_id": string,"p_ref_code"?: string }; Returns: Json
                            },
 "complete_signup_credits":
 { Args: { "p_device_hash": string,"p_ip_hash": string,"p_user": string }; Returns: Json
+                           },
+"create_play_ref":
+{ Args: { "p_ext": string,"p_mime": string,"p_size": number,"p_user": string }; Returns: Json
                            },
 "create_share_link":
 { Args: { "p_code": string,"p_recipe": string }; Returns: Json
@@ -961,6 +1143,9 @@ isOneToOne: false
 { Args: { "p_file_id": string,"p_version_id": string }; Returns: {
               "filename": string,"storage_path": string
             }[]
+                           },
+"finish_cell":
+{ Args: { "p_cell": string,"p_error_code"?: string,"p_provider_billed"?: boolean,"p_result_path"?: string,"p_status": string }; Returns: Json
                            },
 "get_recipe_public":
 { Args: { "p_public_id": string }; Returns: Json
@@ -994,6 +1179,12 @@ isOneToOne: false
               "category": string,"creator_handle": string,"creator_nickname": string,"downloads": number,"downloads_7d": number,"filters": Json,"job_codes": (string)[],"likes": number,"popularity": number,"price_krw": number,"prompt_kind": string,"public_id": string,"same_count": number,"summary": string,"title": string,"tool_codes": (string)[]
             }[]
                            },
+"mark_cell_running":
+{ Args: { "p_cell": string }; Returns: boolean
+                           },
+"mark_cell_submitted":
+{ Args: { "p_cell": string,"p_provider_request_id": string }; Returns: boolean
+                           },
 "my_account_status":
 { Args: Record<PropertyKey, never>; Returns: {
               "adult_confirmed_at": string,"role": string,"signup_complete": boolean,"terms_accepted_at": string,"terms_version": string
@@ -1024,6 +1215,15 @@ isOneToOne: false
 "open_original":
 { Args: { "p_entitlement_id": string }; Returns: Json
                            },
+"play_prompt_for_submit":
+{ Args: { "p_cell": string }; Returns: string
+                           },
+"purge_play_files":
+{ Args: { "p_cell_ids": (string)[],"p_ref_ids": (string)[] }; Returns: undefined
+                           },
+"quote_play":
+{ Args: { "p_cells": Json,"p_refs"?: number }; Returns: Json
+                           },
 "recipe_search_doc":
 { Args: { "nickname": string,"search_tags": (string)[],"summary": string,"title": string }; Returns: (string)[]
                            },
@@ -1032,6 +1232,15 @@ isOneToOne: false
                            },
 "record_share_click":
 { Args: { "p_code": string,"p_public_id": string,"p_visitor_hash": string }; Returns: string
+                           },
+"record_webhook_event":
+{ Args: { "p_cell": string,"p_event_key": string,"p_provider": string }; Returns: boolean
+                           },
+"requeue_cell":
+{ Args: { "p_cell": string,"p_error_code"?: string }; Returns: boolean
+                           },
+"save_play_cell":
+{ Args: { "p_cell": string,"p_saved": boolean }; Returns: boolean
                            },
 "search_recipe_counts":
 { Args: { "p_job"?: string,"p_query"?: string,"p_tool"?: string }; Returns: {
@@ -1051,8 +1260,17 @@ isOneToOne: false
               "category": string,"creator_handle": string,"creator_nickname": string,"downloads": number,"filters": Json,"job_codes": (string)[],"likes": number,"price_krw": number,"prompt_kind": string,"public_id": string,"same_count": number,"summary": string,"title": string,"tool_codes": (string)[]
             }[]
                            },
+"start_run":
+{ Args: { "p_cells": Json,"p_client_request_id": string,"p_device_hash": string,"p_expected_total"?: number,"p_face_consent": boolean,"p_ip_hash": string,"p_mode": string,"p_price_versions": Json,"p_recipe_version_id": string,"p_reference_ids": (string)[],"p_rendered_prompt": string,"p_user": string,"p_variables": Json }; Returns: Json
+                           },
 "submit_recipe_version":
 { Args: { "p_owner": string,"p_payload": Json }; Returns: Json
+                           },
+"sweep_targets":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"verify_cell_token":
+{ Args: { "p_cell": string,"p_token": string }; Returns: Json
                            }
           }
           Enums: {

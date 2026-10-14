@@ -259,10 +259,11 @@ insert into public.banners (name, eyebrow, title, subtitle, cta_label, cta_href,
   ('크리에이터', '크리에이터 모집', '내 프롬프트가 누군가의 SAME이 돼요', '지금은 무료로 나누고, 유료 판매가 열리면 가장 먼저 알려 드려요.', '알림 신청하기', '/my/seller', '판매자 센터 미리보기', 4, true);
 
 -- ---------------------------------------------------------------- credits (W4, D11 · D12 · D17)
--- Local budget for this KST month (production sets its cap in W5 with the provider) and jiwoo's 270C.
+-- Local budget for this KST month (production: 40,250C from the playground migration, D12) and jiwoo's 270C.
 -- Next month too, so a reset run right at a month boundary still has a budget.
 insert into public.generation_budget (month, cap_credits, state)
-values (private.kst_month(), 100000, 'open'), ((private.kst_month() + interval '1 month')::date, 100000, 'open');
+values (private.kst_month(), 100000, 'open'), ((private.kst_month() + interval '1 month')::date, 100000, 'open')
+on conflict (month) do update set cap_credits = excluded.cap_credits, state = excluded.state;
 -- Seed members count as having passed the signup checks (complete_signup_credits).
 insert into public.credit_accounts (user_id, grant_eligible) select id, true from public.profiles
 on conflict (user_id) do update set grant_eligible = true;

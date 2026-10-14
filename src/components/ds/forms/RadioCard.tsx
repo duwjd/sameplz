@@ -22,6 +22,11 @@ export interface RadioCardGroupProps {
   gap?: number;
   children?: React.ReactNode;
   style?: React.CSSProperties;
+  id?: string;
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
 }
 
 export function RadioCard({
@@ -119,6 +124,7 @@ export function RadioCardGroup({
   gap = 10,
   children,
   style = {},
+  ...aria
 }: RadioCardGroupProps) {
   const arr = React.Children.toArray(
     children,
@@ -126,7 +132,16 @@ export function RadioCardGroup({
   return (
     <div
       role="radiogroup"
-      style={{ display: "flex", flexDirection: direction, gap, ...style }}
+      tabIndex={aria.id ? -1 : undefined}
+      {...aria}
+      style={{
+        display: "flex",
+        flexDirection: direction,
+        flexWrap: direction === "row" ? "wrap" : undefined,
+        gap,
+        outline: "none",
+        ...style,
+      }}
     >
       {arr.map((c) =>
         React.cloneElement(c, {

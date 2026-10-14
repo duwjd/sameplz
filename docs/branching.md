@@ -25,5 +25,5 @@
 - **새 마이그레이션은 `main` 머지 때만 운영 DB에 간다.** 그래서 stg에는 "새 코드 + 옛 스키마"가 함께 돈다. 새 테이블·RPC를 쓰는 화면은 stg에서 비어 보이거나 실패한다. 공개 읽기는 `degradeCachedRead`가 빈 값으로 버틴다.
   - 스키마가 바뀐 기능은 `stg → main` 머지 + deploy-db 승인 뒤 운영에서 확인한다.
 - stg에서 하는 쓰기(로그인·받기·좋아요·올리기)는 **운영 데이터**다. 시험 계정으로만 하고, 쓴 것은 운영에 남는다.
-- stg에도 운영과 같은 키가 필요하다. Vercel → Settings → Environment Variables에서 Preview 환경, 브랜치 `stg`로 범위를 정해 넣는다: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, 카카오·네이버 키.
+- stg에도 운영과 같은 키가 필요하다. Vercel → Settings → Environment Variables에서 Preview 환경, 브랜치 `stg`로 범위를 정해 넣는다: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, 카카오·네이버 키, 올리기 검사 2층 키 `OPENAI_API_KEY`·`ANTHROPIC_API_KEY`(없으면 모든 올리기가 사람 확인으로 가요).
 - 로그인: Supabase Redirect URLs에 stg 주소(`https://sameplz-git-stg-<팀>.vercel.app/**`)를 더하고, 카카오·네이버 콘솔에도 stg 콜백을 등록해야 stg에서 로그인된다.

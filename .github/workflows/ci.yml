@@ -22,6 +22,8 @@ permissions:
 env:
   NODE_VERSION: "22"
   GENERATION_PROVIDER: mock
+  # Upload layer 2 checks without OpenAI / Anthropic calls (deterministic; src/lib/moderation/layer2.ts).
+  MODERATION_PROVIDER: mock
   # OAuth providers are enabled in supabase/config.toml; CI never runs real OAuth, so placeholders
   # only let the local Auth server start.
   SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder.apps.googleusercontent.com

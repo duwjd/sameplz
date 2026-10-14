@@ -45,3 +45,4 @@ Thumbs.db
 npm-debug.log*
 .pnpm-debug.log*
 .vercel
+.claude/scheduled_tasks.lock

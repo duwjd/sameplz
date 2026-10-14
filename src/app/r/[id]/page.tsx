@@ -22,6 +22,7 @@ import {
   playDisabledReason,
   type RecipeDetail,
 } from "@/lib/recipe/detail";
+import { mediaUrl } from "@/lib/upload/media";
 
 const SITE = "https://sameplz.vercel.app";
 
@@ -40,6 +41,8 @@ export async function generateMetadata(
   const url = `${SITE}/r/${recipe.public_id}`;
   const description =
     recipe.summary || `${recipe.creator.nickname}님의 AI 레시피예요.`;
+  // First uploaded image result as the share card (videos have no still to show).
+  const cover = recipe.media.find((m) => m.kind === "image" && mediaUrl(m.path));
   return {
     title: `${recipe.title} · SAMEPLZ`,
     description,
@@ -53,6 +56,9 @@ export async function generateMetadata(
       locale: "ko_KR",
       title: recipe.title,
       description,
+      ...(cover
+        ? { images: [{ url: mediaUrl(cover.path)!, alt: cover.alt ?? recipe.title }] }
+        : {}),
     },
   };
 }

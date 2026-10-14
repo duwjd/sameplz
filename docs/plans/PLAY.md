@@ -171,3 +171,7 @@ PR은 세 개다. 앞 PR이 머지된 뒤 다음을 시작한다.
 - `start_run`에는 견적 총액을 `p_expected_total`로 넘긴다. 다르면 `PRICE_CHANGED`(409)다.
 - `purge_play_files`에는 Storage에서 실제로 지운 id만 넘긴다.
 - 레퍼런스 입력 이미지는 gpt-image·nano-banana의 edit에서도 과금되지만, 지금 가격표에는 Grok만 레퍼런스 단가가 있다. 운영 키로 fal 가격 API를 확인할 때 `per_reference_usd`를 넣고 `price_version`을 올린다.
+- 남겨 둔 위험(PR F 검토)
+  - 공급자 제출은 됐는데 `mark_cell_submitted` 전에 서버가 죽으면, 5분 lease 뒤 재제출로 공급자 작업이 2개 생길 수 있다(사용자 크레딧은 맞고, 첫 작업의 비용은 예산에 잡히지 않는다).
+  - 영상 결과는 우리 쪽 출력 모더레이션이 없고 공급자 안전 장치에 맡긴다(F4-7은 「결과 이미지」).
+  - 제출 응답을 못 받은 경우(타임아웃·네트워크)는 재제출하지 않고 `PROVIDER_ERROR`로 끝낸다(크레딧 반환, 예산에는 쓴 것으로).

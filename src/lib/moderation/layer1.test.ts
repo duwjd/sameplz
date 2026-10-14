@@ -57,6 +57,11 @@ describe("F5-3 layer 1: hidden characters (R08)", () => {
     expect(codes("a︀︁︂")).toEqual(["R08"]);
   });
 
+  it("catches Hangul filler characters used as blanks", () => {
+    expect(codes("사진\u3164만들기")).toEqual(["R08"]);
+    expect(codes("a\uffa0b")).toEqual(["R08"]);
+  });
+
   it("reports the line of the finding", () => {
     const [f] = scanText("prompt.body", "첫 줄\n둘째 줄\n셋​째");
     expect(f.line).toBe(3);

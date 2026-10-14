@@ -9,7 +9,9 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import { useRouter } from "next/navigation";
 import { Button, Callout, EmptyState, Icon, Stepper } from "@/components/ds";
+import { sentence } from "@/lib/upload/messages";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   discardDraft,
@@ -108,6 +110,7 @@ export function UploadWizard({
   blocked?: { title: string; description: string } | null;
   waitlist: { joined: boolean; categories: string[] };
 }) {
+  const router = useRouter();
   const base = useCallback(() => edit?.form ?? emptyUploadForm(), [edit]);
   const [form, setForm] = useState<UploadForm>(base);
   const [step, setStep] = useState<Step>(1);
@@ -162,14 +165,15 @@ export function UploadWizard({
 
   // UP-08 autosave while writing (not while the resume question is open, not after submit).
   useEffect(() => {
-    if (!dirty.current || pendingDraft || result?.ok) return;
+    // Never while submitting: a late save would race the submit's own draft cleanup.
+    if (!dirty.current || pendingDraft || result?.ok || submitting) return;
     const t = setTimeout(async () => {
       setSaved("saving");
       const r = await saveDraft({ form, step });
       setSaved(r.ok ? "saved" : "error");
     }, SAVE_DELAY_MS);
     return () => clearTimeout(t);
-  }, [form, step, pendingDraft, result]);
+  }, [form, step, pendingDraft, result, submitting]);
 
   useEffect(() => {
     const field = focusRef.current;
@@ -206,6 +210,14 @@ export function UploadWizard({
     const r = await submitRecipe({ form });
     setSubmitting(false);
     if (r.ok) {
+      // New versions report in the seller center: this page re-renders as "under review" right
+      // after the submit, so the done screen must not depend on this component surviving.
+      if (form.recipeId) {
+        router.replace(
+          `/my/seller?submitted=${r.review ? "review" : r.status === "live" ? "live" : "private"}`,
+        );
+        return;
+      }
       setResult(r);
       window.scrollTo({ top: 0 });
       return;
@@ -304,11 +316,26 @@ export function UploadWizard({
           }
         >
           {edit.reject
-            ? `${edit.reject.note ?? (edit.reject.code ? REJECT_COPY[edit.reject.code].fix : "")} 고친 뒤 4단계에 바뀐 점을 적어 주세요.`
+            ? `${sentence(edit.reject.note ?? (edit.reject.code ? REJECT_COPY[edit.reject.code].fix : ""))} 고친 뒤 4단계에 바뀐 점을 적어 주세요.`
             : "지난 버전 내용을 불러왔어요. 카테고리는 바꿀 수 없고, 4단계에 바뀐 점을 적어야 해요. 받은 사람은 골라서 업데이트해요."}
         </Callout>
       )}
-      <Stepper steps={STEPS.map((label) => ({ label }))} current={step - 1} />
+      {/* 390px cannot fit five labels: phones get the current step as text. */}
+      <div className="hidden md:block">
+        <Stepper steps={STEPS.map((label) => ({ label }))} current={step - 1} />
+      </div>
+      <p
+        className="md:hidden"
+        style={{
+          margin: 0,
+          fontSize: 14,
+          fontWeight: 600,
+          color: "var(--sp-fg-secondary)",
+        }}
+      >
+        {step}/5단계 · {STEPS[step - 1]}
+        {step < 5 ? ` → 다음: ${STEPS[step]}` : ""}
+      </p>
 
       <section aria-labelledby="up-step-title" style={card}>
         <header

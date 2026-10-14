@@ -51,7 +51,7 @@ test("SCN 7 첫 무료 등록 → 마켓 검색에 뜸 → 유료 판매 오픈 
     "true",
   );
   await page.getByRole("button", { name: "유료 판매 오픈 알림 신청" }).click();
-  await expect(page.getByRole("button", { name: "신청했어요" })).toBeVisible();
+  await expect(page.getByText("신청했어요", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: "검사하고 올리기" }).click();
   await expect(page.getByText("레시피를 공개했어요")).toBeVisible({
@@ -67,8 +67,10 @@ test("SCN 7 첫 무료 등록 → 마켓 검색에 뜸 → 유료 판매 오픈 
   // Seller center: live, and the waitlist remembers the sign-up.
   await page.goto("/my/seller");
   await expect(
-    page.getByRole("article").filter({ hasText: title })
+    page
+      .getByRole("article")
+      .filter({ hasText: title })
       .getByText("공개 중", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "신청했어요" })).toBeVisible();
+  await expect(page.getByText("신청했어요", { exact: true })).toBeVisible();
 });

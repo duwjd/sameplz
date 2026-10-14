@@ -15,6 +15,7 @@ import {
 import { useAuth } from "@/components/auth/AuthProvider";
 import { createShareLink, setRecipeVisibility } from "@/actions/seller";
 import { REJECT_COPY } from "@/lib/moderation/reject-codes";
+import { sentence } from "@/lib/upload/messages";
 import type { MyRecipeDTO, RecipeStatus, SellerDays } from "@/data/seller";
 import { WaitlistCard } from "./WaitlistCard";
 
@@ -74,10 +75,13 @@ export function SellerView({
   rows,
   days,
   waitlist,
+  submitted = null,
 }: {
   rows: MyRecipeDTO[];
   days: SellerDays;
   waitlist: { joined: boolean; categories: string[] };
+  /** Just submitted a new version from the wizard (UP-08). */
+  submitted?: "live" | "review" | "private" | null;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -110,6 +114,8 @@ export function SellerView({
           <Button>레시피 올리기</Button>
         </Link>
       </div>
+
+      {submitted && <SubmittedBanner kind={submitted} />}
 
       <WaitlistCard initial={waitlist} />
 
@@ -145,6 +151,44 @@ export function SellerView({
         </ul>
       )}
     </div>
+  );
+}
+
+const SUBMITTED = {
+  live: {
+    title: "레시피를 공개했어요",
+    text: "새 버전이 공개됐어요. 받은 사람은 라이브러리에서 골라서 업데이트해요.",
+  },
+  review: {
+    title: "사람이 확인하고 있어요",
+    text: "1~2일 안에 확인하고 결과를 알려 드려요. 그동안 지난 버전이 그대로 보여요.",
+  },
+  private: {
+    title: "비공개로 저장했어요",
+    text: "나만 볼 수 있어요. 공개로 바꾸면 마켓에 올라가요.",
+  },
+} as const;
+
+function SubmittedBanner({ kind }: { kind: keyof typeof SUBMITTED }) {
+  const c = SUBMITTED[kind];
+  return (
+    <section
+      role="status"
+      tabIndex={-1}
+      ref={(el) => el?.focus()}
+      aria-labelledby="submitted-title"
+      style={{ ...card, background: "var(--sp-bg-secondary)", outline: "none" }}
+    >
+      <h2
+        id="submitted-title"
+        style={{ margin: 0, fontSize: 17, fontWeight: 700 }}
+      >
+        {c.title}
+      </h2>
+      <p style={{ margin: 0, fontSize: 14, color: "var(--sp-fg-secondary)" }}>
+        {c.text}
+      </p>
+    </section>
   );
 }
 
@@ -264,9 +308,11 @@ function RecipeRow({ row, days }: { row: MyRecipeDTO; days: SellerDays }) {
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <span>
-              {row.reject?.note ??
-                reject?.fix ??
-                "사유를 확인하고 고쳐서 다시 제출해 주세요."}
+              {sentence(
+                row.reject?.note ??
+                  reject?.fix ??
+                  "사유를 확인하고 고쳐서 다시 제출해 주세요.",
+              )}
               {row.reject?.note && reject ? ` ${reject.fix}` : ""}
             </span>
             <Link

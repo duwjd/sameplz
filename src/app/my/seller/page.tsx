@@ -32,7 +32,20 @@ async function Seller({
     getMyRecipes(days),
     getMyWaitlist(),
   ]);
-  return <SellerView rows={rows} days={days} waitlist={waitlist} />;
+  const submitted =
+    sp.submitted === "live" ||
+    sp.submitted === "review" ||
+    sp.submitted === "private"
+      ? sp.submitted
+      : null;
+  return (
+    <SellerView
+      rows={rows}
+      days={days}
+      waitlist={waitlist}
+      submitted={submitted}
+    />
+  );
 }
 
 function SellerSkeleton() {

@@ -2,7 +2,7 @@
 import Link from "next/link";
 // GNB wired to real routes. Login / account actions arrive with the login popup task.
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/actions/auth";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SiteHeader, type SiteHeaderActive } from "@/components/ds";
@@ -36,9 +36,26 @@ export function AppHeader() {
   const router = useRouter();
   const { viewer, requireLogin } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Open: focus the first item. Esc (anywhere): close and return focus to the account button.
+  useEffect(() => {
+    if (!menuOpen) return;
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setMenuOpen(false);
+      wrapRef.current
+        ?.querySelector<HTMLElement>('button[aria-label="마이페이지"]')
+        ?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
   return (
-    <div style={{ position: "relative" }}>
+    <div ref={wrapRef} style={{ position: "relative" }}>
       <SiteHeader
         user={
           viewer
@@ -59,11 +76,9 @@ export function AppHeader() {
       />
       {viewer && menuOpen && (
         <div
+          ref={menuRef}
           role="menu"
           aria-label="계정"
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setMenuOpen(false);
-          }}
           style={{
             position: "absolute",
             top: 64,
@@ -89,7 +104,6 @@ export function AppHeader() {
           <Link
             href="/my/library"
             role="menuitem"
-            autoFocus
             onClick={() => setMenuOpen(false)}
             style={{
               display: "flex",

@@ -1101,9 +1101,6 @@ export function StepVisibility({ form, patch, errors }: StepProps) {
           />
         </FormField>
       )}
-      <p style={hint}>
-        지금은 무료로만 올릴 수 있어요. 유료 판매는 준비 중이에요.
-      </p>
     </div>
   );
 }

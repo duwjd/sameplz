@@ -102,14 +102,21 @@ export function WaitlistCard({
       >
         {joined ? (
           <>
-            <Button
-              variant="outline"
-              color="secondary"
-              disabled
-              aria-pressed="true"
+            <span
+              role="status"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                height: 32,
+                padding: "0 12px",
+                borderRadius: 8,
+                border: "1px solid var(--sp-border-normal)",
+                fontSize: 14,
+                fontWeight: 600,
+              }}
             >
               신청했어요
-            </Button>
+            </span>
             <Button
               variant="ghost"
               color="secondary"

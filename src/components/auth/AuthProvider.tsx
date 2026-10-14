@@ -205,20 +205,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         onSelect={onSelect}
         onClose={onClose}
       />
-      {toast && (
-        <div
-          aria-live="polite"
-          style={{
-            position: "fixed",
-            left: "50%",
-            bottom: 24,
-            transform: "translateX(-50%)",
-            zIndex: 120,
-          }}
-        >
-          <Toast title={toast} />
-        </div>
-      )}
+      {/* Always mounted so screen readers announce each new toast. */}
+      <div
+        role="status"
+        aria-live="polite"
+        style={{
+          position: "fixed",
+          left: "50%",
+          bottom: 24,
+          transform: "translateX(-50%)",
+          zIndex: 120,
+        }}
+      >
+        {toast && <Toast title={toast} />}
+      </div>
     </AuthContext.Provider>
   );
 }
@@ -254,10 +254,7 @@ function AuthRouteEffects({
   // re-ran this effect, cancelled the pending redirect and refetched forever.
   const needsSignup = Boolean(viewer && !viewer.signupComplete);
   useEffect(() => {
-    if (
-      !needsSignup ||
-      SIGNUP_FREE_PATHS.some((p) => pathname.startsWith(p))
-    )
+    if (!needsSignup || SIGNUP_FREE_PATHS.some((p) => pathname.startsWith(p)))
       return;
     let alive = true;
     refreshViewer().then((fresh) => {

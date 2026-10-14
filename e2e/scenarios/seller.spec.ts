@@ -33,13 +33,9 @@ test.describe("SELL 판매자 센터", () => {
     await page
       .getByRole("button", { name: "유료 판매 오픈 알림 신청" })
       .click();
-    await expect(
-      page.getByRole("button", { name: "신청했어요" }),
-    ).toBeVisible();
+    await expect(page.getByText("신청했어요", { exact: true })).toBeVisible();
     await page.reload();
-    await expect(
-      page.getByRole("button", { name: "신청했어요" }),
-    ).toBeVisible();
+    await expect(page.getByText("신청했어요", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "신청 취소하기" }).click();
     await expect(
       page.getByRole("button", { name: "유료 판매 오픈 알림 신청" }),
@@ -105,13 +101,17 @@ test.describe("SELL 판매자 센터", () => {
     await page.getByLabel("바뀐 점").fill("안 하는 일을 더 적었어요");
     await page.getByRole("button", { name: "다음" }).click();
     await page.getByRole("button", { name: "검사하고 올리기" }).click();
-    await expect(page.getByText("사람이 확인하고 있어요")).toBeVisible({
+    await expect(
+      page.getByRole("heading", { name: "사람이 확인하고 있어요" }),
+    ).toBeVisible({
       timeout: 20_000,
     });
 
     await page.goto("/my/seller");
     await expect(
-      page.getByRole("article").first()
+      page
+        .getByRole("article")
+        .first()
         .getByText("사람 확인 중", { exact: true }),
     ).toBeVisible();
   });
@@ -138,7 +138,9 @@ test.describe("SELL 판매자 센터", () => {
     await page.getByLabel("바뀐 점").fill("설명을 다듬었어요");
     await page.getByRole("button", { name: "다음" }).click();
     await page.getByRole("button", { name: "검사하고 올리기" }).click();
-    await expect(page.getByText("레시피를 공개했어요")).toBeVisible({
+    await expect(
+      page.getByRole("heading", { name: "레시피를 공개했어요" }),
+    ).toBeVisible({
       timeout: 20_000,
     });
 
@@ -188,7 +190,9 @@ test.describe("SELL 판매자 센터", () => {
       page.getByText("이미 있는 링크 이름이에요. 다른 이름을 써 주세요."),
     ).toBeVisible();
 
-    const code = `e2e${randomUUID().replace(/[^a-z0-9]/g, "").slice(0, 8)}`;
+    const code = `e2e${randomUUID()
+      .replace(/[^a-z0-9]/g, "")
+      .slice(0, 8)}`;
     await input.fill(code);
     await page.getByRole("button", { name: "링크 만들기" }).click();
     await expect(page.getByText(`?ref=${code}`)).toBeVisible();

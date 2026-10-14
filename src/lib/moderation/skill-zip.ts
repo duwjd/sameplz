@@ -278,6 +278,20 @@ const EXEC_MAGIC = [
   [0x00, 0x61, 0x73, 0x6d], // wasm
 ];
 
+/** Binary formats a skill may legitimately carry (images, PDF, fonts, audio). */
+const BINARY_MAGIC = [
+  [0x89, 0x50, 0x4e, 0x47], // PNG
+  [0xff, 0xd8, 0xff], // JPEG
+  [0x47, 0x49, 0x46, 0x38], // GIF
+  [0x52, 0x49, 0x46, 0x46], // RIFF (WEBP / WAV)
+  [0x25, 0x50, 0x44, 0x46], // PDF
+  [0x77, 0x4f, 0x46, 0x46], // WOFF
+  [0x77, 0x4f, 0x46, 0x32], // WOFF2
+  [0x00, 0x01, 0x00, 0x00], // TTF
+  [0x4f, 0x54, 0x54, 0x4f], // OTF
+  [0x49, 0x44, 0x33], // MP3
+];
+
 /** Symlink target stays inside `root/` once resolved from the link's own folder. */
 function insideRoot(linkPath: string, target: string) {
   if (
@@ -329,7 +343,9 @@ export async function inspectSkillZip(
       e.name.startsWith("/") ||
       e.name.includes("\\") ||
       segs.some((s) => s === "" || s === "." || s === "..") ||
-      /[\p{Cc}\p{Cf}]/u.test(e.name) ||
+      /[\p{Cc}\p{Cf}\u115f\u1160\u3164\uffa0\u{e0100}-\u{e01ef}]|[\ufe00-\ufe0f]{2}/u.test(
+        e.name,
+      ) ||
       seen.has(key)
     )
       return fail("ZIP_LAYOUT");
@@ -367,12 +383,16 @@ export async function inspectSkillZip(
       startsWith(data, [0x23, 0x21]) // "#!"
     )
       hasScripts = true;
-    // Every UTF-8 file is checked whatever its extension; too large to check → human review.
+    // Every UTF-8 file is checked whatever its extension. Anything else that is not a known binary
+    // (agents read files leniently) or is too large to check → human review.
     const text = asText(data);
-    if (text !== null) {
-      if (data.byteLength <= MAX_TEXT_BYTES) texts.push({ path: e.name, text });
-      else unscanned = true;
-    }
+    if (text !== null && data.byteLength <= MAX_TEXT_BYTES)
+      texts.push({ path: e.name, text });
+    else if (
+      text !== null ||
+      !BINARY_MAGIC.some((sig) => startsWith(data, sig))
+    )
+      unscanned = true;
     kept[e.name] = data;
     listed.push({ path: e.name, size: data.byteLength });
   }

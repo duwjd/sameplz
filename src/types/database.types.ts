@@ -965,6 +965,9 @@ isOneToOne: false
 "get_recipe_public":
 { Args: { "p_public_id": string }; Returns: Json
                            },
+"hit_judge_budget":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
 "hit_upload_limit":
 { Args: { "p_user": string }; Returns: string
                            },

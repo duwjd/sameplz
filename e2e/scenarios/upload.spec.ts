@@ -70,7 +70,10 @@ test.describe("UP 레시피 올리기", () => {
     await loginAsNewUser(context, { completeSignup: true });
     await startPrompt(page);
     await page.getByLabel("제목").fill("초안 테스트 레시피");
-    await expect(page.getByText("초안을 저장했어요")).toBeVisible();
+    // Debounced save; the first server action on a cold dev server compiles first.
+    await expect(page.getByText("초안을 저장했어요")).toBeVisible({
+      timeout: 15_000,
+    });
 
     await page.reload();
     await expect(page.getByText("쓰던 초안이 있어요")).toBeVisible();

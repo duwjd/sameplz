@@ -55,6 +55,9 @@ function hiddenKind(
     cp === 0x00ad
   )
     return "폭 0 문자";
+  // Hangul fillers render as blank space and are a known way to hide text.
+  if (cp === 0x3164 || cp === 0x115f || cp === 0x1160 || cp === 0xffa0)
+    return "한글 채움 문자";
   if (
     cp === 0x200e ||
     cp === 0x200f ||

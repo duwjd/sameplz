@@ -6,6 +6,7 @@ import {
   createMediaUploadTarget,
   createSkillZipTarget,
   deleteMyDraft,
+  hitJudgeBudget,
   hitUploadLimit,
   hitUploadTargetLimit,
   storeRebuiltSkillZip,
@@ -260,8 +261,7 @@ export async function submitRecipe(input: {
     const errors = validateStep(step, form);
     if (errors.length) return fail("INVALID", { step, errors });
   }
-  const limit = await hitUploadLimit(viewer);
-  if (limit === "RATE_LIMITED") return fail("RATE_LIMITED");
+  if (!(await hitUploadLimit(viewer))) return fail("RATE_LIMITED");
   if (!(await verifyMedia(viewer, form.media))) return fail("MEDIA_INVALID");
 
   let skill: SkillPackage | null = null;
@@ -300,7 +300,7 @@ export async function submitRecipe(input: {
   }
   const l2 = await runLayer2(texts, {
     ...layer2OptionsFromEnv(),
-    budgetExhausted: limit === "JUDGE_BUDGET",
+    budgetExhausted: !(await hitJudgeBudget()),
   });
   if (l2.result === "fail")
     return fail("CHECK_FAILED", {

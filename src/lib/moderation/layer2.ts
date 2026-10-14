@@ -138,7 +138,7 @@ const PREFILL = '{"verdict":"';
 const JUDGE_NOTE = "목적 밖 지시가 있는지 사람이 확인해요.";
 /** Text talking to the checker itself is an injection attempt by definition. */
 const ADDRESSES_CHECKER =
-  /\b(verdict|grader|grading|moderator|moderation\s+model|classifier|judge\s+model)\b|검사기|판정기|채점기|분류기|모더레이터|심사\s*모델/i;
+  /\b(verdict|grader|grading|moderator|moderation\s+model|classifier|judge\s+model|checker|reviewer|evaluator|safety\s+(filter|system|model))\b|검사기|판정기|채점기|분류기|모더레이터|심사\s*(모델|관|자|AI)|검토\s*(AI|모델|봇)|평가\s*(모델|AI)/i;
 
 async function judge(
   texts: TextField[],

@@ -177,18 +177,18 @@ export async function readSkillZip(
   return bytes.byteLength <= MAX_SKILL_ZIP_BYTES ? bytes : null;
 }
 
-/**
- * Paid layer 2 runs per submit (public.hit_upload_limit): "ok", "RATE_LIMITED" (per-user cap), or
- * "JUDGE_BUDGET" (global daily budget spent → submit without layer 2, i.e. human review).
- */
-export async function hitUploadLimit(
-  viewer: Viewer,
-): Promise<"ok" | "RATE_LIMITED" | "JUDGE_BUDGET"> {
+/** Per-user submit caps (public.hit_upload_limit): 20 / hour, 40 / day. */
+export async function hitUploadLimit(viewer: Viewer): Promise<boolean> {
   const { data, error } = await createAdminClient().rpc("hit_upload_limit", {
     p_user: viewer.id,
   });
-  if (error) return "RATE_LIMITED";
-  return data === "RATE_LIMITED" || data === "JUDGE_BUDGET" ? data : "ok";
+  return !error && data === null;
+}
+
+/** Global daily judge budget, counted only right before paid layer 2 calls. false → skip layer 2. */
+export async function hitJudgeBudget(): Promise<boolean> {
+  const { data, error } = await createAdminClient().rpc("hit_judge_budget");
+  return !error && data === true;
 }
 
 /** Signed upload URLs: 60 per user per hour (public.hit_upload_target_limit). */

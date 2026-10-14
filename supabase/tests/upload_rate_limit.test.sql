@@ -4,6 +4,9 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(17);
 
+-- Counters written by local e2e runs must not leak into these assertions.
+delete from public.rate_limit_buckets where key like 'upload%';
+
 select ok(has_function_privilege('service_role', 'public.hit_upload_limit(uuid)', 'execute'),
   'service_role can call hit_upload_limit');
 select ok(not has_function_privilege('authenticated', 'public.hit_upload_limit(uuid)', 'execute'),

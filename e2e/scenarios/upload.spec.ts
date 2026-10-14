@@ -76,7 +76,9 @@ test.describe("UP 레시피 올리기", () => {
     });
 
     await page.reload();
-    await expect(page.getByText("쓰던 초안이 있어요")).toBeVisible();
+    await expect(
+      page.getByRole("status").getByText("쓰던 초안이 있어요"),
+    ).toBeVisible();
     await page.getByRole("button", { name: "이어서 쓰기" }).click();
     await expect(page.getByLabel("제목")).toHaveValue("초안 테스트 레시피");
 
@@ -88,7 +90,9 @@ test.describe("UP 레시피 올리기", () => {
       "false",
     );
     await page.reload();
-    await expect(page.getByText("쓰던 초안이 있어요")).toHaveCount(0);
+    await expect(
+      page.getByRole("status").getByText("쓰던 초안이 있어요"),
+    ).toHaveCount(0);
   });
 
   test("UP-01 프롬프트 5단계 → 공개 → 상세에 결과물, 원문은 없음", async ({

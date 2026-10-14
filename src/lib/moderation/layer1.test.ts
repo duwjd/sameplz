@@ -112,7 +112,7 @@ describe("F5-3 layer 1: injection, payloads and keys", () => {
   it.each([
     "sk-proj-abcdefghijklmnopqrstuvwxyz0123",
     "sk-ant-api03-abcdefghijklmnopqrstuvwxyz",
-    "AKIAABCDEFGHIJKLMNOP",
+    "AKIA" + "ABCDEFGHIJKLMNOP", // split so secret scanners do not flag the fixture
     "ghp_" + "a".repeat(36),
     "AIza" + "b".repeat(35),
     "xoxb-1234-5678-abcdef",

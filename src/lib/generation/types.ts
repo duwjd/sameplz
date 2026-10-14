@@ -11,9 +11,16 @@ export interface SubmitRequest {
   webhookUrl: string;
 }
 
-/** Why a submit did not go through. `rate_limited` / `transient` are retried by the sweeper. */
+/**
+ * Why a submit did not go through. `rate_limited` / `transient` (a definite 5xx) are retried;
+ * `unknown` (timeout / network) may already be queued at the provider, so it is never resubmitted.
+ */
 export type SubmitFailure =
-  "rate_limited" | "transient" | "safety_blocked" | "invalid_input";
+  | "rate_limited"
+  | "transient"
+  | "unknown"
+  | "safety_blocked"
+  | "invalid_input";
 
 export class ProviderSubmitError extends Error {
   constructor(readonly failure: SubmitFailure) {

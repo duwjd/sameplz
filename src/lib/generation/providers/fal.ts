@@ -19,8 +19,11 @@ const JWKS_URL = "https://rest.fal.ai/.well-known/jwks.json";
 const JWKS_TTL_MS = 12 * 3600 * 1000;
 const SKEW_SECONDS = 300;
 const TIMEOUT_MS = 20_000;
-/** fal result files are served from these hosts only (signed webhook payloads still never pick hosts we do not know). */
-const OUTPUT_HOSTS = [/(^|\.)fal\.media$/, /(^|\.)fal\.ai$/, /(^|\.)fal\.run$/];
+const JWKS_FORCE_MIN_MS = 5 * 60 * 1000;
+/** fal result files come from its CDN only; redirects are re-checked against the same list. */
+const OUTPUT_HOSTS = [/^([a-z0-9-]+\.)*fal\.media$/];
+export const isOutputHost = (u: URL) =>
+  u.protocol === "https:" && OUTPUT_HOSTS.some((h) => h.test(u.hostname));
 
 function key(): string {
   const k = process.env.FAL_KEY;
@@ -70,24 +73,33 @@ function outputsOf(payload: unknown): string[] {
 }
 
 let jwks: { at: number; keys: KeyObject[] } | null = null;
+let lastFetchAt = 0;
 
+/** Cached ED25519 keys. A forced refresh (key rotation) happens at most once per 5 minutes. */
 async function publicKeys(force = false): Promise<KeyObject[]> {
-  if (!force && jwks && Date.now() - jwks.at < JWKS_TTL_MS) return jwks.keys;
-  const res = await fetch(JWKS_URL, { cache: "no-store" });
-  if (!res.ok) return jwks?.keys ?? [];
-  const body = (await res.json()) as {
-    keys?: { kty?: string; crv?: string; x?: string }[];
-  };
-  const keys = (body.keys ?? [])
+  const fresh = jwks && Date.now() - jwks.at < JWKS_TTL_MS;
+  if (fresh && (!force || Date.now() - lastFetchAt < JWKS_FORCE_MIN_MS)) return jwks!.keys;
+  if (!fresh && jwks && Date.now() - lastFetchAt < 10_000) return jwks.keys;
+  lastFetchAt = Date.now();
+  let body: { keys?: { kty?: string; crv?: string; x?: string }[] } | null = null;
+  try {
+    const res = await fetch(JWKS_URL, { cache: "no-store", signal: AbortSignal.timeout(5_000) });
+    body = res.ok ? await res.json() : null;
+  } catch {
+    body = null;
+  }
+  if (!body || !Array.isArray(body.keys)) return jwks?.keys ?? [];
+  const keys = body.keys
     .filter(
       (k) => k.kty === "OKP" && k.crv === "Ed25519" && typeof k.x === "string",
     )
-    .map((k) =>
-      createPublicKey({
-        key: { kty: "OKP", crv: "Ed25519", x: k.x! },
-        format: "jwk",
-      }),
-    );
+    .flatMap((k) => {
+      try {
+        return [createPublicKey({ key: { kty: "OKP", crv: "Ed25519", x: k.x! }, format: "jwk" })];
+      } catch {
+        return [];
+      }
+    });
   jwks = { at: Date.now(), keys };
   return keys;
 }
@@ -100,6 +112,14 @@ export function falSignedMessage(h: Headers, rawBody: string): Buffer | null {
   if (Math.abs(Date.now() / 1000 - Number(ts)) > SKEW_SECONDS) return null;
   const digest = createHash("sha256").update(rawBody, "utf8").digest("hex");
   return Buffer.from([requestId, userId, ts, digest].join("\n"), "utf8");
+}
+
+function sameRequestId(h: Headers, rawBody: string): boolean {
+  try {
+    return (JSON.parse(rawBody) as { request_id?: unknown }).request_id === h.get("x-fal-webhook-request-id");
+  } catch {
+    return false;
+  }
 }
 
 export function verifyWith(
@@ -133,7 +153,8 @@ export const falAdapter: ProviderAdapter = {
       );
     } catch (e) {
       if (e instanceof ProviderSubmitError) throw e;
-      throw new ProviderSubmitError("transient");
+      // Timeout / network: the job may already be queued at fal — never resubmit it.
+      throw new ProviderSubmitError("unknown");
     }
     if (res.status === 429) throw new ProviderSubmitError("rate_limited");
     if (!res.ok) {
@@ -143,9 +164,8 @@ export const falAdapter: ProviderAdapter = {
         res.status >= 500 ? "transient" : "invalid_input",
       );
     }
-    const body = (await res.json()) as { request_id?: unknown };
-    if (typeof body.request_id !== "string")
-      throw new ProviderSubmitError("transient");
+    const body = (await res.json().catch(() => null)) as { request_id?: unknown } | null;
+    if (typeof body?.request_id !== "string") throw new ProviderSubmitError("unknown");
     return { requestId: body.request_id };
   },
 
@@ -153,6 +173,12 @@ export const falAdapter: ProviderAdapter = {
     const message = falSignedMessage(headers, rawBody);
     const sig = headers.get("x-fal-webhook-signature") ?? "";
     if (!message) return false;
+    // fal signs every account's webhooks with the same keys: pin ours, and the signed request id
+    // must be the one in the body.
+    const account = process.env.FAL_USER_ID;
+    if (account && headers.get("x-fal-webhook-user-id") !== account) return false;
+    if (!account && process.env.VERCEL_ENV === "production") return false;
+    if (!sameRequestId(headers, rawBody)) return false;
     if (verifyWith(await publicKeys(), message, sig)) return true;
     // Key rotation: refetch once before refusing.
     return verifyWith(await publicKeys(true), message, sig);
@@ -194,12 +220,13 @@ export const falAdapter: ProviderAdapter = {
 
   async poll(endpoint, requestId): Promise<ProviderOutcome> {
     const base = `${QUEUE}/${appIdOf(endpoint)}/requests/${encodeURIComponent(requestId)}`;
-    const st = await call(`${base}/status`);
-    if (st.status === 404) return { state: "failed", code: "OUTPUT_LOST" };
-    if (!st.ok) return { state: "pending" };
-    const status = ((await st.json()) as { status?: unknown }).status;
+    const st = await call(`${base}/status`).catch(() => null);
+    // Unknown / not yet visible: keep waiting; the sweeper expires it after the deadline window.
+    if (!st?.ok) return { state: "pending" };
+    const status = ((await st.json().catch(() => null)) as { status?: unknown } | null)?.status;
     if (status !== "COMPLETED") return { state: "pending" };
-    const res = await call(base);
+    const res = await call(base).catch(() => null);
+    if (!res) return { state: "pending" };
     const body = await res.json().catch(() => null);
     if (res.ok) {
       const outputs = outputsOf(body);
@@ -227,24 +254,28 @@ export const falAdapter: ProviderAdapter = {
     } catch {
       return null;
     }
-    if (
-      u.protocol !== "https:" ||
-      !OUTPUT_HOSTS.some((h) => h.test(u.hostname))
-    )
-      return null;
-    return download(u.toString(), maxBytes);
+    if (!isOutputHost(u)) return null;
+    return download(u, maxBytes);
   },
 };
 
-/** GET with a byte cap; no redirects to other hosts are followed blindly (fetch follows within https). */
+/** GET with a byte cap. Redirects are followed by hand (max 2), each target re-checked against the CDN list. */
 export async function download(
-  url: string,
+  start: URL,
   maxBytes: number,
 ): Promise<{ bytes: Uint8Array; contentType: string } | null> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 60_000);
   try {
-    const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+    let url = start;
+    let res = await fetch(url, { signal: ctrl.signal, cache: "no-store", redirect: "manual" });
+    for (let hop = 0; res.status >= 300 && res.status < 400; hop++) {
+      const next = res.headers.get("location");
+      if (hop >= 2 || !next) return null;
+      url = new URL(next, url);
+      if (!isOutputHost(url)) return null;
+      res = await fetch(url, { signal: ctrl.signal, cache: "no-store", redirect: "manual" });
+    }
     if (!res.ok || !res.body) return null;
     const declared = Number(res.headers.get("content-length") ?? "0");
     if (declared > maxBytes) return null;

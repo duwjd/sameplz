@@ -29,6 +29,8 @@ function fail(code: string, extra: Record<string, unknown> = {}) {
  * The response carries ids only: never the prompt, the template or provider objects.
  */
 export async function POST(request: NextRequest) {
+  if (Number(request.headers.get("content-length") ?? "0") > MAX_BODY)
+    return fail("INVALID_REQUEST");
   const raw = await request.text();
   if (raw.length > MAX_BODY) return fail("INVALID_REQUEST");
   let json: unknown;
@@ -46,6 +48,12 @@ export async function POST(request: NextRequest) {
   if (!viewer.signupComplete) return fail("SIGNUP_INCOMPLETE");
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!secret) return fail("FAILED");
+  // Cheap gate before the costly checks (suspended, AI notice, 10 attempts/min).
+  const { data: gate, error: gateError } = await createAdminClient().rpc("play_precheck", {
+    p_user: viewer.id,
+  });
+  if (gateError) return fail("FAILED");
+  if (gate) return fail(gate);
 
   // Mode and variables (PLAY-01/02). Blank mode sends the user's own prompt.
   let rendered: string;
@@ -59,7 +67,8 @@ export async function POST(request: NextRequest) {
     const errors = checkVariables(t.variables, req.variables);
     if (errors.length) return fail("INVALID_VARIABLES", { fields: errors });
     rendered = renderPrompt(t.template, req.variables);
-    moderated = Object.values(req.variables);
+    // The whole rendered prompt: the recipe body too (an own recipe may not have passed review).
+    moderated = [rendered];
   }
   if (rendered.length > MAX_RENDERED_CHARS) return fail("INVALID_VARIABLES");
 

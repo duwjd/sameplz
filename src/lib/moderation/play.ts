@@ -26,7 +26,9 @@ export function koreanBlocked(text: string): boolean {
   return KO_BLOCKED.some((w) => t.includes(w));
 }
 
-const mockMode = () => process.env.MODERATION_PROVIDER === "mock";
+// Never in a production deployment: mock passes everything.
+const mockMode = () =>
+  process.env.MODERATION_PROVIDER === "mock" && process.env.VERCEL_ENV !== "production";
 
 async function omni(input: unknown[]): Promise<boolean[] | null> {
   const key = process.env.OPENAI_API_KEY;

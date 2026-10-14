@@ -1,6 +1,6 @@
 // Playground helpers (local Supabase only). The app must run with GENERATION_PROVIDER=mock and
 // MODERATION_PROVIDER=mock; the mock provider calls our webhook itself (e2e/CLAUDE.md).
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import type { BrowserContext } from "@playwright/test";
 import { loginAsNewUser, localSupabaseEnv, type TestUser } from "./auth";
@@ -97,4 +97,17 @@ export async function waitTerminal(
     if (Date.now() > until) return c;
     await new Promise((r) => setTimeout(r, 250));
   }
+}
+
+/** Same signature the mock provider puts on its webhook (local secret key). */
+export function mockSign(body: string): string {
+  return createHmac("sha256", localSupabaseEnv().secretKey).update(`mock-webhook:${body}`).digest("hex");
+}
+
+/** The sweeper runs once per minute window; tests that call it reset the window first. */
+export async function callSweeper(request: import("@playwright/test").APIRequestContext) {
+  await adminDb().from("rate_limit_buckets").delete().eq("key", "play_sweep");
+  return request.post("/api/cron/play-sweeper", {
+    headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
+  });
 }

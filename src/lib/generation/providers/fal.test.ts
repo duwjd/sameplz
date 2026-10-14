@@ -1,6 +1,6 @@
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
-import { describe, expect, it } from "vitest";
-import { appIdOf, falAdapter, falSignedMessage, verifyWith } from "./fal";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { appIdOf, falAdapter, falSignedMessage, isOutputHost, verifyWith } from "./fal";
 
 const { publicKey, privateKey } = generateKeyPairSync("ed25519");
 const other = generateKeyPairSync("ed25519");
@@ -148,5 +148,32 @@ describe("F4-4 fal events", () => {
     expect(
       await falAdapter.fetchOutput("https://fal.media.evil.example/a.png", 10),
     ).toBeNull();
+  });
+});
+
+describe("F4-4 fal webhook origin", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  const body = JSON.stringify({ request_id: "req-1", status: "OK", payload: {} });
+
+  it("F4-4 a webhook from another fal account is refused before any key lookup", async () => {
+    vi.stubEnv("FAL_USER_ID", "our-account");
+    expect(await falAdapter.verifyWebhook(signed(body), body)).toBe(false); // signed as user-1
+  });
+  it("F4-4 production refuses fal webhooks until FAL_USER_ID is set", async () => {
+    vi.stubEnv("FAL_USER_ID", "");
+    vi.stubEnv("VERCEL_ENV", "production");
+    expect(await falAdapter.verifyWebhook(signed(body), body)).toBe(false);
+  });
+  it("F4-4 the signed request id must match the body", async () => {
+    vi.stubEnv("FAL_USER_ID", "user-1");
+    const other = JSON.stringify({ request_id: "req-2", status: "OK", payload: {} });
+    expect(await falAdapter.verifyWebhook(signed(other), other)).toBe(false);
+  });
+  it("F4-4 outputs and redirects stay on the fal CDN over https", () => {
+    expect(isOutputHost(new URL("https://v3.fal.media/files/a.png"))).toBe(true);
+    expect(isOutputHost(new URL("https://fal.media/files/a.png"))).toBe(true);
+    expect(isOutputHost(new URL("https://rest.fal.ai/x"))).toBe(false);
+    expect(isOutputHost(new URL("https://fal.media.evil.example/a"))).toBe(false);
+    expect(isOutputHost(new URL("http://v3.fal.media/a"))).toBe(false);
   });
 });

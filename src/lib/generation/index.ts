@@ -6,6 +6,8 @@ import { mockAdapter } from "./providers/mock";
 import type { ProviderAdapter, ProviderName } from "./types";
 
 export function activeProvider(): ProviderName {
+  // A production deployment never runs the mock (it would bypass billing and output checks).
+  if (process.env.VERCEL_ENV === "production") return "fal";
   return process.env.GENERATION_PROVIDER === "mock" ? "mock" : "fal";
 }
 

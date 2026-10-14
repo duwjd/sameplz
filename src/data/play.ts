@@ -44,42 +44,13 @@ const admin = () => createAdminClient();
 
 export type RunMode = "own" | "free" | "blank";
 
-/**
- * Template and declared [변수] for own / free modes. The mode check here only avoids reading a
- * body the caller cannot run; start_run re-checks ownership / entitlement / live status.
- */
+/** Template and declared [변수] for own / free modes (authorization inside promptBodyForRun). */
 export async function recipeTemplate(
   userId: string,
   mode: Exclude<RunMode, "blank">,
   versionId: string,
 ): Promise<{ template: string; variables: string[] } | null> {
-  const db = admin();
-  // Two plain reads: recipes ↔ recipe_versions have several FKs, so an embed would be ambiguous.
-  const { data: v } = await db
-    .from("recipe_versions")
-    .select("id, recipe_id, review_status")
-    .eq("id", versionId)
-    .maybeSingle();
-  if (!v) return null;
-  const { data: r } = await db
-    .from("recipes")
-    .select("owner_id, category, status")
-    .eq("id", v.recipe_id)
-    .maybeSingle();
-  if (!r || r.category !== "prompt") return null;
-  if (mode === "own" && r.owner_id !== userId) return null;
-  if (mode === "free") {
-    if (v.review_status !== "approved" || r.status !== "live") return null;
-    const { data: e } = await db
-      .from("entitlements")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("recipe_id", v.recipe_id)
-      .is("revoked_at", null)
-      .limit(1);
-    if (!e?.length) return null;
-  }
-  const template = await promptBodyForRun(versionId);
+  const template = await promptBodyForRun(userId, mode, versionId);
   if (!template) return null;
   return { template, variables: detectVariables(template) };
 }
@@ -328,23 +299,16 @@ export async function submitCell(cellId: string): Promise<void> {
   let requestId: string | null = null;
   for (let attempt = 0; attempt < 2 && !requestId; attempt++) {
     try {
-      requestId = (
-        await adapter.submit({ endpoint: c.endpoint, input, webhookUrl })
-      ).requestId;
+      requestId = (await adapter.submit({ endpoint: c.endpoint, input, webhookUrl })).requestId;
     } catch (e) {
-      const failure =
-        e instanceof ProviderSubmitError ? e.failure : "transient";
-      if (failure === "transient" && attempt === 0) continue; // one immediate retry
-      if (failure === "safety_blocked") {
-        await finish(cellId, "blocked", "SAFETY_BLOCKED");
-      } else if (failure === "invalid_input") {
-        await finish(cellId, "failed", "INVALID_INPUT");
-      } else {
-        await db.rpc("requeue_cell", {
-          p_cell: cellId,
-          p_error_code: "PROVIDER_BUSY",
-        });
-      }
+      const failure = e instanceof ProviderSubmitError ? e.failure : "unknown";
+      if (failure === "transient" && attempt === 0) continue; // one immediate retry on a definite 5xx
+      if (failure === "safety_blocked") await finish(cellId, "blocked", "SAFETY_BLOCKED");
+      else if (failure === "invalid_input") await finish(cellId, "failed", "INVALID_INPUT");
+      // The job may exist at the provider: never resubmit it (no double billing). It counts as spent.
+      else if (failure === "unknown")
+        await finish(cellId, "failed", "PROVIDER_ERROR", { providerBilled: true });
+      else await db.rpc("requeue_cell", { p_cell: cellId, p_error_code: "PROVIDER_BUSY" });
       return;
     }
   }
@@ -361,10 +325,7 @@ export async function submitCell(cellId: string): Promise<void> {
 
 function resultMime(bytes: Uint8Array, declared: string): MediaMime | null {
   const candidates = Object.keys(RESULT_EXT) as MediaMime[];
-  if (
-    candidates.includes(declared as MediaMime) &&
-    sniffMatches(declared as MediaMime, bytes)
-  )
+  if (candidates.includes(declared as MediaMime) && sniffMatches(declared as MediaMime, bytes))
     return declared as MediaMime;
   return candidates.find((m) => sniffMatches(m, bytes)) ?? null;
 }
@@ -375,93 +336,83 @@ export interface CellRef {
   kind: "image" | "video";
 }
 
-/** Apply a provider outcome to one cell. Returns false when the cell must be retried later. */
+/** A temporary failure while finalizing: the provider resends (webhook 5xx) or the sweeper retries. */
+export class RetryLater extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
+}
+
+const logError = (where: string, e: unknown) =>
+  // Class name only: provider messages can carry response text (hidden-content rule 4).
+  console.error(`[play] ${where}`, e instanceof Error ? e.name : "error");
+
+/**
+ * Apply a provider outcome to one cell. A temporary problem (download, storage, moderation down)
+ * throws RetryLater unless `final` — then the cell fails, credits return, the budget counts it.
+ */
 export async function applyOutcome(
   cell: CellRef,
   outcome: ProviderOutcome,
   adapter: ProviderAdapter,
-): Promise<boolean> {
-  if (outcome.state === "pending") return true;
+  opts: { final: boolean },
+): Promise<void> {
+  if (outcome.state === "pending") return;
   if (outcome.state === "safety_blocked") {
-    await finish(cell.cellId, "blocked", "SAFETY_BLOCKED", {
-      providerBilled: true,
-    });
-    return true;
+    await finish(cell.cellId, "blocked", "SAFETY_BLOCKED", { providerBilled: true });
+    return;
   }
   if (outcome.state === "failed") {
-    await finish(cell.cellId, "failed", outcome.code, {
-      providerBilled: outcome.code === "OUTPUT_LOST",
-    });
-    return true;
+    await finish(cell.cellId, "failed", outcome.code, { providerBilled: outcome.code === "OUTPUT_LOST" });
+    return;
   }
+  const temporary = async (code: string) => {
+    if (!opts.final) throw new RetryLater(code);
+    await finish(cell.cellId, "failed", code, { providerBilled: true });
+  };
 
   const url = outcome.outputs[0];
   const file = await adapter.fetchOutput(url, MAX_RESULT_BYTES);
-  if (!file) {
-    await finish(cell.cellId, "failed", "OUTPUT_LOST", {
-      providerBilled: true,
-    });
-    return true;
-  }
+  if (!file) return temporary("OUTPUT_LOST");
   const mime = resultMime(file.bytes.subarray(0, 32), file.contentType);
-  const kindOk =
-    mime && (mime.startsWith("video/") ? "video" : "image") === cell.kind;
-  if (!mime || !kindOk) {
-    await finish(cell.cellId, "failed", "OUTPUT_LOST", {
-      providerBilled: true,
-    });
-    return true;
+  if (!mime || (mime.startsWith("video/") ? "video" : "image") !== cell.kind) {
+    await finish(cell.cellId, "failed", "OUTPUT_LOST", { providerBilled: true });
+    return;
   }
   const db = admin();
   const path = `${cell.userId}/${cell.cellId}.${RESULT_EXT[mime]}`;
   // Provider bytes stored as-is (C2PA / SynthID survive, F4-9).
-  const up = await db.storage.from(RESULTS_BUCKET).upload(path, file.bytes, {
-    contentType: mime,
-    upsert: true,
-  });
-  if (up.error) {
-    await finish(cell.cellId, "failed", "STORAGE_FAILED", {
-      providerBilled: true,
-    });
-    return true;
-  }
+  const up = await db.storage.from(RESULTS_BUCKET).upload(path, file.bytes, { contentType: mime, upsert: true });
+  if (up.error) return temporary("STORAGE_FAILED");
 
   let verdict: "pass" | "blocked" | "unavailable" = "pass";
-  if (adapter.name === "mock")
-    verdict = mockOutputBlocked(url) ? "blocked" : "pass";
+  if (adapter.name === "mock") verdict = mockOutputBlocked(url) ? "blocked" : "pass";
   else if (cell.kind === "image") {
     const s = await db.storage.from(RESULTS_BUCKET).createSignedUrl(path, 120);
-    verdict =
-      s.error || !s.data ? "unavailable" : await checkImage(s.data.signedUrl);
-  }
-  if (verdict !== "pass") {
-    await db.storage.from(RESULTS_BUCKET).remove([path]);
-    if (verdict === "blocked")
-      await finish(cell.cellId, "blocked", "RESULT_BLOCKED", {
-        providerBilled: true,
-      });
-    else
-      await finish(cell.cellId, "failed", "MODERATION_UNAVAILABLE", {
-        providerBilled: true,
-      });
-    return true;
+    verdict = s.error || !s.data ? "unavailable" : await checkImage(s.data.signedUrl);
   }
 
-  const finished = await finish(cell.cellId, "succeeded", null, {
-    resultPath: path,
-  });
-  if (!finished) {
-    // Another path ended the cell first (sweeper expiry, duplicate event). Keep the file only if
-    // that ending was a success with this same path.
-    const { data: now } = await db
-      .from("play_cells")
-      .select("status, result_path")
-      .eq("id", cell.cellId)
-      .maybeSingle();
+  // Settle first, clean up after: a losing duplicate never removes the winner's file.
+  const keepIfWinner = async () => {
+    const { data: now } = await db.from("play_cells").select("status, result_path").eq("id", cell.cellId).maybeSingle();
     if (!(now?.status === "succeeded" && now.result_path === path))
       await db.storage.from(RESULTS_BUCKET).remove([path]);
+  };
+  if (verdict === "unavailable") {
+    if (!opts.final) {
+      await keepIfWinner();
+      throw new RetryLater("MODERATION_UNAVAILABLE");
+    }
+    await finish(cell.cellId, "failed", "MODERATION_UNAVAILABLE", { providerBilled: true });
+    await keepIfWinner();
+    return;
   }
-  return true;
+  if (verdict === "blocked") {
+    await finish(cell.cellId, "blocked", "RESULT_BLOCKED", { providerBilled: true });
+    await keepIfWinner();
+    return;
+  }
+  if (!(await finish(cell.cellId, "succeeded", null, { resultPath: path }))) await keepIfWinner();
 }
 
 // ---------------------------------------------------------------- webhook (F4-4, FM-9/10/11)
@@ -540,15 +491,14 @@ export async function handleWebhook(args: {
     if (outcome.state === "pending") {
       await db.rpc("mark_cell_running", { p_cell: args.cellId });
     } else if (cell.kind === "video" && outcome.state === "succeeded") {
+      // Large file: acknowledge now, finalize after the response. If that fails the sweeper polls.
       await db.rpc("mark_cell_running", { p_cell: args.cellId });
       const done = outcome;
       args.later(async () => {
-        await applyOutcome(ref, done, adapter).catch((e) =>
-          console.error("[play] video finalize failed", String(e)),
-        );
+        await applyOutcome(ref, done, adapter, { final: false }).catch((e) => logError("video finalize", e));
       });
     } else {
-      await applyOutcome(ref, outcome, adapter);
+      await applyOutcome(ref, outcome, adapter, { final: false });
     }
     await db.rpc("record_webhook_event", {
       p_provider: adapter.name,
@@ -557,8 +507,8 @@ export async function handleWebhook(args: {
     });
     return 200;
   } catch (e) {
-    console.error("[play] webhook finalize failed", String(e));
-    return 500;
+    if (!(e instanceof RetryLater)) logError("webhook finalize", e);
+    return 500; // the provider resends; after its retries, the sweeper polls
   }
 }
 
@@ -567,12 +517,13 @@ export async function handleWebhook(args: {
 interface SweepTargets {
   finish: { cell: string; status: "failed" | "expired"; error_code: string }[];
   resubmit: string[];
-  poll: { cell: string; provider_request_id: string | null; endpoint: string }[];
+  poll: { cell: string; provider_request_id: string | null; endpoint: string; deadline_at: string }[];
   expired_refs: { id: string; path: string }[];
   expired_results: { id: string; path: string }[];
 }
 
 export interface SweepReport {
+  skipped: boolean;
   finished: number;
   resubmitted: number;
   polled: number;
@@ -580,12 +531,42 @@ export interface SweepReport {
   purgedResults: number;
 }
 
-/** One minute of sweeper work, each cell in its own call. Stops early near the time budget. */
-export async function sweep(budgetMs = 45_000): Promise<SweepReport> {
+/** After this long past the deadline a temporary finalize problem fails the cell (credits back). */
+const FINAL_AFTER_MS = 6 * 3600 * 1000;
+
+async function cellForPoll(cellId: string) {
+  const { data } = await admin()
+    .from("play_cells")
+    .select("user_id, provider_request_id, deadline_at, models!inner(kind)")
+    .eq("id", cellId)
+    .maybeSingle();
+  const r = data as {
+    user_id: string;
+    provider_request_id: string | null;
+    deadline_at: string | null;
+    models?: { kind: "image" | "video" };
+  } | null;
+  return r?.models ? { ...r, kind: r.models.kind } : null;
+}
+
+/**
+ * One minute of sweeper work (one run per minute window, claim_play_sweep). Each cell is handled
+ * in its own calls; the loop stops near the time budget and the rest waits for the next minute.
+ */
+export async function sweep(budgetMs = 40_000): Promise<SweepReport> {
   const started = Date.now();
   const left = () => Date.now() - started < budgetMs;
   const db = admin();
-  const report: SweepReport = { finished: 0, resubmitted: 0, polled: 0, purgedRefs: 0, purgedResults: 0 };
+  const report: SweepReport = {
+    skipped: false,
+    finished: 0,
+    resubmitted: 0,
+    polled: 0,
+    purgedRefs: 0,
+    purgedResults: 0,
+  };
+  const { data: claimed } = await db.rpc("claim_play_sweep");
+  if (claimed !== true) return { ...report, skipped: true };
   const { data, error } = await db.rpc("sweep_targets");
   if (error || !data) throw new Error("sweep_targets");
   const t = data as unknown as SweepTargets;
@@ -593,29 +574,52 @@ export async function sweep(budgetMs = 45_000): Promise<SweepReport> {
 
   for (const f of t.finish) {
     if (!left()) break;
-    if (await finish(f.cell, f.status, f.error_code).catch(() => false)) report.finished++;
+    try {
+      if (f.status === "expired") {
+        // FM-7: one last lookup, then cancel at the provider; a job that reached it counts as spent.
+        const c = await cellForPoll(f.cell);
+        const endpoint = await cellEndpoint(f.cell);
+        if (c?.provider_request_id && endpoint) {
+          const outcome = await adapter.poll(endpoint, c.provider_request_id).catch(() => null);
+          if (outcome && outcome.state !== "pending") {
+            await applyOutcome({ cellId: f.cell, userId: c.user_id, kind: c.kind }, outcome, adapter, {
+              final: true,
+            });
+            report.finished++;
+            continue;
+          }
+          await adapter.cancel(endpoint, c.provider_request_id);
+        }
+        if (await finish(f.cell, "expired", "TIMEOUT", { providerBilled: Boolean(c?.provider_request_id) }))
+          report.finished++;
+      } else if (await finish(f.cell, f.status, f.error_code)) report.finished++;
+    } catch (e) {
+      logError("sweep finish", e);
+    }
   }
   for (const id of t.resubmit) {
     if (!left()) break;
-    await submitCell(id).catch((e) => console.error("[play] resubmit failed", String(e)));
-    report.resubmitted++;
+    try {
+      await submitCell(id);
+      report.resubmitted++;
+    } catch (e) {
+      logError("resubmit", e);
+    }
   }
   for (const p of t.poll) {
     if (!left()) break;
     if (!p.provider_request_id) continue;
-    const { data: row } = await db
-      .from("play_cells")
-      .select("user_id, status, models!inner(kind)")
-      .eq("id", p.cell)
-      .maybeSingle();
-    const r = row as { user_id: string; status: string; models?: { kind: "image" | "video" } } | null;
-    if (!r?.models) continue;
+    const c = await cellForPoll(p.cell);
+    if (!c) continue;
     const outcome = await adapter.poll(p.endpoint, p.provider_request_id).catch(() => null);
     if (!outcome) continue;
-    await applyOutcome({ cellId: p.cell, userId: r.user_id, kind: r.models.kind }, outcome, adapter).catch(
-      (e) => console.error("[play] poll finalize failed", String(e)),
-    );
-    report.polled++;
+    const final = Date.now() - new Date(p.deadline_at).getTime() > FINAL_AFTER_MS;
+    try {
+      await applyOutcome({ cellId: p.cell, userId: c.user_id, kind: c.kind }, outcome, adapter, { final });
+      report.polled++;
+    } catch (e) {
+      if (!(e instanceof RetryLater)) logError("poll finalize", e);
+    }
   }
 
   // D19 / F4-8: remove files first, then forget only the ones actually removed.

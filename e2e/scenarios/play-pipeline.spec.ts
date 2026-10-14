@@ -1,12 +1,15 @@
 // W5 gate (F4-2~5, F4-7, F4-15, F4-16): POST /api/play/runs → mock provider → webhook → settle, with
 // the failure matrix rows that the API path decides. The /play screen comes with PR G.
+import { createHash, randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import {
   adminDb,
   available,
   CHEAP,
+  callSweeper,
   cellRow,
   loginAsPlayer,
+  mockSign,
   runBody,
   waitTerminal,
 } from "../fixtures/play";
@@ -142,9 +145,7 @@ test("FM-21 a provider 429 keeps the cell queued; the sweeper fails it later and
     .from("play_cells")
     .update({ created_at: old, next_attempt_at: old })
     .eq("id", id);
-  const swept = await context.request.post("/api/cron/play-sweeper", {
-    headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
-  });
+  const swept = await callSweeper(context.request);
   expect(swept.status()).toBe(200);
   expect(await cellRow(id)).toMatchObject({
     status: "failed",
@@ -280,6 +281,67 @@ test("F4-15 the kill switch: a paused budget refuses runs (BUDGET_EXHAUSTED)", a
       .update({ state: "open" })
       .eq("month", month);
   }
+});
+
+test("FM-9 the same webhook delivered twice settles once and keeps the result", async ({ context, request }) => {
+  const user = await loginAsPlayer(context);
+  const res = await context.request.post("/api/play/runs", { data: runBody() });
+  const id = (await res.json()).cellIds[0];
+  const done = await waitTerminal(id);
+  expect(done.status).toBe("succeeded");
+  const db = adminDb();
+  const { data: row } = await db.from("play_cells").select("provider_request_id").eq("id", id).single();
+  // Only the token hash is stored: give the cell a known token to replay the provider's event.
+  const token = randomUUID();
+  await db
+    .from("play_cells")
+    .update({ webhook_token_hash: createHash("sha256").update(token).digest("hex") })
+    .eq("id", id);
+  const body = JSON.stringify({
+    request_id: row!.provider_request_id,
+    status: "OK",
+    payload: { url: "mock://image/ok/x" },
+  });
+  const again = await request.post(`/api/webhooks/generation/mock?cell=${id}&t=${token}`, {
+    data: body,
+    headers: { "content-type": "application/json", "x-mock-signature": mockSign(body) },
+  });
+  expect(again.status()).toBe(200);
+  const wrong = await request.post(`/api/webhooks/generation/mock?cell=${id}&t=not-the-token`, {
+    data: body,
+    headers: { "content-type": "application/json", "x-mock-signature": mockSign(body) },
+  });
+  expect(wrong.status()).toBe(401);
+  expect(await cellRow(id)).toMatchObject({ status: "succeeded", result_path: done.result_path });
+  expect(await available(user.id)).toBe(270 - CHEAP.credits);
+  const listed = await db.storage.from("play-results").list(user.id);
+  expect((listed.data ?? []).map((f) => f.name)).toContain(`${id}.png`);
+});
+
+test("FM-7 a cell long past its deadline is looked up, cancelled and expired; the credits come back", async ({
+  context,
+}) => {
+  const user = await loginAsPlayer(context);
+  const res = await context.request.post("/api/play/runs", {
+    data: runBody({ prompt: "시간 초과 시험 [[mock:timeout]]" }),
+  });
+  const id = (await res.json()).cellIds[0];
+  expect((await cellRow(id)).status).toBe("submitted");
+  expect(await available(user.id)).toBe(270 - CHEAP.credits);
+  const db = adminDb();
+  const before = (await db.from("generation_budget").select("spent").eq("month", kstMonth()).single()).data!
+    .spent as number;
+  await db
+    .from("play_cells")
+    .update({ deadline_at: new Date(Date.now() - 25 * 3600 * 1000).toISOString() })
+    .eq("id", id);
+  expect((await callSweeper(context.request)).status()).toBe(200);
+  expect(await cellRow(id)).toMatchObject({ status: "expired", error_code: "TIMEOUT" });
+  expect(await available(user.id)).toBe(270);
+  // It reached the provider, so the budget still counts it (D12).
+  const after = (await db.from("generation_budget").select("spent").eq("month", kstMonth()).single()).data!
+    .spent as number;
+  expect(after - before).toBeGreaterThanOrEqual(CHEAP.credits);
 });
 
 test.describe("EX", () => {

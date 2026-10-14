@@ -392,7 +392,7 @@
       "scn": [
         "trial-to-certify"
       ],
-      "passes": false,
+      "passes": true,
       "mvp_note": "MVP: 체험 행 없음, 홀드는 월 무료 로트에서. 잔액 부족이면 충전 창 대신 「이번 달 크레딧을 다 썼어요 · 다음 리셋 날짜」. 일일 한도·레이트 리밋·예산 검사는 F4-14~16"
     },
     {
@@ -406,7 +406,7 @@
       "acceptance": "제출 시 웹훅 URL에 셀 id + 셀별 토큰. 429면 `queued`로 두고 sweeper가 재시도. sweeper는 1분마다. Replicate를 쓰면 1시간 안에 폴링(입출력이 1시간 뒤 삭제)",
       "week": 5,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F4-4",
@@ -419,7 +419,7 @@
       "acceptance": "fal ED25519 또는 Replicate HMAC을 원본 body로 검증. inbox unique. 결과 저장 → `settle_cell` → `realtime.send()`로 화이트리스트 페이로드(`cell_id`, `status`, `error_code`, `signed_url`)만",
       "week": 5,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F4-5",
@@ -435,7 +435,7 @@
       "scn": [
         "trial-to-certify"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F4-6",

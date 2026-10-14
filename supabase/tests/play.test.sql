@@ -4,7 +4,7 @@
 -- Credits are ceil(usd × 805) (D17); every expected number below is worked out in a comment.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(245);
+select plan(246);
 
 -- ---------------------------------------------------------------- helpers
 create or replace function pg_temp.login_as(uid uuid) returns void language plpgsql as $$
@@ -668,6 +668,10 @@ select public.attach_provider_request(p_cell => pg_temp.cell('l_run', 0), p_prov
 select public.attach_provider_request(p_cell => pg_temp.cell('l_run', 0), p_provider_request_id => 'req-other');
 select is((select provider_request_id from public.play_cells where id = pg_temp.cell('l_run', 0)), 'req-l1',
           'FM-10 attach_provider_request fills the id once and never overwrites it');
+select ok((select status = 'submitted' and deadline_at is not null from public.play_cells where id = pg_temp.cell('l_run', 0)),
+          'FM-10 an early webhook moves the queued cell to submitted with a deadline (no resubmit, no 10-minute failure)');
+-- Fixture: back to queued so the backoff / re-claim path below can be exercised on the same cell.
+update public.play_cells set status = 'queued', submitted_at = null, deadline_at = null where id = pg_temp.cell('l_run', 0);
 -- backoff: requeue, not due yet, due again.
 select public.requeue_cell(p_cell => pg_temp.cell('l_run', 0), p_error_code => 'RATE_LIMITED');
 select ok((select status = 'queued' and next_attempt_at = now() + interval '1 minute' from public.play_cells where id = pg_temp.cell('l_run', 0)),

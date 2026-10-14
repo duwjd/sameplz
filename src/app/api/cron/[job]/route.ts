@@ -31,7 +31,7 @@ export async function POST(
       headers: { "Cache-Control": "no-store" },
     });
   } catch (e) {
-    console.error("[cron] play-sweeper failed", String(e));
+    console.error("[cron] play-sweeper failed", e instanceof Error ? e.name : "error");
     return NextResponse.json({ error: "failed" }, { status: 500 });
   }
 }

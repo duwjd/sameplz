@@ -121,6 +121,23 @@ export function AppHeader() {
           >
             레시피 올리기
           </Link>
+          <Link
+            href="/my/seller"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              height: 36,
+              padding: "0 8px",
+              borderRadius: 8,
+              fontSize: 14,
+              color: "var(--sp-fg-normal)",
+              textDecoration: "none",
+            }}
+          >
+            판매자 센터
+          </Link>
           <form action={signOut.bind(null, pathname)}>
             <button
               type="submit"

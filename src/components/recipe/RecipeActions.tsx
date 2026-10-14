@@ -2,9 +2,10 @@
 // PRM-06 / AGT-06 / SKL-07 (F2-1): one main button per viewer state, plus like, link copy and follow.
 // The initial state comes from the server (Suspense hole); a login replay (F7-1) refreshes it.
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getMyFollowing, toggleFollow } from "@/actions/follow";
 import { claimFreeRecipe, toggleRecipeLike } from "@/actions/recipe";
+import { recordRecipeView } from "@/actions/seller";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { BuyPanel, Button, type BuyPanelState } from "@/components/ds";
 import type { RecipeViewerState } from "@/data/recipe";
@@ -54,6 +55,14 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
     setEntitlementId(state.entitlement?.id ?? null);
     setLiked(state.liked);
   }
+
+  // F5-10 views: once per page load for visitors (owners are not counted). One per visitor per day in SQL.
+  const viewed = useRef(false);
+  useEffect(() => {
+    if (viewed.current || state.isOwner) return;
+    viewed.current = true;
+    void recordRecipeView({ publicId: recipe.publicId });
+  }, [state.isOwner, recipe.publicId]);
 
   // A replayed claim/follow happened in AuthProvider → re-read the server state.
   useEffect(() => {
@@ -160,10 +169,6 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
     }
   };
 
-  const sellerCenterLater = () =>
-    notify(
-      "판매자 센터는 아직 준비하고 있어요. 열리면 여기서 새 버전을 올릴 수 있어요.",
-    );
 
   const openLibrary = () => {
     if (!entitlementId) return;
@@ -195,8 +200,8 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
         onLike={onLike}
         onShare={onShare}
         onFollow={onFollow}
-        onEdit={sellerCenterLater}
-        onSeller={sellerCenterLater}
+        onEdit={() => router.push(`/my/seller/upload?recipe=${recipe.id}`)}
+        onSeller={() => router.push("/my/seller")}
         style={{ position: "sticky", top: 88 }}
       />
       {/* PRM: on mobile the main button stays reachable as a bottom bar (desktop: display none). */}

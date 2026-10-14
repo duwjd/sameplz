@@ -80,15 +80,20 @@ export async function saveDraft(input: {
   const gate = await creator();
   if (!gate.ok) return { ok: false };
   const form = UploadFormSchema.parse(parsed.data.form ?? {});
-  if (form.recipeId) return { ok: false }; // new-version drafts arrive with the seller center (PR D)
   return { ok: await saveMyDraft(gate.viewer, form, parsed.data.step) };
 }
 
-/** 「새로 시작」. */
-export async function discardDraft(): Promise<{ ok: boolean }> {
+/** 「새로 시작」 for a new recipe, or for a new version of `recipeId`. */
+export async function discardDraft(
+  input: { recipeId?: string | null } = {},
+): Promise<{ ok: boolean }> {
+  const parsed = z
+    .object({ recipeId: z.guid().nullable().optional() })
+    .safeParse(input);
+  if (!parsed.success) return { ok: false };
   const gate = await creator();
   if (!gate.ok) return { ok: false };
-  return { ok: await deleteMyDraft() };
+  return { ok: await deleteMyDraft(parsed.data.recipeId ?? null) };
 }
 
 // ---------------------------------------------------------------- uploads (UP-05)

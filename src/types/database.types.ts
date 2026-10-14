@@ -1007,6 +1007,12 @@ isOneToOne: false
               "category": string,"claimed_at": string,"creator_nickname": string,"entitlement_id": string,"files": Json,"filters": Json,"latest_changelog": string,"latest_version_no": number,"opened_at": string,"prompt_kind": string,"public_id": string,"recipe_id": string,"status": string,"summary": string,"title": string,"tool_codes": (string)[],"update_available": boolean,"version_id": string,"version_no": number
             }[]
                            },
+"my_recipe_for_edit":
+{ Args: { "p_recipe": string }; Returns: Json
+                           },
+"my_recipe_original":
+{ Args: { "p_recipe": string }; Returns: Json
+                           },
 "my_recipe_state":
 { Args: { "p_recipe_id": string }; Returns: Json
                            },

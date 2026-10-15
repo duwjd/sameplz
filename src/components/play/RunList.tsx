@@ -1,9 +1,11 @@
 "use client";
 // PLAY-05 / PLAY-06: run history (one row per run, one cell per output) and pinned compare. Every
 // result carries 「AI 생성」 as text (F4-9). Unsaved results are deleted 30 days after they were made (D19).
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { draftFromRun } from "@/actions/gallery";
 import { saveResult } from "@/actions/play";
+import { SameUpDialog, type PlayResultRef } from "@/components/gallery/SameUpDialog";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Badge, Button, EmptyState, Spinner, Tabs } from "@/components/ds";
 import type { PlayCellDTO, PlayRunDTO } from "@/data/playground";
@@ -140,6 +142,21 @@ function RunCard({
     .reduce((n, c) => n + c.credits, 0);
   const pending = run.cells.some((c) => !isTerminal(c.status));
   const models = [...new Set(run.cells.map((c) => c.modelLabel))];
+  const router = useRouter();
+  const { notify } = useAuth();
+  const [same, setSame] = useState<PlayResultRef | null>(null);
+  const [drafting, setDrafting] = useState(false);
+  const toDraft = async () => {
+    setDrafting(true);
+    const r = await draftFromRun({ runId: run.id });
+    setDrafting(false);
+    if (r.ok) return router.push("/my/seller/upload");
+    notify(
+      r.reason === "DRAFT_EXISTS"
+        ? "쓰던 새 레시피 초안이 있어요. 올리기 화면에서 이어 쓰거나 「새로 시작」한 뒤 다시 눌러 주세요."
+        : "초안을 만들지 못했어요. 다시 해 주세요.",
+    );
+  };
   return (
     <li
       aria-label={`실행 ${index}`}
@@ -184,22 +201,30 @@ function RunCard({
             pinned={pinned.includes(c.id)}
             onPin={onPin}
             onSaved={onSaved}
+            onSame={
+              run.mode === "free" && run.recipeId && c.status === "succeeded" && c.url
+                ? () => setSame({ cellId: c.id, url: c.url!, kind: c.kind })
+                : undefined
+            }
           />
         ))}
       </div>
       {run.mode === "blank" &&
         run.cells.some((c) => c.status === "succeeded") && (
-          <Link
-            href="/my/seller/upload"
-            style={{
-              fontSize: 13,
-              color: "var(--sp-fg-accent)",
-              fontWeight: 600,
-            }}
+          <Button
+            size="sm"
+            variant="ghost"
+            color="secondary"
+            disabled={drafting}
+            onClick={() => void toDraft()}
+            style={{ alignSelf: "flex-start" }}
           >
             이 프롬프트로 레시피 올리기
-          </Link>
+          </Button>
         )}
+      {same && run.recipeId && (
+        <SameUpDialog open onClose={() => setSame(null)} targets={[]} recipeId={run.recipeId} playResult={same} />
+      )}
     </li>
   );
 }
@@ -209,11 +234,14 @@ function Cell({
   pinned,
   onPin,
   onSaved,
+  onSame,
 }: {
   cell: PlayCellDTO;
   pinned: boolean;
   onPin: (id: string) => void;
   onSaved: (cellId: string, saved: boolean) => void;
+  /** Received-recipe results: post as SAME 인증 (F4-11). */
+  onSame?: () => void;
 }) {
   const { notify } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -334,6 +362,11 @@ function Cell({
           >
             {pinned ? "고정됨" : "비교에 고정"}
           </Button>
+          {onSame && (
+            <Button size="sm" color="primary" onClick={onSame}>
+              SAME 인증 올리기
+            </Button>
+          )}
           <a
             href={cell.url}
             download

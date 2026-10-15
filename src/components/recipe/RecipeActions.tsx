@@ -3,6 +3,8 @@
 // The initial state comes from the server (Suspense hole); a login replay (F7-1) refreshes it.
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ReportDialog } from "@/components/gallery/ReportDialog";
+import { SameUpDialog } from "@/components/gallery/SameUpDialog";
 import { getMyFollowing, toggleFollow } from "@/actions/follow";
 import { claimFreeRecipe, toggleRecipeLike } from "@/actions/recipe";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -44,6 +46,8 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
     state.entitlement?.id ?? null,
   );
   const [liked, setLiked] = useState(state.liked);
+  const [sameOpen, setSameOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [following, setFollowing] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -195,6 +199,35 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
         onSeller={() => router.push("/my/seller")}
         style={{ position: "sticky", top: 88 }}
       />
+      {/* GAL-04 / F6-3: holders post a SAME 인증; members can report the recipe. */}
+      {!state.isOwner && (
+        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+          {entitlementId && (
+            <Button size="md" color="secondary" variant="outline" onClick={() => setSameOpen(true)}>
+              SAME 인증 올리기
+            </Button>
+          )}
+          <button
+            type="button"
+            onClick={() => (state.signedIn ? setReportOpen(true) : requireLogin())}
+            style={{ all: "unset", cursor: "pointer", fontSize: 13, color: "var(--sp-fg-hint)", alignSelf: "center" }}
+          >
+            신고
+          </button>
+        </div>
+      )}
+      {sameOpen && (
+        <SameUpDialog
+          open
+          onClose={() => setSameOpen(false)}
+          targets={[]}
+          recipeId={recipe.id}
+          onPosted={() => router.refresh()}
+        />
+      )}
+      {reportOpen && (
+        <ReportDialog open onClose={() => setReportOpen(false)} targetType="recipe" targetId={recipe.id} />
+      )}
       {/* PRM: on mobile the main button stays reachable as a bottom bar (desktop: display none). */}
       {panelState !== "mine" && (
         <>

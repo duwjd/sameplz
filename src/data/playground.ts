@@ -179,6 +179,8 @@ export interface PlayRunDTO {
   createdAt: string;
   mode: "own" | "free" | "blank";
   recipeTitle: string | null;
+  /** The recipe a free / own run used (for 「SAME 인증 올리기」). */
+  recipeId: string | null;
   cells: PlayCellDTO[];
 }
 
@@ -237,6 +239,7 @@ export async function getMyRuns(
     ),
   ];
   const titles = new Map<string, string>();
+  const recipeOf = new Map<string, string>();
   if (versionIds.length) {
     const admin = createAdminClient();
     const { data: vs } = await admin
@@ -251,7 +254,10 @@ export async function getMyRuns(
         (vs ?? []).map((v) => v.recipe_id),
       );
     const titleOf = new Map((rs ?? []).map((r) => [r.id, r.title]));
-    for (const v of vs ?? []) titles.set(v.id, titleOf.get(v.recipe_id) ?? "");
+    for (const v of vs ?? []) {
+      titles.set(v.id, titleOf.get(v.recipe_id) ?? "");
+      recipeOf.set(v.id, v.recipe_id);
+    }
   }
 
   return runs.map((r) => ({
@@ -261,6 +267,7 @@ export async function getMyRuns(
     recipeTitle: r.recipe_version_id
       ? (titles.get(r.recipe_version_id) ?? null)
       : null,
+    recipeId: r.recipe_version_id ? (recipeOf.get(r.recipe_version_id) ?? null) : null,
     cells: (cells ?? [])
       .filter((c) => c.run_id === r.id)
       .map((c) => {

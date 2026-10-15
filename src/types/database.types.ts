@@ -667,14 +667,14 @@ isOneToOne: false
                   ]
                 },"play_runs": {
                   Row: {
-                    "client_request_id": string,"created_at": string,"face_consent_at": string | null,"id": string,"mode": string,"recipe_version_id": string | null,"reference_ids": (string)[],"user_id": string,"variables": NonNullable<Json>
+                    "client_request_id": string,"created_at": string,"face_consent_at": string | null,"id": string,"mode": string,"prompt_text": string | null,"recipe_version_id": string | null,"reference_ids": (string)[],"user_id": string,"variables": NonNullable<Json>
                   }
                   ComputedFields: never
                   Insert: {
-                    "client_request_id": string,"created_at"?: string,"face_consent_at"?: string | null,"id"?: string,"mode": string,"recipe_version_id"?: string | null,"reference_ids"?: (string)[],"user_id": string,"variables"?: NonNullable<Json>
+                    "client_request_id": string,"created_at"?: string,"face_consent_at"?: string | null,"id"?: string,"mode": string,"prompt_text"?: string | null,"recipe_version_id"?: string | null,"reference_ids"?: (string)[],"user_id": string,"variables"?: NonNullable<Json>
                   }
                   Update: {
-                    "client_request_id"?: string,"created_at"?: string,"face_consent_at"?: string | null,"id"?: string,"mode"?: string,"recipe_version_id"?: string | null,"reference_ids"?: (string)[],"user_id"?: string,"variables"?: NonNullable<Json>
+                    "client_request_id"?: string,"created_at"?: string,"face_consent_at"?: string | null,"id"?: string,"mode"?: string,"prompt_text"?: string | null,"recipe_version_id"?: string | null,"reference_ids"?: (string)[],"user_id"?: string,"variables"?: NonNullable<Json>
                   }
                   Relationships: [
                     {
@@ -997,6 +997,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"reports": {
+                  Row: {
+                    "answer": string | null,"created_at": string,"detail": string,"id": string,"reason": string,"reporter_id": string,"resolved_at": string | null,"status": string,"target_id": string,"target_type": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "answer"?: string | null,"created_at"?: string,"detail"?: string,"id"?: string,"reason": string,"reporter_id": string,"resolved_at"?: string | null,"status"?: string,"target_id": string,"target_type": string
+                  }
+                  Update: {
+                    "answer"?: string | null,"created_at"?: string,"detail"?: string,"id"?: string,"reason"?: string,"reporter_id"?: string,"resolved_at"?: string | null,"status"?: string,"target_id"?: string,"target_type"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "reports_reporter_id_fkey"
+      columns: ["reporter_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"review_queue": {
                   Row: {
                     "created_at": string,"decided_at": string | null,"decided_by": string | null,"id": number,"reason": string,"recipe_id": string,"reject_code": string | null,"reject_note": string | null,"requested_visibility": string,"state": string,"version_id": string
@@ -1168,6 +1188,9 @@ isOneToOne: false
 "create_play_ref":
 { Args: { "p_ext": string,"p_mime": string,"p_size": number,"p_user": string }; Returns: Json
                            },
+"create_report":
+{ Args: { "p_detail"?: string,"p_reason": string,"p_target": string,"p_target_type": string }; Returns: Json
+                           },
 "create_share_link":
 { Args: { "p_code": string,"p_recipe": string }; Returns: Json
                            },
@@ -1178,6 +1201,11 @@ isOneToOne: false
                            },
 "finish_cell":
 { Args: { "p_cell": string,"p_error_code"?: string,"p_provider_billed"?: boolean,"p_result_path"?: string,"p_status": string }; Returns: Json
+                           },
+"gallery_feed":
+{ Args: { "p_before"?: string,"p_before_id"?: string,"p_kind"?: string,"p_limit"?: number,"p_recipe"?: string }; Returns: {
+              "alt_text": string,"author_handle": string,"author_id": string,"author_nickname": string,"created_at": string,"fork_allowed": boolean,"generated_here": boolean,"id": string,"kind": string,"liked": boolean,"likes": number,"media_kind": string,"media_path": string,"ratio": string,"recipe_id": string,"recipe_public_id": string,"recipe_title": string,"title": string
+            }[]
                            },
 "get_recipe_public":
 { Args: { "p_public_id": string }; Returns: Json
@@ -1277,6 +1305,9 @@ isOneToOne: false
 "play_prompt_for_submit":
 { Args: { "p_cell": string }; Returns: string
                            },
+"post_same_cert":
+{ Args: { "p_alt": string,"p_kind": string,"p_media_path": string,"p_play_cell": string,"p_ratio": string,"p_recipe": string,"p_status": string,"p_title": string,"p_user": string }; Returns: Json
+                           },
 "purge_play_files":
 { Args: { "p_cell_ids": (string)[],"p_ref_ids": (string)[] }; Returns: undefined
                            },
@@ -1314,8 +1345,14 @@ isOneToOne: false
               "category": string,"creator_handle": string,"creator_nickname": string,"downloads": number,"filters": Json,"job_codes": (string)[],"likes": number,"popularity": number,"price_krw": number,"prompt_kind": string,"public_id": string,"published_at": string,"same_count": number,"score": number,"summary": string,"title": string,"tool_codes": (string)[],"total_count": number
             }[]
                            },
+"set_recipe_fork":
+{ Args: { "p_from_recipe": string,"p_owner": string,"p_recipe": string }; Returns: boolean
+                           },
 "set_recipe_visibility":
 { Args: { "p_recipe": string,"p_visibility": string }; Returns: Json
+                           },
+"set_run_prompt_text":
+{ Args: { "p_run": string,"p_text": string,"p_user": string }; Returns: boolean
                            },
 "similar_recipes":
 { Args: { "p_limit"?: number,"p_public_id": string }; Returns: {

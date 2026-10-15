@@ -254,7 +254,7 @@ export async function storeRebuiltSkillZip(
 }
 
 export type SubmitOutcome =
-  | { ok: true; publicId: string; status: string; review: boolean }
+  | { ok: true; publicId: string; status: string; review: boolean; recipeId?: string | null }
   | { ok: false; code: string };
 
 /** public.submit_recipe_version with the secret key (clients can never call it). */
@@ -276,11 +276,22 @@ export async function submitVersion(
       code: error.code === "P0001" ? error.message : "FAILED",
     };
   }
-  const r = data as { public_id: string; status: string; review: boolean };
+  const r = data as { public_id: string; status: string; review: boolean; recipe_id?: string };
   return {
     ok: true,
+    recipeId: r.recipe_id ?? null,
     publicId: r.public_id,
     status: r.status,
     review: Boolean(r.review),
   };
+}
+
+/** F6-2: a new recipe made from 「이걸로 만들기」 remembers its origin (public.set_recipe_fork). */
+export async function rememberFork(viewer: Viewer, recipeId: string, fromRecipeId: string) {
+  const { data } = await createAdminClient().rpc("set_recipe_fork", {
+    p_owner: viewer.id,
+    p_recipe: recipeId,
+    p_from_recipe: fromRecipeId,
+  });
+  return data === true;
 }

@@ -12,6 +12,7 @@ import {
   hitUploadTargetLimit,
   storeRebuiltSkillZip,
   readSkillZip,
+  rememberFork,
   saveMyDraft,
   submitVersion,
   verifyMedia,
@@ -193,7 +194,7 @@ export async function inspectSkillZipUpload(input: {
 // ---------------------------------------------------------------- submit (UP-07, F5-3~F5-6)
 
 export type SubmitResult =
-  | { ok: true; publicId: string; status: string; review: boolean }
+  | { ok: true; publicId: string; status: string; review: boolean; recipeId?: string | null }
   | {
       ok: false;
       reason: string;
@@ -346,6 +347,9 @@ export async function submitRecipe(input: {
     buildPayload(form, { checks, skill, contentSha256 }),
   );
   if (!outcome.ok) return fail(outcome.code);
+  // F6-2: a first version made from a fork remembers the origin (not for new versions).
+  if (!form.recipeId && form.forkOf && outcome.recipeId)
+    await rememberFork(viewer, outcome.recipeId, form.forkOf.recipeId);
 
   // Detail and every popularity-ordered list may now include this recipe (W3 review requirement).
   // D18: a version that went live publishes its results before the page is shown again.

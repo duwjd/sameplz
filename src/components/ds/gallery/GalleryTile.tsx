@@ -26,6 +26,8 @@ export interface GalleryTileProps {
   ratio?: string;
   kind?: ResultKind;
   mediaLabel?: string;
+  /** Alt text for the result (falls back to the title). */
+  alt?: string;
   recipe?: string;
   canFork?: boolean;
   onSame?: () => void;
@@ -46,6 +48,7 @@ export function GalleryTile({
   ratio = "1/1",
   kind = "이미지",
   mediaLabel,
+  alt,
   recipe,
   canFork = true,
   onSame,
@@ -70,6 +73,7 @@ export function GalleryTile({
     >
       <Media
         src={media}
+        alt={alt ?? title}
         ratio={ratio}
         kind={kind}
         label={mediaLabel}

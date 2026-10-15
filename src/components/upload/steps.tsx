@@ -897,9 +897,11 @@ export function StepMedia({ form, patch, errors }: StepProps) {
         }
         // D18: results upload to the private draft bucket until the recipe is public.
         const { error } = await createClient()
-          .storage.from(DRAFT_MEDIA_BUCKET)
+          .storage.from(target.bucket ?? DRAFT_MEDIA_BUCKET)
           .uploadToSignedUrl(target.path, target.token, file, {
             contentType: file.type,
+            // Short CDN cache: once published, an unpublish must take effect within a minute.
+            cacheControl: "60",
           });
         if (error) {
           setMessage("결과물을 올리지 못했어요. 다시 시도해 주세요.");

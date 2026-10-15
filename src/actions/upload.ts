@@ -105,7 +105,8 @@ const MediaUploadInput = z.object({
 });
 
 export type UploadTargetResult =
-  { ok: true; path: string; token: string } | { ok: false; message: string };
+  | { ok: true; path: string; token: string; bucket?: string }
+  | { ok: false; message: string };
 
 /** Signed upload URL for one result file; the server picks the path. */
 export async function createMediaUpload(input: {

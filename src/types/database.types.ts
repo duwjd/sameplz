@@ -549,14 +549,14 @@ isOneToOne: false
                   ]
                 },"media_sync_queue": {
                   Row: {
-                    "queued_at": string,"recipe_id": string
+                    "attempts": number,"lease_until": string | null,"next_try_at": string,"queued_at": string,"recipe_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "queued_at"?: string,"recipe_id": string
+                    "attempts"?: number,"lease_until"?: string | null,"next_try_at"?: string,"queued_at"?: string,"recipe_id": string
                   }
                   Update: {
-                    "queued_at"?: string,"recipe_id"?: string
+                    "attempts"?: number,"lease_until"?: string | null,"next_try_at"?: string,"queued_at"?: string,"recipe_id"?: string
                   }
                   Relationships: [
                     {
@@ -1156,6 +1156,9 @@ isOneToOne: false
 "claim_free_recipe":
 { Args: { "p_recipe_id": string,"p_ref_code"?: string }; Returns: Json
                            },
+"claim_orphan_scan":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
 "claim_play_sweep":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
@@ -1220,11 +1223,17 @@ isOneToOne: false
 "mark_cell_submitted":
 { Args: { "p_cell": string,"p_provider_request_id": string }; Returns: boolean
                            },
-"media_sync_batch":
+"media_paths_public":
+{ Args: { "p_paths": (string)[] }; Returns: Json
+                           },
+"media_sync_claim":
 { Args: { "p_limit"?: number }; Returns: Json
                            },
 "media_sync_done":
 { Args: { "p_queued_at": string,"p_recipe": string }; Returns: boolean
+                           },
+"media_sync_retry":
+{ Args: { "p_recipe": string }; Returns: undefined
                            },
 "my_account_status":
 { Args: Record<PropertyKey, never>; Returns: {

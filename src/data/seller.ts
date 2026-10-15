@@ -124,7 +124,11 @@ export async function getRecipeForEdit(
   const category = str(d.category) as UploadForm["category"];
   const files = list(d.files);
   // D18: results may be private (draft bucket) — sign them for the owner's preview.
-  const previews = await mediaPreviewUrls(list(d.media).map((m) => str(m.path)));
+  const { data: claims } = await supabase.auth.getClaims();
+  const previews = await mediaPreviewUrls(
+    claims?.claims.sub ?? "",
+    list(d.media).map((m) => str(m.path)),
+  );
   const zip =
     category === "skill"
       ? files.find((f) => str(f.filename).endsWith(".zip"))

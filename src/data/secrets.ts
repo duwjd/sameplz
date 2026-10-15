@@ -1,7 +1,9 @@
 // The only module allowed to read hidden originals (recipe_version_secrets via open_original,
-// private.play_prompts later). Never cached; the result goes only to the entitlement holder.
+// private.play_prompts via play_prompt_for_submit). Never cached; originals go only to the
+// entitlement holder, and playground prompts only to start_run and the provider.
 import "server-only";
 import type { Viewer } from "@/lib/auth/account";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export interface OriginalDTO {
@@ -74,4 +76,107 @@ export async function openOriginal(
     firstOpen: o.first_open,
     watermark,
   };
+}
+
+export interface OwnOriginalDTO {
+  promptBody: string;
+  skillMd: string;
+  /** Agent original as the wizard shows it: JSON text, or the plain instructions it was made from. */
+  agentConfig: string;
+}
+
+/**
+ * UP-08 / F5-6 / F5-7: the owner's own latest original, to prefill 「고쳐서 다시 제출」 and
+ * 「새 버전 올리기」. my_recipe_original is owner-only (NOT_FOUND otherwise). Never cached; returned
+ * only to the owner through a server action.
+ */
+export async function readOwnOriginal(
+  recipeId: string,
+): Promise<OwnOriginalDTO | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_recipe_original", {
+    p_recipe: recipeId,
+  });
+  if (error || !data) return null;
+  const o = data as {
+    prompt_body: string | null;
+    skill_md: string | null;
+    agent_config: unknown;
+  };
+  const cfg = o.agent_config;
+  const agentConfig =
+    cfg && typeof cfg === "object" && !Array.isArray(cfg)
+      ? Object.keys(cfg).length === 1 &&
+        typeof (cfg as { instructions?: unknown }).instructions === "string"
+        ? (cfg as { instructions: string }).instructions
+        : JSON.stringify(cfg, null, 2)
+      : "";
+  return {
+    promptBody: o.prompt_body ?? "",
+    skillMd: o.skill_md ?? "",
+    agentConfig,
+  };
+}
+
+/**
+ * PLAY (F4-2): the prompt body a member may run, read on the server to render the run. Checks the
+ * mode itself so no caller can read a body without the right to run it:
+ *   own  — the caller's prompt recipe; not a rejected version, not a stopped recipe
+ *   free — a live recipe the caller received, approved version
+ * start_run checks ownership / entitlement again. Does not mark the original opened. The text and
+ * its rendering go only to input moderation, start_run and the provider.
+ */
+export async function promptBodyForRun(
+  userId: string,
+  mode: "own" | "free",
+  versionId: string,
+): Promise<string | null> {
+  const db = createAdminClient();
+  // Two plain reads: recipes ↔ recipe_versions have several FKs, so an embed would be ambiguous.
+  const { data: v } = await db
+    .from("recipe_versions")
+    .select("recipe_id, review_status")
+    .eq("id", versionId)
+    .maybeSingle();
+  if (!v) return null;
+  const { data: r } = await db
+    .from("recipes")
+    .select("owner_id, category, status")
+    .eq("id", v.recipe_id)
+    .maybeSingle();
+  if (!r || r.category !== "prompt") return null;
+  if (mode === "own") {
+    if (r.owner_id !== userId) return null;
+    if (v.review_status === "rejected" || v.review_status === "draft" || r.status === "stopped")
+      return null;
+  } else {
+    if (v.review_status !== "approved" || r.status !== "live") return null;
+    const { data: e } = await db
+      .from("entitlements")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("recipe_id", v.recipe_id)
+      .is("revoked_at", null)
+      .limit(1);
+    if (!e?.length) return null;
+  }
+  const { data, error } = await db
+    .from("recipe_version_secrets")
+    .select("prompt_body")
+    .eq("version_id", versionId)
+    .maybeSingle();
+  if (error || !data?.prompt_body) return null;
+  return data.prompt_body;
+}
+
+/** PLAY (F4-3): the rendered prompt of a queued cell, for (re)submission to the provider. */
+export async function renderedPromptForSubmit(
+  cellId: string,
+): Promise<string | null> {
+  const { data, error } = await createAdminClient().rpc(
+    "play_prompt_for_submit",
+    { p_cell: cellId },
+  );
+  if (error || typeof data !== "string" || !data) return null;
+  return data;
 }

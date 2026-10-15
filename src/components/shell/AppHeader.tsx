@@ -2,10 +2,11 @@
 import Link from "next/link";
 // GNB wired to real routes. Login / account actions arrive with the login popup task.
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/actions/auth";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SiteHeader, type SiteHeaderActive } from "@/components/ds";
+import { createClient } from "@/lib/supabase/client";
 
 const ROUTES: Record<string, string> = {
   home: "/",
@@ -28,7 +29,8 @@ export function activeFor(pathname: string): SiteHeaderActive {
   if (pathname.startsWith("/market/collections")) return "collection";
   if (pathname.startsWith("/market") || pathname.startsWith("/r/"))
     return "market";
-  return "home";
+  // Account pages (/my/*) and others: no main-menu item is current.
+  return "" as SiteHeaderActive;
 }
 
 export function AppHeader() {
@@ -36,9 +38,77 @@ export function AppHeader() {
   const router = useRouter();
   const { viewer, requireLogin } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [credits, setCredits] = useState(0);
+  // NOTI-02: unread count, re-read on navigation, on the list being read, and on each new
+  // notification broadcast on the private user:{uid} channel (F7-3).
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    if (!viewer) return;
+    const supabase = createClient();
+    let alive = true;
+    const load = () =>
+      void supabase.rpc("unread_notification_count").then(({ data }) => {
+        if (alive && typeof data === "number") setUnread(data);
+      });
+    load();
+    window.addEventListener("sameplz:notifications", load);
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    void supabase.auth.getUser().then(async ({ data }) => {
+      if (!alive || !data.user) return;
+      await supabase.realtime.setAuth();
+      channel = supabase
+        .channel(`user:${data.user.id}`, { config: { private: true } })
+        .on("broadcast", { event: "notification" }, load)
+        .subscribe();
+    });
+    return () => {
+      alive = false;
+      window.removeEventListener("sameplz:notifications", load);
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, [viewer, pathname]);
+  // /play announces settled runs so the GNB balance follows without a navigation.
+  const [creditsVersion, setCreditsVersion] = useState(0);
+  useEffect(() => {
+    const bump = () => setCreditsVersion((v) => v + 1);
+    window.addEventListener("sameplz:credits", bump);
+    return () => window.removeEventListener("sameplz:credits", bump);
+  }, []);
+
+  // GNB balance (CRD-01): re-read on navigation, so it follows playground runs.
+  useEffect(() => {
+    if (!viewer) return;
+    let alive = true;
+    void createClient()
+      .rpc("my_credit_summary")
+      .then(({ data }) => {
+        const available = (data as { available?: number } | null)?.available;
+        if (alive && typeof available === "number") setCredits(available);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [viewer, pathname, creditsVersion]);
+
+  // Open: focus the first item. Esc (anywhere): close and return focus to the account button.
+  useEffect(() => {
+    if (!menuOpen) return;
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setMenuOpen(false);
+      wrapRef.current
+        ?.querySelector<HTMLElement>('button[aria-label="마이페이지"]')
+        ?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
   return (
-    <div style={{ position: "relative" }}>
+    <div ref={wrapRef} style={{ position: "relative" }}>
       <SiteHeader
         user={
           viewer
@@ -56,14 +126,16 @@ export function AppHeader() {
         }}
         onLogin={() => requireLogin()}
         onAccount={() => setMenuOpen((v) => !v)}
+        credits={viewer ? credits : 0}
+        onCredits={() => router.push("/my/credits")}
+        notifications={viewer ? unread : 0}
+        onNotifications={() => router.push("/my/notifications")}
       />
       {viewer && menuOpen && (
         <div
+          ref={menuRef}
           role="menu"
           aria-label="계정"
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setMenuOpen(false);
-          }}
           style={{
             position: "absolute",
             top: 64,
@@ -87,9 +159,25 @@ export function AppHeader() {
             {viewer.nickname}님
           </p>
           <Link
+            href="/my"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              height: 36,
+              padding: "0 8px",
+              borderRadius: 8,
+              fontSize: 14,
+              color: "var(--sp-fg-normal)",
+              textDecoration: "none",
+            }}
+          >
+            마이페이지
+          </Link>
+          <Link
             href="/my/library"
             role="menuitem"
-            autoFocus
             onClick={() => setMenuOpen(false)}
             style={{
               display: "flex",
@@ -103,6 +191,57 @@ export function AppHeader() {
             }}
           >
             라이브러리
+          </Link>
+          <Link
+            href="/my/credits"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              height: 36,
+              padding: "0 8px",
+              borderRadius: 8,
+              fontSize: 14,
+              color: "var(--sp-fg-normal)",
+              textDecoration: "none",
+            }}
+          >
+            크레딧
+          </Link>
+          <Link
+            href="/my/seller/upload"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              height: 36,
+              padding: "0 8px",
+              borderRadius: 8,
+              fontSize: 14,
+              color: "var(--sp-fg-normal)",
+              textDecoration: "none",
+            }}
+          >
+            레시피 올리기
+          </Link>
+          <Link
+            href="/my/seller"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              height: 36,
+              padding: "0 8px",
+              borderRadius: 8,
+              fontSize: 14,
+              color: "var(--sp-fg-normal)",
+              textDecoration: "none",
+            }}
+          >
+            판매자 센터
           </Link>
           <form action={signOut.bind(null, pathname)}>
             <button

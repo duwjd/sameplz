@@ -3,6 +3,8 @@
 // The initial state comes from the server (Suspense hole); a login replay (F7-1) refreshes it.
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ReportDialog } from "@/components/gallery/ReportDialog";
+import { SameUpDialog } from "@/components/gallery/SameUpDialog";
 import { getMyFollowing, toggleFollow } from "@/actions/follow";
 import { claimFreeRecipe, toggleRecipeLike } from "@/actions/recipe";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -44,6 +46,8 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
     state.entitlement?.id ?? null,
   );
   const [liked, setLiked] = useState(state.liked);
+  const [sameOpen, setSameOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [following, setFollowing] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -160,11 +164,6 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
     }
   };
 
-  const sellerCenterLater = () =>
-    notify(
-      "판매자 센터는 아직 준비하고 있어요. 열리면 여기서 새 버전을 올릴 수 있어요.",
-    );
-
   const openLibrary = () => {
     if (!entitlementId) return;
     markOpenIntent(entitlementId);
@@ -173,32 +172,94 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
 
   return (
     <>
-      <BuyPanel
-        price={recipe.price}
-        state={panelState}
-        ownedNote={
-          state.entitlement?.updateAvailable
-            ? "새 버전이 나왔어요. 라이브러리에서 업데이트할 수 있어요."
-            : undefined
-        }
-        play={recipe.category === "prompt"}
-        playDisabledReason={recipe.playDisabledReason}
-        liked={liked}
-        following={following}
-        seller={{
-          name: recipe.creator.nickname,
-          avatar: recipe.creator.avatarUrl ?? undefined,
-          note: recipe.creator.note,
+      {/* The panel and its extra actions stick together, so nothing scrolls under the panel. */}
+      <div
+        style={{
+          position: "sticky",
+          top: 88,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
         }}
-        onBuy={onBuy}
-        onOpen={openLibrary}
-        onLike={onLike}
-        onShare={onShare}
-        onFollow={onFollow}
-        onEdit={sellerCenterLater}
-        onSeller={sellerCenterLater}
-        style={{ position: "sticky", top: 88 }}
-      />
+      >
+        <BuyPanel
+          price={recipe.price}
+          state={panelState}
+          ownedNote={
+            state.entitlement?.updateAvailable
+              ? "새 버전이 나왔어요. 라이브러리에서 업데이트할 수 있어요."
+              : undefined
+          }
+          play={recipe.category === "prompt"}
+          playDisabledReason={recipe.playDisabledReason}
+          onPlay={() => router.push(`/play?recipe=${recipe.publicId}`)}
+          liked={liked}
+          following={following}
+          seller={{
+            name: recipe.creator.nickname,
+            avatar: recipe.creator.avatarUrl ?? undefined,
+            note: recipe.creator.note,
+          }}
+          onBuy={onBuy}
+          onOpen={openLibrary}
+          onLike={onLike}
+          onShare={onShare}
+          onFollow={onFollow}
+          onEdit={() => router.push(`/my/seller/upload?recipe=${recipe.id}`)}
+          onSeller={() => router.push("/my/seller")}
+        />
+        {/* GAL-04 / F6-3: holders post a SAME 인증; members can report the recipe. */}
+        {!state.isOwner && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {entitlementId && (
+              <Button
+                size="md"
+                color="secondary"
+                variant="outline"
+                onClick={() => setSameOpen(true)}
+              >
+                SAME 인증 올리기
+              </Button>
+            )}
+            <button
+              type="button"
+              onClick={() =>
+                state.signedIn ? setReportOpen(true) : requireLogin()
+              }
+              style={{
+                all: "unset",
+                cursor: "pointer",
+                fontSize: 13,
+                color: "var(--sp-fg-hint)",
+                alignSelf: "center",
+                minHeight: 24,
+                minWidth: 32,
+                padding: "2px 6px",
+                textAlign: "center",
+              }}
+            >
+              신고
+            </button>
+          </div>
+        )}
+      </div>
+      {sameOpen && (
+        <SameUpDialog
+          open
+          onClose={() => setSameOpen(false)}
+          targets={[]}
+          recipeId={recipe.id}
+          onPosted={() => router.refresh()}
+        />
+      )}
+      {reportOpen && (
+        <ReportDialog
+          open
+          onClose={() => setReportOpen(false)}
+          targetType="recipe"
+          targetId={recipe.id}
+        />
+      )}
       {/* PRM: on mobile the main button stays reachable as a bottom bar (desktop: display none). */}
       {panelState !== "mine" && (
         <>

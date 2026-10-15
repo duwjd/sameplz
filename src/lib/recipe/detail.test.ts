@@ -78,7 +78,8 @@ describe("recipe detail payload", () => {
       ...base,
       tools: [...base.tools, { code: "seedream", label: "Seedream", has_api: true }],
     })!;
-    expect(playDisabledReason(withApi)).toMatch(/^플레이그라운드는 아직/);
+    // W5: the playground is open, so a recipe with an API tool can run.
+    expect(playDisabledReason(withApi)).toBe("");
   });
 
   it("F2-2 masked template carries variables only", () => {

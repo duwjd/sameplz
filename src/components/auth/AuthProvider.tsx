@@ -99,9 +99,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = createClient().auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") refreshViewer();
     });
+    // PRF: a saved profile announces itself so the GNB name follows right away (F7-4).
+    const onProfile = () => void refreshViewer();
+    window.addEventListener("sameplz:viewer", onProfile);
     return () => {
       alive = false;
       data.subscription.unsubscribe();
+      window.removeEventListener("sameplz:viewer", onProfile);
     };
   }, [refreshViewer]);
 
@@ -205,20 +209,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         onSelect={onSelect}
         onClose={onClose}
       />
-      {toast && (
-        <div
-          aria-live="polite"
-          style={{
-            position: "fixed",
-            left: "50%",
-            bottom: 24,
-            transform: "translateX(-50%)",
-            zIndex: 120,
-          }}
-        >
-          <Toast title={toast} />
-        </div>
-      )}
+      {/* Always mounted so screen readers announce each new toast. */}
+      <div
+        role="status"
+        aria-live="polite"
+        style={{
+          position: "fixed",
+          left: "50%",
+          bottom: 24,
+          transform: "translateX(-50%)",
+          zIndex: 120,
+        }}
+      >
+        {toast && <Toast title={toast} />}
+      </div>
     </AuthContext.Provider>
   );
 }
@@ -254,10 +258,7 @@ function AuthRouteEffects({
   // re-ran this effect, cancelled the pending redirect and refetched forever.
   const needsSignup = Boolean(viewer && !viewer.signupComplete);
   useEffect(() => {
-    if (
-      !needsSignup ||
-      SIGNUP_FREE_PATHS.some((p) => pathname.startsWith(p))
-    )
+    if (!needsSignup || SIGNUP_FREE_PATHS.some((p) => pathname.startsWith(p)))
       return;
     let alive = true;
     refreshViewer().then((fresh) => {

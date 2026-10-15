@@ -27,3 +27,14 @@
 - W6: same-cert-to-gallery, trial-to-certify(MVP: 받은 무료 레시피 → 월 무료 크레딧으로 생성 → 인증), fork-free-share, my-page-tour, withdraw-rejoin
 - W7: MVP SCN 9개 전부 (go/no-go 항목)
 - 유료 전환 단계: paid-same-coupon-open, refund-before-open, report-after-open, 그리고 SCN 6·7·11·12의 결제·충전·본인인증 단계
+
+## SCN 7 MVP 단계 (`first-sale-registration.spec.ts`)
+
+1. 로그인한 크리에이터가 판매자 센터(`/my/seller`)에서 빈 화면 → 「레시피 올리기」
+2. 카테고리(프롬프트·이미지) → 내용(제목·한 줄 설명·직무·[변수] 설명과 예시)
+3. 결과물 없이 「다음」 → R01 「결과물을 1개 이상 올려 주세요.」 → 결과물 1개 + 설명
+4. 공개 범위 「공개」, 같은 단계의 「유료 판매 오픈 알림 신청」 → 「신청했어요」
+5. 「검사하고 올리기」(검사 1·2층, CI는 mock) → 「레시피를 공개했어요」
+6. 마켓 검색에 바로 뜸 → 판매자 센터에 「공개 중」, 대기 명단 「신청했어요」 유지
+
+본인인증·가격·정산 단계는 유료 전환 단계에서 이 시나리오에 다시 넣는다.

@@ -1,0 +1,3 @@
+# Fake AWS key used as a layer 1 detection fixture (F5-3), not a credential. Later commits build the
+# string at runtime so it no longer appears as a literal.
+1390e6977f24d75c2ce3789180413dc98e65b96b:src/lib/moderation/layer1.test.ts:aws-access-token:110

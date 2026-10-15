@@ -47,7 +47,7 @@ test.describe("SCN 9 판매 중지된 레시피", () => {
   }) => {
     await loginAsSeedUser(context, "jiwoo");
     await page.goto(URL);
-    await expect(page.getByText("받은 버전은 계속 쓸 수 있어요")).toBeVisible();
+    await expect(page.getByText("받은 버전은 계속 쓸 수 있어요").filter({ visible: true })).toBeVisible();
     await expect(
       page.getByRole("link", { name: "받은 버전 열기" }),
     ).toHaveAttribute("href", /^\/my\/library\?open=/);
@@ -59,7 +59,9 @@ test.describe("SCN 9 판매 중지된 레시피", () => {
   }) => {
     await loginAsSeedUser(context, "sangse");
     await page.goto(URL);
-    await expect(page.getByText("판매를 멈춘 내 레시피예요")).toBeVisible();
+    await expect(
+      page.getByText("판매를 멈춘 내 레시피예요").filter({ visible: true }),
+    ).toBeVisible();
     // Creator still sees the normal detail body.
     await expect(
       page.getByRole("heading", { name: "프롬프트 미리보기" }),

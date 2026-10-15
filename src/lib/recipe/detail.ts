@@ -24,7 +24,11 @@ const Meta = z
   .object({
     // prompt
     variables: listOf(
-      z.object({ name: text(30), example: text(80).optional() }),
+      z.object({
+        name: text(30),
+        description: text(120).optional().catch(undefined),
+        example: text(80).optional().catch(undefined),
+      }),
     ),
     settings: listOf(z.object({ label: text(20), value: text(80) })),
     // skill
@@ -125,6 +129,7 @@ const RecipePublic = z.object({
   media: listOf(
     z.object({
       id: z.string(),
+      path: z.string().nullable().catch(null),
       kind: z.enum(["image", "video"]),
       ratio: z.string().nullable().catch(null),
       alt: z.string().nullable().catch(null),
@@ -158,8 +163,8 @@ export function parseRecipePublic(raw: unknown): RecipeDetail | null {
 export const isPublicId = (id: string) => /^[a-z0-9]{6,16}$/.test(id);
 
 /**
- * F2-5 / PRM-07: why 「바로 만들어 보기」 is off. Playground (W5) is not open yet, so it is always off
- * in W3; tools without an API get the specific reason.
+ * F2-5 / PRM-07: why 「바로 만들어 보기」 is off, or "" when the playground can run it (W5). Only
+ * prompt recipes run here; tools without an API get the specific reason.
  */
 export function playDisabledReason(recipe: RecipeDetail): string {
   const generators = recipe.tools;
@@ -167,8 +172,11 @@ export function playDisabledReason(recipe: RecipeDetail): string {
     const names = generators.map((t) => t.label).join(", ");
     return `${names}는 API가 없어 여기서 바로 만들 수 없어요. 받은 뒤 ${names}에서 써 주세요.`;
   }
-  return "플레이그라운드는 아직 열리지 않았어요. 지금은 받은 뒤 각 도구에서 써 주세요.";
+  return "";
 }
+
+/** Prompt [변수] with their help text, for the playground form (public meta, no originals). */
+export const parseRecipeMeta = (raw: unknown): RecipeMeta => Meta.parse(raw);
 
 export const REGULATED_COPY: Record<Regulated, string> = {
   tax: "세무 판단을 대신하지 않아요. 검토 보조로만 쓰고, 신고 전에는 세무사와 꼭 확인해 주세요.",

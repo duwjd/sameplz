@@ -494,7 +494,7 @@
       "scn": [
         "trial-to-certify"
       ],
-      "passes": false,
+      "passes": true,
       "mvp_note": "MVP: 체험 워터마크 없음. 얼굴 결과물의 눈에 보이는 표시는 유지"
     },
     {
@@ -563,7 +563,7 @@
       "acceptance": "`generation_budget`(월, 한도, 예약, 실사용, 상태). `start_run`이 홀드 전에 예산을 예약하고 넘으면 아무것도 만들지 않고 `BUDGET_EXHAUSTED`. 80%에 운영자 알림. 100%면 PLAY 실행 버튼 비활성 + 마감 안내. 이미 제출된 셀은 끝까지 정산. 다음 달 자동 재개, 수동 재개는 `admin_actions` 기록(D12)",
       "week": 5,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F4-16",

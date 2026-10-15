@@ -5,6 +5,7 @@ import "server-only";
 import { promptBodyForRun, renderedPromptForSubmit } from "@/data/secrets";
 import { activeAdapter, adapterFor, webhookBase } from "@/lib/generation";
 import { buildInput } from "@/lib/generation/input";
+import { isMarkable, markAiGenerated } from "@/lib/generation/mark";
 import { mockOutputBlocked } from "@/lib/generation/providers/mock";
 import {
   ProviderSubmitError,
@@ -12,6 +13,7 @@ import {
   type ProviderOutcome,
 } from "@/lib/generation/types";
 import { checkImage } from "@/lib/moderation/play";
+import { budgetAlertText, postOpsAlert, type BudgetAlert } from "@/lib/ops/alert";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sniffMatches, type MediaMime } from "@/lib/upload/media";
 import { parseRecipeMeta } from "@/lib/recipe/detail";
@@ -352,6 +354,17 @@ export interface CellRef {
   kind: "image" | "video";
 }
 
+/** The run used reference images (face consent was given for them). */
+async function cellHasReferences(cellId: string): Promise<boolean> {
+  const { data } = await admin()
+    .from("play_cells")
+    .select("play_runs!inner(reference_ids)")
+    .eq("id", cellId)
+    .maybeSingle();
+  const run = (data as { play_runs?: { reference_ids: string[] } } | null)?.play_runs;
+  return (run?.reference_ids?.length ?? 0) > 0;
+}
+
 /** A temporary failure while finalizing: the provider resends (webhook 5xx) or the sweeper retries. */
 export class RetryLater extends Error {
   constructor(readonly code: string) {
@@ -397,8 +410,20 @@ export async function applyOutcome(
   }
   const db = admin();
   const path = `${cell.userId}/${cell.cellId}.${RESULT_EXT[mime]}`;
-  // Provider bytes stored as-is (C2PA / SynthID survive, F4-9).
-  const up = await db.storage.from(RESULTS_BUCKET).upload(path, file.bytes, { contentType: mime, upsert: true });
+  // F4-9: provider bytes are stored as-is (C2PA / SynthID survive) — except images made from face
+  // references, which get a visible mark. A mark that fails never falls back to the unmarked file.
+  let bytes = file.bytes;
+  if (cell.kind === "image" && (await cellHasReferences(cell.cellId))) {
+    try {
+      if (!isMarkable(mime)) throw new Error("mark: format");
+      bytes = await markAiGenerated(bytes, mime);
+    } catch (e) {
+      logError("mark", e);
+      await finish(cell.cellId, "failed", "MARK_FAILED", { providerBilled: true });
+      return;
+    }
+  }
+  const up = await db.storage.from(RESULTS_BUCKET).upload(path, bytes, { contentType: mime, upsert: true });
   if (up.error) return temporary("STORAGE_FAILED");
 
   let verdict: "pass" | "blocked" | "unavailable" = "pass";
@@ -653,6 +678,13 @@ export async function sweep(budgetMs = 40_000): Promise<SweepReport> {
     await db.rpc("purge_play_files", { p_ref_ids: refIds, p_cell_ids: cellIds });
     report.purgedRefs = refIds.length;
     report.purgedResults = cellIds.length;
+  }
+
+  // F4-15: 80% / 100% of the monthly budget → ops webhook, each level once (marked after a 2xx).
+  const { data: alerts } = await db.rpc("pending_budget_alerts");
+  for (const a of (alerts ?? []) as unknown as BudgetAlert[]) {
+    if (await postOpsAlert(budgetAlertText(a)))
+      await db.rpc("mark_budget_alert", { p_month: a.month, p_level: a.level });
   }
   return report;
 }

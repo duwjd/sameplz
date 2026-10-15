@@ -106,6 +106,8 @@ export function cellErrorCopy(
       return `지금 모델이 붐벼서 만들지 못했어요 · ${credits}C를 돌려드렸어요`;
     case "MODERATION_UNAVAILABLE":
       return `결과를 안전 검사하지 못해 보여 드리지 않아요 · ${credits}C를 돌려드렸어요`;
+    case "MARK_FAILED":
+      return `결과에 AI 생성 표시를 넣지 못해 보여 드리지 않아요 · ${credits}C를 돌려드렸어요`;
     default:
       return `모델 오류로 만들지 못했어요 · ${credits}C를 돌려드렸어요`;
   }

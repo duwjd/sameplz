@@ -23,9 +23,8 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import {
   isMediaMime,
-  MEDIA_BUCKET,
+  DRAFT_MEDIA_BUCKET,
   mediaKindOf,
-  mediaUrl,
   nearestRatio,
 } from "@/lib/upload/media";
 import {
@@ -896,8 +895,9 @@ export function StepMedia({ form, patch, errors }: StepProps) {
           setMessage(target.message);
           continue;
         }
+        // D18: results upload to the private draft bucket until the recipe is public.
         const { error } = await createClient()
-          .storage.from(MEDIA_BUCKET)
+          .storage.from(DRAFT_MEDIA_BUCKET)
           .uploadToSignedUrl(target.path, target.token, file, {
             contentType: file.type,
           });
@@ -912,7 +912,8 @@ export function StepMedia({ form, patch, errors }: StepProps) {
           ratio: nearestRatio(w, h),
           alt: "",
           ai: true,
-          url: mediaUrl(target.path) ?? "",
+          // Local preview: the uploaded copy is private (re-signed when the draft is reopened).
+          url: URL.createObjectURL(file),
         });
       } finally {
         setBusy((n) => n - 1);

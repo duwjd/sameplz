@@ -1,5 +1,6 @@
 "use server";
 import { updateTag } from "next/cache";
+import { syncRecipeMedia } from "@/data/media-sync";
 import { z } from "zod";
 import { recipeTag } from "@/data/recipe";
 import { readOwnOriginal, type OwnOriginalDTO } from "@/data/secrets";
@@ -60,6 +61,8 @@ export async function setRecipeVisibility(input: {
     };
   }
   const r = data as { public_id: string; status: "live" | "private" };
+  // D18: results follow the recipe (public bucket only while live).
+  await syncRecipeMedia().catch(() => null);
   // The detail page and every popularity list change with visibility.
   updateTag(recipeTag(r.public_id));
   updateTag("rankings");

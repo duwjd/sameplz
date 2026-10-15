@@ -547,6 +547,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"media_sync_queue": {
+                  Row: {
+                    "queued_at": string,"recipe_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "queued_at"?: string,"recipe_id": string
+                  }
+                  Update: {
+                    "queued_at"?: string,"recipe_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "media_sync_queue_recipe_id_fkey"
+      columns: ["recipe_id"]
+isOneToOne: true
+      referencedRelation: "mv_recipe_popularity"
+      referencedColumns: ["recipe_id"]
+    },{
+      foreignKeyName: "media_sync_queue_recipe_id_fkey"
+      columns: ["recipe_id"]
+isOneToOne: true
+      referencedRelation: "recipes"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"model_prices": {
                   Row: {
                     "active": boolean,"created_at": string,"model_id": string,"price_version": number,"rule": NonNullable<Json>
@@ -1194,6 +1220,12 @@ isOneToOne: false
 "mark_cell_submitted":
 { Args: { "p_cell": string,"p_provider_request_id": string }; Returns: boolean
                            },
+"media_sync_batch":
+{ Args: { "p_limit"?: number }; Returns: Json
+                           },
+"media_sync_done":
+{ Args: { "p_queued_at": string,"p_recipe": string }; Returns: boolean
+                           },
 "my_account_status":
 { Args: Record<PropertyKey, never>; Returns: {
               "adult_confirmed_at": string,"role": string,"signup_complete": boolean,"terms_accepted_at": string,"terms_version": string
@@ -1223,6 +1255,9 @@ isOneToOne: false
                            },
 "open_original":
 { Args: { "p_entitlement_id": string }; Returns: Json
+                           },
+"orphan_uploads":
+{ Args: { "p_limit"?: number }; Returns: Json
                            },
 "pending_budget_alerts":
 { Args: Record<PropertyKey, never>; Returns: Json

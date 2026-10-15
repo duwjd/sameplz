@@ -104,10 +104,14 @@ export function mockSign(body: string): string {
   return createHmac("sha256", localSupabaseEnv().secretKey).update(`mock-webhook:${body}`).digest("hex");
 }
 
-/** The sweeper runs once per minute window; tests that call it reset the window first. */
+/** The sweeper runs once per minute window; tests reset the window (and retry if another run took it). */
 export async function callSweeper(request: import("@playwright/test").APIRequestContext) {
-  await adminDb().from("rate_limit_buckets").delete().eq("key", "play_sweep");
-  return request.post("/api/cron/play-sweeper", {
-    headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
-  });
+  for (let i = 0; ; i++) {
+    await adminDb().from("rate_limit_buckets").delete().eq("key", "play_sweep");
+    const res = await request.post("/api/cron/play-sweeper", {
+      headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
+    });
+    if (res.status() !== 200 || i >= 4) return res;
+    if (!((await res.json()) as { skipped?: boolean }).skipped) return res;
+  }
 }

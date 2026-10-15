@@ -1,6 +1,7 @@
 "use server";
 import { z } from "zod";
 import { createRefUpload, isRefMime, MAX_REF_BYTES } from "@/data/play";
+import { getMyRuns, type PlayRunDTO } from "@/data/playground";
 import { getViewer } from "@/lib/auth/account";
 import { createClient } from "@/lib/supabase/server";
 import { RunCellSchema } from "@/lib/validation/play";
@@ -124,4 +125,33 @@ export async function createPlayRefUpload(
           : "FAILED",
     };
   return r;
+}
+
+// ---------------------------------------------------------------- runs (PLAY-05/06)
+
+const RunIds = z.array(z.guid()).min(1).max(20);
+
+/** Fresh state of the viewer's own runs (after a Realtime hint or while polling). RLS-scoped. */
+export async function refreshRuns(input: unknown): Promise<PlayRunDTO[]> {
+  const parsed = RunIds.safeParse(input);
+  if (!parsed.success) return [];
+  const who = await member();
+  if (typeof who === "string") return [];
+  return getMyRuns({ runIds: parsed.data, limit: parsed.data.length });
+}
+
+const SaveInput = z.object({ cellId: z.guid(), saved: z.boolean() });
+
+/** D19: a saved result is kept; unsaved ones are deleted 30 days after they were made. */
+export async function saveResult(input: unknown): Promise<{ ok: boolean }> {
+  const parsed = SaveInput.safeParse(input);
+  if (!parsed.success) return { ok: false };
+  const who = await member();
+  if (typeof who === "string") return { ok: false };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("save_play_cell", {
+    p_cell: parsed.data.cellId,
+    p_saved: parsed.data.saved,
+  });
+  return { ok: !error && data === true };
 }

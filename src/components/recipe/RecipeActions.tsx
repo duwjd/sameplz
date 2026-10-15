@@ -178,6 +178,7 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
         }
         play={recipe.category === "prompt"}
         playDisabledReason={recipe.playDisabledReason}
+        onPlay={() => router.push(`/play?recipe=${recipe.publicId}`)}
         liked={liked}
         following={following}
         seller={{

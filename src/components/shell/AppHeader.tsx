@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/actions/auth";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SiteHeader, type SiteHeaderActive } from "@/components/ds";
+import { createClient } from "@/lib/supabase/client";
 
 const ROUTES: Record<string, string> = {
   home: "/",
@@ -38,6 +39,22 @@ export function AppHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const [credits, setCredits] = useState(0);
+
+  // GNB balance (CRD-01): re-read on navigation, so it follows playground runs.
+  useEffect(() => {
+    if (!viewer) return;
+    let alive = true;
+    void createClient()
+      .rpc("my_credit_summary")
+      .then(({ data }) => {
+        const available = (data as { available?: number } | null)?.available;
+        if (alive && typeof available === "number") setCredits(available);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [viewer, pathname]);
 
   // Open: focus the first item. Esc (anywhere): close and return focus to the account button.
   useEffect(() => {
@@ -73,6 +90,8 @@ export function AppHeader() {
         }}
         onLogin={() => requireLogin()}
         onAccount={() => setMenuOpen((v) => !v)}
+        credits={viewer ? credits : 0}
+        onCredits={() => router.push("/my/credits")}
       />
       {viewer && menuOpen && (
         <div
@@ -117,6 +136,23 @@ export function AppHeader() {
             }}
           >
             라이브러리
+          </Link>
+          <Link
+            href="/my/credits"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              height: 36,
+              padding: "0 8px",
+              borderRadius: 8,
+              fontSize: 14,
+              color: "var(--sp-fg-normal)",
+              textDecoration: "none",
+            }}
+          >
+            크레딧
           </Link>
           <Link
             href="/my/seller/upload"

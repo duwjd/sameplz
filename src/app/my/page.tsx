@@ -4,8 +4,10 @@ import { Suspense } from "react";
 import { MyGuest } from "@/components/my/MyGuest";
 import { myCard, MyShell } from "@/components/my/MyShell";
 import { getMyNotifications, getMyProfile, getMySummary } from "@/data/account";
+import { getMyLibrary } from "@/data/library";
 import { getCreditSummary } from "@/data/playground";
 import { getViewer } from "@/lib/auth/account";
+import { recipeHref } from "@/lib/catalog/card";
 import { kstShortDate } from "@/lib/play/copy";
 
 export const metadata: Metadata = {
@@ -29,21 +31,26 @@ async function MyHome() {
         <MyGuest next="/my" />
       </MyShell>
     );
-  const [summary, profile, credits, notes] = await Promise.all([
+  const [summary, profile, credits, notes, library] = await Promise.all([
     getMySummary(viewer),
     getMyProfile(viewer),
     getCreditSummary(viewer),
     getMyNotifications(3),
+    getMyLibrary(),
   ]);
+  const recent = [...library]
+    .sort((a, b) => b.claimedAt.localeCompare(a.claimedAt))
+    .slice(0, 3);
   const badges = { notifications: summary.unread, library: summary.updates };
-  const tiles = [
+  const tiles: { label: string; value: string | number; href?: string }[] = [
     { label: "받은 레시피", value: summary.received, href: "/my/library" },
     {
       label: "크레딧",
       value: credits ? `${credits.available}C` : "-",
       href: "/my/credits",
     },
-    { label: "좋아요", value: summary.likes, href: "/market" },
+    // No "liked recipes" list in MVP: the count only.
+    { label: "좋아요", value: summary.likes },
     {
       label: "팔로잉",
       value: summary.following,
@@ -95,14 +102,25 @@ async function MyHome() {
           gap: 12,
         }}
       >
-        {tiles.map((t) => (
-          <Link key={t.label} href={t.href} style={tile}>
-            <span style={{ fontSize: 13, color: "var(--sp-fg-secondary)" }}>
-              {t.label}
-            </span>
-            <b style={{ fontSize: 22 }}>{t.value}</b>
-          </Link>
-        ))}
+        {tiles.map((t) => {
+          const body = (
+            <>
+              <span style={{ fontSize: 13, color: "var(--sp-fg-secondary)" }}>
+                {t.label}
+              </span>
+              <b style={{ fontSize: 22 }}>{t.value}</b>
+            </>
+          );
+          return t.href ? (
+            <Link key={t.label} href={t.href} style={tile}>
+              {body}
+            </Link>
+          ) : (
+            <div key={t.label} style={tile}>
+              {body}
+            </div>
+          );
+        })}
       </section>
       {isNew && (
         <p style={{ margin: 0, fontSize: 14, color: "var(--sp-fg-secondary)" }}>
@@ -133,6 +151,57 @@ async function MyHome() {
               라이브러리에서 업데이트하기
             </Link>
           </p>
+        </section>
+      )}
+
+      {recent.length > 0 && (
+        <section aria-labelledby="my-recent" style={myCard}>
+          <h2
+            id="my-recent"
+            style={{ margin: 0, fontSize: 16, fontWeight: 700 }}
+          >
+            최근 받은 레시피
+          </h2>
+          <ul
+            style={{
+              margin: 0,
+              padding: 0,
+              listStyle: "none",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            {recent.map((r) => (
+              <li key={r.entitlementId} style={{ fontSize: 14 }}>
+                <Link
+                  href={recipeHref(r.publicId)}
+                  style={{ color: "var(--sp-fg-normal)" }}
+                >
+                  {r.title}
+                </Link>
+                <span
+                  style={{
+                    marginLeft: 8,
+                    fontSize: 12,
+                    color: "var(--sp-fg-hint)",
+                  }}
+                >
+                  v{r.versionNo} · {kstShortDate(r.claimedAt)} 받음
+                </span>
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/my/library"
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: "var(--sp-fg-accent)",
+            }}
+          >
+            라이브러리 열기
+          </Link>
         </section>
       )}
 

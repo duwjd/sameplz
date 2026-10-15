@@ -58,7 +58,7 @@ async function Notifications() {
           {list.map((n) => (
             <li
               key={n.id}
-              style={{ borderBottom: "1px solid var(--sp-line-normal)" }}
+              style={{ borderBottom: "1px solid var(--sp-border-normal)" }}
             >
               <Link
                 href={n.href}

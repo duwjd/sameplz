@@ -95,8 +95,8 @@ reset role;
 -- SCN 12 (W6 NOTI-my): a withdrawn member's SAME 인증 stays, shown under the anonymized nickname.
 update public.profiles set deleted_at = now(), nickname = '탈퇴한 회원' where id = '00000000-0000-0000-0000-000000000001';
 select ok(exists (select 1 from public.gallery_feed(null, null, null, 48) f
-                   where f.author_id = '00000000-0000-0000-0000-000000000001' and f.author_nickname = '탈퇴한 회원'),
-          'SCN 12 posts of a withdrawn member stay as 「탈퇴한 회원」');
+                   where f.author_id is null and f.author_handle is null and f.author_nickname = '탈퇴한 회원'),
+          'SCN 12 posts of a withdrawn member stay as 「탈퇴한 회원」 without the old id or handle');
 update public.profiles set deleted_at = null where id = '00000000-0000-0000-0000-000000000001';
 select is((select count(*)::int from generate_series(1, 10) g
             where public.hit_gallery_limit('00000000-0000-0000-0000-000000000001', 'draft')), 10,

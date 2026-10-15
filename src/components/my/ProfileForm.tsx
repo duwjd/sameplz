@@ -37,6 +37,22 @@ export function ProfileForm({
   const [handleNote, setHandleNote] = useState<string | null>(null);
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
+  const [jobNote, setJobNote] = useState<string | null>(null);
+  const dirty =
+    nickname !== profile.nickname ||
+    handle !== profile.handle ||
+    bio !== profile.bio ||
+    jobCodes.join() !== profile.jobCodes.join();
+
+  const revert = () => {
+    setNickname(profile.nickname);
+    setHandle(profile.handle);
+    setBio(profile.bio);
+    setJobCodes(profile.jobCodes);
+    setHandleNote(null);
+    setJobNote(null);
+    setErrors({});
+  };
 
   const check = async () => {
     const r = await checkHandle({ handle });
@@ -62,8 +78,14 @@ export function ProfileForm({
     const first = Object.keys(e)[0];
     if (first) return document.getElementById(fid(first))?.focus();
     setBusy(true);
-    const r = await updateProfile({ nickname, handle, bio, jobCodes });
-    setBusy(false);
+    let r: Awaited<ReturnType<typeof updateProfile>>;
+    try {
+      r = await updateProfile({ nickname, handle, bio, jobCodes });
+    } catch {
+      r = { ok: false, reason: "FAILED" };
+    } finally {
+      setBusy(false);
+    }
     if (!r.ok) {
       const field = r.field ?? "nickname";
       // Server error keeps what was typed (F7-4).
@@ -134,7 +156,7 @@ export function ProfileForm({
       <FormField
         field="bio"
         label="소개"
-        description="60자까지"
+        description={`60자까지 · ${bio.length}/60`}
         errors={errors}
       >
         <TextInput
@@ -164,25 +186,67 @@ export function ProfileForm({
               <Chip
                 key={j.code}
                 selected={on}
-                disabled={!on && jobCodes.length >= 2}
-                onClick={() =>
+                onClick={() => {
+                  if (!on && jobCodes.length >= 2) {
+                    setJobNote(
+                      "직무는 2개까지 고를 수 있어요. 하나를 먼저 빼 주세요.",
+                    );
+                    return;
+                  }
+                  setJobNote(null);
                   setJobCodes((cur) =>
-                    on
-                      ? cur.filter((c) => c !== j.code)
-                      : [...cur, j.code].slice(0, 2),
-                  )
-                }
+                    on ? cur.filter((c) => c !== j.code) : [...cur, j.code],
+                  );
+                }}
               >
                 {j.label}
               </Chip>
             );
           })}
         </div>
+        {jobNote && (
+          <p
+            id="profile-job-note"
+            role="alert"
+            style={{ margin: 0, fontSize: 13, color: "var(--sp-fg-danger)" }}
+          >
+            {jobNote}
+          </p>
+        )}
       </fieldset>
-      <div>
-        <Button color="primary" disabled={busy} onClick={() => void save()}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <Button
+          color="primary"
+          disabled={busy || !dirty}
+          onClick={() => void save()}
+        >
           저장하기
         </Button>
+        {dirty && (
+          <>
+            <Button
+              variant="ghost"
+              color="secondary"
+              disabled={busy}
+              onClick={revert}
+            >
+              되돌리기
+            </Button>
+            <span
+              role="status"
+              style={{ fontSize: 13, color: "var(--sp-fg-secondary)" }}
+            >
+              저장하지 않은 변경이 있어요
+            </span>
+          </>
+        )}
       </div>
     </div>
   );

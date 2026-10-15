@@ -53,8 +53,13 @@ export function AccountView({
   ) => {
     const next = !s[key];
     setS((cur) => ({ ...cur, [key]: next }));
-    const r = await setNotificationSetting({ kind, on: next });
-    if (!r.ok) {
+    let ok = false;
+    try {
+      ok = (await setNotificationSetting({ kind, on: next })).ok;
+    } catch {
+      ok = false;
+    }
+    if (!ok) {
       setS((cur) => ({ ...cur, [key]: !next }));
       notify("설정을 저장하지 못했어요. 다시 눌러 주세요.");
     }
@@ -86,18 +91,30 @@ export function AccountView({
     }
     setBusy(true);
     setError(null);
-    const r = await withdrawAccount({ confirm: true, reason });
+    let r: Awaited<ReturnType<typeof withdrawAccount>>;
+    try {
+      r = await withdrawAccount({ confirm: true, reason });
+    } catch {
+      r = { ok: false, reason: "FAILED" };
+    }
     if (r.ok) {
+      // A full reload drops every client-side session state (header, auth context, caches).
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign("/?withdrawn=1");
       return;
     }
     setBusy(false);
-    if (!r.ok)
-      setError(
-        r.reason === "GENERATION_IN_PROGRESS"
-          ? "플레이그라운드에서 만드는 중인 결과가 있어요. 끝난 뒤에 탈퇴할 수 있어요."
+    setError(
+      r.reason === "GENERATION_IN_PROGRESS"
+        ? "플레이그라운드에서 만드는 중인 결과가 있어요. 끝난 뒤에 탈퇴할 수 있어요."
+        : r.reason === "AUTH_DELETE_FAILED"
+          ? "정보는 지웠지만 로그인 정보 정리가 끝나지 않았어요. 「탈퇴하기」를 한 번 더 눌러 주세요."
           : "탈퇴하지 못했어요. 잠시 뒤에 다시 해 주세요.",
-      );
+    );
+    // Move focus to the message so screen readers hear why it stopped.
+    requestAnimationFrame(() =>
+      document.getElementById("withdraw-error")?.focus(),
+    );
   };
 
   return (
@@ -275,6 +292,7 @@ export function AccountView({
             <p
               id="withdraw-error"
               role="alert"
+              tabIndex={-1}
               style={{ margin: 0, fontSize: 14, color: "var(--sp-fg-danger)" }}
             >
               {error}

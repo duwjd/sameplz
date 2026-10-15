@@ -44,7 +44,11 @@ export async function setNotificationSetting(
 
 // ---------------------------------------------------------------- profile (PRF, F7-4)
 
-const Handle = z.string().regex(/^[a-z0-9_]{3,15}$/);
+// `gone_…` belongs to withdrawn members (reserved in the database too).
+const Handle = z
+  .string()
+  .regex(/^[a-z0-9_]{3,15}$/)
+  .refine((h) => !h.startsWith("gone_"));
 export type HandleCheck =
   "OK" | "TAKEN" | "INVALID" | "RATE_LIMITED" | "LOGIN_REQUIRED";
 
@@ -126,15 +130,19 @@ export async function withdrawAccount(
   const viewer = await getViewer();
   if (!viewer) return { ok: false, reason: "LOGIN_REQUIRED" };
   const admin = createAdminClient();
-  const { data, error } = await admin.rpc("withdraw_account", {
-    p_user: viewer.id,
-    p_reason: parsed.data.reason,
-  });
+  const { data, error } = await admin.rpc("withdraw_account", { p_user: viewer.id, p_reason: parsed.data.reason });
   const r = data as { ok?: boolean; reason?: string } | null;
-  if (error || !r?.ok) return { ok: false, reason: r?.reason ?? "FAILED" };
+  if (error) return { ok: false, reason: "FAILED" };
+  if (!r?.ok) {
+    // Retry after a failed auth step: the profile is already anonymized, finish the rest.
+    const { data: p } = await admin.from("profiles").select("deleted_at").eq("id", viewer.id).maybeSingle();
+    if (r?.reason !== "NOT_FOUND" || !p?.deleted_at) return { ok: false, reason: r?.reason ?? "FAILED" };
+  }
   const removed = await admin.auth.admin.deleteUser(viewer.id, true);
-  if (removed.error)
+  if (removed.error) {
     console.error("[account] auth soft delete failed", removed.error.name);
+    return { ok: false, reason: "AUTH_DELETE_FAILED" };
+  }
   const supabase = await createClient();
   await supabase.auth.signOut();
   // The client reloads to the guest home (every client-side session state is dropped).

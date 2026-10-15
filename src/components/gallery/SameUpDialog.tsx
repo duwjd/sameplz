@@ -210,7 +210,7 @@ export function SameUpDialog({
                 padding: "0 12px",
                 fontSize: 14,
                 borderRadius: 8,
-                border: "1px solid var(--sp-line-normal)",
+                border: "1px solid var(--sp-border-normal)",
                 background: "var(--sp-bg-normal)",
                 color: "var(--sp-fg-normal)",
               }}

@@ -161,7 +161,7 @@ function RunCard({
     <li
       aria-label={`실행 ${index}`}
       style={{
-        border: "1px solid var(--sp-line-normal)",
+        border: "1px solid var(--sp-border-normal)",
         borderRadius: 12,
         padding: 12,
         display: "flex",

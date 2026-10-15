@@ -1,7 +1,7 @@
 -- W6 NOTI · PRF · ACC: notifications from triggers, settings, read state, handle check, withdrawal.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(21);
+select plan(28);
 
 -- Creator C (owner of a live recipe), member M (holder).
 insert into auth.users (id, email) values
@@ -92,6 +92,25 @@ select ok((select deleted_at is not null and nickname = '탈퇴한 회원' and h
           and not exists (select 1 from public.follows where follower_id = '00000000-0000-0000-0000-00000000a0a0')
           and exists (select 1 from public.gallery_posts where author_id = '00000000-0000-0000-0000-00000000a0a0'),
           'F7-6 anonymized, entitlements and follows end, SAME 인증 stay as 「탈퇴한 회원」');
+
+-- Withdrawal guards.
+insert into public.recipes (id, public_id, owner_id, category, prompt_kind, title, summary, status, creator_nickname, job_codes)
+values ('00000000-0000-0000-0000-00000000a001', 'rnotiwd001', '00000000-0000-0000-0000-00000000c0c0', 'prompt', 'image',
+        '탈퇴 전 비공개', '요약', 'private', '만든이', array['commerce']);
+select is(public.withdraw_account('00000000-0000-0000-0000-00000000c0c0') ->> 'ok', 'true', 'F7-6 a creator withdraws');
+select throws_ok($$ update public.recipes set status = 'live' where id = '00000000-0000-0000-0000-00000000a001' $$,
+                 'P0001', 'OWNER_WITHDRAWN', 'F7-6 a withdrawn creator''s private recipe can never go live');
+select is((select status from public.recipes where id = '00000000-0000-0000-0000-00000000c001'), 'stopped',
+          'F7-6 the creator''s recipes stay stopped');
+select throws_ok($$ update public.profiles set handle = 'gone_abcdef0123' where id = '00000000-0000-0000-0000-000000000002' $$,
+                 'P0001', 'HANDLE_RESERVED', 'F7-6 gone_ handles are reserved (nobody can block a withdrawal)');
+set local role authenticated;
+set local request.jwt.claims to '{"sub":"00000000-0000-0000-0000-00000000c0c0","role":"authenticated"}';
+select is((select signup_complete from public.my_account_status()), false, 'F7-6 a withdrawn session is not a member any more');
+select is(public.check_handle('gone_abc'), 'INVALID', 'F7-4 gone_ handles cannot be checked out');
+reset role;
+select ok(not public.withdraw_account('00000000-0000-0000-0000-00000000c0c0') ? 'expired_credits',
+          'F7-6 a second withdrawal is refused (idempotent retry happens in the action)');
 
 select * from finish();
 rollback;

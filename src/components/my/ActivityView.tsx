@@ -6,7 +6,16 @@ import { useState } from "react";
 import { toggleFollow } from "@/actions/follow";
 import { removeSameCert } from "@/actions/gallery";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Badge, Button, EmptyState, Tabs } from "@/components/ds";
+import {
+  Badge,
+  Button,
+  Dialog,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  EmptyState,
+  Tabs,
+} from "@/components/ds";
 import type { FollowingDTO, MyReportDTO, MySamePostDTO } from "@/data/account";
 import { kstShortDate } from "@/lib/play/copy";
 
@@ -34,22 +43,51 @@ export function ActivityView({
   const { notify } = useAuth();
   const [tab, setTab] = useState<ActivityTab>(initialTab);
   const [busy, setBusy] = useState<string | null>(null);
+  const [ask, setAsk] = useState<
+    | { kind: "remove"; id: string; title: string }
+    | { kind: "unfollow"; handle: string; nickname: string }
+    | null
+  >(null);
+
+  const changeTab = (v: ActivityTab) => {
+    setTab(v);
+    // Keep the tab in the address so back and reload land on the same list.
+    router.replace(v === "same" ? "/my/activity" : `/my/activity?tab=${v}`, {
+      scroll: false,
+    });
+  };
 
   const remove = async (id: string) => {
     setBusy(id);
-    const r = await removeSameCert({ postId: id });
-    setBusy(null);
-    notify(
-      r.ok ? "SAME 인증을 내렸어요." : "내리지 못했어요. 다시 눌러 주세요.",
-    );
-    if (r.ok) router.refresh();
+    let ok = false;
+    try {
+      ok = (await removeSameCert({ postId: id })).ok;
+    } catch {
+      ok = false;
+    } finally {
+      setBusy(null);
+    }
+    notify(ok ? "SAME 인증을 내렸어요." : "내리지 못했어요. 다시 눌러 주세요.");
+    if (ok) router.refresh();
   };
   const unfollow = async (handle: string) => {
     setBusy(handle);
-    const r = await toggleFollow({ handle, follow: false });
-    setBusy(null);
-    if (r.ok) router.refresh();
+    let ok = false;
+    try {
+      ok = (await toggleFollow({ handle, follow: false })).ok;
+    } catch {
+      ok = false;
+    } finally {
+      setBusy(null);
+    }
+    if (ok) router.refresh();
     else notify("팔로우를 끊지 못했어요. 다시 눌러 주세요.");
+  };
+  const confirmAsk = () => {
+    const a = ask;
+    setAsk(null);
+    if (a?.kind === "remove") void remove(a.id);
+    if (a?.kind === "unfollow") void unfollow(a.handle);
   };
 
   return (
@@ -57,7 +95,7 @@ export function ActivityView({
       <Tabs
         idPrefix="actv"
         value={tab}
-        onChange={(v) => setTab(v as ActivityTab)}
+        onChange={(v) => changeTab(v as ActivityTab)}
         items={[
           { value: "same", label: `SAME 인증 ${posts.length}` },
           { value: "following", label: `팔로잉 ${following.length}` },
@@ -91,7 +129,7 @@ export function ActivityView({
                     alignItems: "center",
                     gap: 12,
                     padding: "10px 0",
-                    borderBottom: "1px solid var(--sp-line-normal)",
+                    borderBottom: "1px solid var(--sp-border-normal)",
                   }}
                 >
                   {p.media ? (
@@ -131,7 +169,9 @@ export function ActivityView({
                     variant="ghost"
                     color="danger"
                     disabled={busy === p.id}
-                    onClick={() => void remove(p.id)}
+                    onClick={() =>
+                      setAsk({ kind: "remove", id: p.id, title: p.title })
+                    }
                     aria-label={`「${p.title}」 내리기`}
                   >
                     내리기
@@ -166,7 +206,7 @@ export function ActivityView({
                     alignItems: "center",
                     gap: 12,
                     padding: "10px 0",
-                    borderBottom: "1px solid var(--sp-line-normal)",
+                    borderBottom: "1px solid var(--sp-border-normal)",
                   }}
                 >
                   <b style={{ fontSize: 14 }}>{f.nickname}</b>
@@ -190,7 +230,13 @@ export function ActivityView({
                     variant="ghost"
                     color="secondary"
                     disabled={busy === f.handle}
-                    onClick={() => void unfollow(f.handle)}
+                    onClick={() =>
+                      setAsk({
+                        kind: "unfollow",
+                        handle: f.handle,
+                        nickname: f.nickname,
+                      })
+                    }
                     aria-label={`${f.nickname} 팔로우 끊기`}
                   >
                     끊기
@@ -224,7 +270,7 @@ export function ActivityView({
                     flexDirection: "column",
                     gap: 4,
                     padding: "10px 0",
-                    borderBottom: "1px solid var(--sp-line-normal)",
+                    borderBottom: "1px solid var(--sp-border-normal)",
                   }}
                 >
                   <span style={{ fontSize: 14 }}>
@@ -250,6 +296,34 @@ export function ActivityView({
             </ul>
           ))}
       </div>
+      <Dialog open={ask !== null} onClose={() => setAsk(null)} size="sm">
+        <DialogHeader
+          title={
+            ask?.kind === "remove" ? "SAME 인증을 내릴까요?" : "팔로우를 끊을까요?"
+          }
+          onClose={() => setAsk(null)}
+        />
+        <DialogBody>
+          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6 }}>
+            {ask?.kind === "remove"
+              ? `「${ask.title}」 SAME 인증을 갤러리와 레시피 상세에서 내려요. 레시피의 SAME 숫자도 1 줄어요.`
+              : ask?.kind === "unfollow"
+                ? `${ask.nickname} 님의 새 레시피 알림을 더 받지 않아요. 언제든 다시 팔로우할 수 있어요.`
+                : ""}
+          </p>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" color="secondary" onClick={() => setAsk(null)}>
+            닫기
+          </Button>
+          <Button
+            color={ask?.kind === "remove" ? "danger" : "primary"}
+            onClick={confirmAsk}
+          >
+            {ask?.kind === "remove" ? "내리기" : "끊기"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 }

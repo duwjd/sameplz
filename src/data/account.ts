@@ -97,10 +97,13 @@ export async function getMyLoginMethods(): Promise<LoginMethodDTO[]> {
     email: (i.identity_data?.email as string | undefined) ?? null,
     identityId: i.identity_id ?? i.id ?? null,
   }));
-  const naver = (user.app_metadata as { naver_id?: unknown } | undefined)
-    ?.naver_id;
-  if (typeof naver === "string" && !methods.some((m) => m.provider === "naver"))
-    methods.push({ provider: "naver", email: null, identityId: null });
+  const meta = (user.app_metadata ?? {}) as { naver_id?: unknown };
+  if (typeof meta.naver_id === "string") {
+    // Naver signs in through a placeholder email identity (W1 spike): show Naver, not that address,
+    // and never offer to unlink it.
+    const rest = methods.filter((m) => m.provider !== "email");
+    return [{ provider: "naver", email: null, identityId: null }, ...rest];
+  }
   return methods;
 }
 

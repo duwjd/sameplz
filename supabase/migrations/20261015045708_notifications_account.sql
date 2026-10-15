@@ -11,7 +11,8 @@ create table public.notifications (
     'review_passed', 'review_rejected', 'recipe_stopped', 'report_received', 'report_answered')), -- required
   title text not null check (char_length(title) between 1 and 80),
   body text not null default '' check (char_length(body) <= 200),
-  href text not null check (href ~ '^/[A-Za-z0-9/_?=&%.-]*$'),
+  -- In-app paths only: no '//' (protocol-relative) and no scheme.
+  href text not null check (href ~ '^/([A-Za-z0-9_?=&%.-][A-Za-z0-9/_?=&%.-]*)?$'),
   read_at timestamptz,
   created_at timestamptz not null default now()
 );
@@ -106,6 +107,10 @@ security definer
 set search_path = ''
 as $$
 begin
+  -- One alert per (follower, followee) per day: follow / unfollow loops cannot spam (or flood Realtime).
+  if not private.hit_rate_limit('follow_notify:' || new.follower_id || ':' || new.followee_id, 1, interval '1 day') then
+    return null;
+  end if;
   perform private.notify(new.followee_id, 'new_follower',
     coalesce((select nickname from public.profiles where id = new.follower_id), '누군가') || '님이 나를 팔로우해요',
     '', '/my/activity?tab=following');
@@ -266,7 +271,7 @@ begin
   if not private.hit_rate_limit('handle_check:user:' || v_user, 30, interval '1 hour') then
     return 'RATE_LIMITED';
   end if;
-  if p_handle is null or p_handle !~ '^[a-z0-9_]{3,15}$' then
+  if p_handle is null or p_handle !~ '^[a-z0-9_]{3,15}$' or p_handle like 'gone\_%' then
     return 'INVALID';
   end if;
   if exists (select 1 from public.profiles where handle = p_handle::extensions.citext and id <> v_user) then
@@ -296,10 +301,12 @@ begin
   if not exists (select 1 from public.profiles where id = p_user and deleted_at is null) then
     return jsonb_build_object('ok', false, 'reason', 'NOT_FOUND');
   end if;
+  -- Lock first, then check: a run starting meanwhile waits for this decision.
+  perform private.ensure_credit_account(p_user);
+  perform 1 from public.credit_accounts where user_id = p_user for update;
   if exists (select 1 from public.credit_accounts where user_id = p_user and held > 0) then
     return jsonb_build_object('ok', false, 'reason', 'GENERATION_IN_PROGRESS');
   end if;
-  perform 1 from public.credit_accounts where user_id = p_user for update;
   for l in select id from public.credit_lots where user_id = p_user and remaining > held loop
     v_expired := v_expired + private.expire_lot(l.id);
   end loop;
@@ -308,6 +315,11 @@ begin
   update public.entitlements set revoked_at = now() where user_id = p_user and revoked_at is null;
   update public.recipes set status = 'stopped', stopped_reason = 'creator_request', stopped_at = now()
    where owner_id = p_user and status = 'live';
+  -- Nothing of a withdrawn member goes public later: close pending reviews (in review → rejected).
+  update public.review_queue q set state = 'rejected', decided_at = now()
+    from public.recipe_versions v join public.recipes r on r.id = v.recipe_id
+   where q.version_id = v.id and r.owner_id = p_user and q.state = 'open';
+  update public.recipes set status = 'rejected' where owner_id = p_user and status = 'in_review';
   delete from public.recipe_drafts where owner_id = p_user;
   delete from public.notifications where user_id = p_user;
   delete from public.follows where follower_id = p_user or followee_id = p_user;
@@ -315,7 +327,7 @@ begin
   delete from public.recipe_likes where user_id = p_user;
 
   update public.profiles
-     set nickname = '탈퇴한 회원', handle = 'gone_' || substr(replace(id::text, '-', ''), 1, 10),
+     set nickname = '탈퇴한 회원', handle = 'gone_' || encode(extensions.gen_random_bytes(5), 'hex'),
          bio = '', avatar_url = null, job_codes = '{}', deleted_at = now(), updated_at = now()
    where id = p_user;
   return jsonb_build_object('ok', true, 'expired_credits', v_expired);
@@ -341,7 +353,8 @@ security definer
 set search_path = ''
 as $$
   select g.id, g.title, g.kind, g.ratio, ma.kind, ma.storage_path, ma.alt_text, g.generated_here,
-         a.id, a.nickname, a.handle, r.id, r.title, r.public_id, r.fork_allowed,
+         case when a.deleted_at is null then a.id end, a.nickname,
+         case when a.deleted_at is null then a.handle::text end, r.id, r.title, r.public_id, r.fork_allowed,
          (select count(*) from public.post_likes pl where pl.post_id = g.id)::integer,
          exists (select 1 from public.post_likes pl where pl.post_id = g.id and pl.user_id = (select auth.uid())),
          g.created_at
@@ -355,4 +368,59 @@ as $$
      and (p_before is null or (g.created_at, g.id) < (p_before, coalesce(p_before_id, 'ffffffff-ffff-ffff-ffff-ffffffffffff'::uuid)))
    order by g.created_at desc, g.id desc
    limit least(greatest(coalesce(p_limit, 24), 1), 48)
+$$;
+
+-- ---------------------------------------------------------------- withdrawal guards
+-- `gone_…` handles belong to withdrawn members (cannot be taken to block someone's withdrawal).
+create or replace function private.guard_profile_handle()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.deleted_at is null and new.handle::text like 'gone\_%' then
+    raise exception using errcode = 'P0001', message = 'HANDLE_RESERVED';
+  end if;
+  return new;
+end;
+$$;
+revoke execute on function private.guard_profile_handle() from public, anon, authenticated;
+create trigger profiles_guard_handle before insert or update of handle on public.profiles
+  for each row execute function private.guard_profile_handle();
+
+-- A withdrawn member's recipe never goes live again (visibility toggle, a review decided later).
+create or replace function private.guard_withdrawn_owner()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.status = 'live' and exists (select 1 from public.profiles p where p.id = new.owner_id and p.deleted_at is not null) then
+    raise exception using errcode = 'P0001', message = 'OWNER_WITHDRAWN';
+  end if;
+  return new;
+end;
+$$;
+revoke execute on function private.guard_withdrawn_owner() from public, anon, authenticated;
+create trigger recipes_guard_withdrawn_owner before insert or update of status on public.recipes
+  for each row execute function private.guard_withdrawn_owner();
+
+-- A withdrawn profile is never a completed signup (the session that remains cannot act as a member).
+create or replace function public.my_account_status()
+returns table (
+  role text,
+  terms_version text,
+  terms_accepted_at timestamptz,
+  adult_confirmed_at timestamptz,
+  signup_complete boolean
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select p.role, p.terms_version, p.terms_accepted_at, p.adult_confirmed_at,
+         (p.terms_accepted_at is not null and p.adult_confirmed_at is not null and p.deleted_at is null)
+  from public.profiles p
+  where p.id = auth.uid()
 $$;

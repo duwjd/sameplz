@@ -69,16 +69,16 @@ export function MyShell({
       }}
     >
       <div className="grid gap-8 md:grid-cols-[200px_minmax(0,1fr)]">
+        {/* Phones: one scrollable row (no group labels); desktop: grouped column. */}
         <nav
           aria-label="마이페이지 메뉴"
-          style={{ display: "flex", flexDirection: "column", gap: 14 }}
+          className="flex flex-row gap-1 overflow-x-auto md:flex-col md:gap-3.5 md:overflow-visible"
+          style={{ scrollbarWidth: "thin" }}
         >
           {groups.map((g) => (
-            <div
-              key={g}
-              style={{ display: "flex", flexDirection: "column", gap: 2 }}
-            >
+            <div key={g} className="flex flex-row gap-1 md:flex-col md:gap-0.5">
               <span
+                className="hidden md:block"
                 style={{
                   fontSize: 12,
                   fontWeight: 600,
@@ -110,20 +110,21 @@ export function MyShell({
                           ? "var(--sp-bg-secondary)"
                           : "transparent",
                       fontWeight: m.key === active ? 700 : 400,
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
                     }}
                   >
                     {m.label}
                     {n > 0 && (
                       <span
-                        aria-label={`${n}개 새로`}
                         style={{
                           marginLeft: "auto",
                           minWidth: 20,
                           height: 20,
                           padding: "0 6px",
                           borderRadius: 999,
-                          background: "var(--sp-bg-primary)",
-                          color: "var(--sp-fg-on-primary, #fff)",
+                          background: "var(--sp-bg-contrast)",
+                          color: "var(--sp-fg-inverse)",
                           fontSize: 12,
                           fontWeight: 700,
                           display: "inline-flex",
@@ -132,6 +133,7 @@ export function MyShell({
                         }}
                       >
                         {n > 99 ? "99+" : n}
+                        <span className="sr-only">개 새로</span>
                       </span>
                     )}
                   </Link>
@@ -172,7 +174,7 @@ export function MyShell({
 }
 
 export const myCard = {
-  border: "1px solid var(--sp-line-normal)",
+  border: "1px solid var(--sp-border-normal)",
   borderRadius: 16,
   padding: 20,
   display: "flex",

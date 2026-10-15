@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { MyShell } from "@/components/my/MyShell";
 import { CreditsGuest } from "@/components/credits/CreditsGuest";
 import {
   getCreditHistory,
@@ -66,7 +67,7 @@ async function Credits({
       <section
         aria-labelledby="crd-balance"
         style={{
-          border: "1px solid var(--sp-line-normal)",
+          border: "1px solid var(--sp-border-normal)",
           borderRadius: 16,
           padding: 20,
           display: "flex",
@@ -134,7 +135,7 @@ async function Credits({
                   fontSize: 13,
                   padding: "4px 10px",
                   borderRadius: 999,
-                  border: "1px solid var(--sp-line-normal)",
+                  border: "1px solid var(--sp-border-normal)",
                   background:
                     filter === f.value
                       ? "var(--sp-bg-primary-soft, var(--sp-bg-secondary))"
@@ -170,7 +171,7 @@ async function Credits({
                   display: "flex",
                   gap: 12,
                   padding: "10px 0",
-                  borderBottom: "1px solid var(--sp-line-normal)",
+                  borderBottom: "1px solid var(--sp-border-normal)",
                   fontSize: 14,
                 }}
               >
@@ -239,47 +240,22 @@ async function Credits({
 
 export default function CreditsPage(props: PageProps<"/my/credits">) {
   return (
-    <main
-      data-screen-label="Credits"
-      style={{
-        maxWidth: 960,
-        margin: "0 auto",
-        padding: "32px 24px 80px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 24,
-        color: "var(--sp-fg-normal)",
-        fontFamily: "var(--sp-font-sans)",
-      }}
+    <MyShell
+      active="credits"
+      title="크레딧"
+      description="플레이그라운드에서 쓰는 무료 크레딧이에요."
     >
-      <header
+      <Link
+        href="/play"
         style={{
-          display: "flex",
-          alignItems: "flex-end",
-          gap: 12,
-          flexWrap: "wrap",
+          alignSelf: "flex-start",
+          fontSize: 14,
+          fontWeight: 600,
+          color: "var(--sp-fg-accent)",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800 }}>크레딧</h1>
-          <p
-            style={{ margin: 0, fontSize: 14, color: "var(--sp-fg-secondary)" }}
-          >
-            플레이그라운드에서 쓰는 무료 크레딧이에요.
-          </p>
-        </div>
-        <Link
-          href="/play"
-          style={{
-            marginLeft: "auto",
-            fontSize: 14,
-            fontWeight: 600,
-            color: "var(--sp-fg-accent)",
-          }}
-        >
-          플레이그라운드 열기
-        </Link>
-      </header>
+        플레이그라운드 열기
+      </Link>
       <Suspense
         fallback={
           <div
@@ -294,6 +270,6 @@ export default function CreditsPage(props: PageProps<"/my/credits">) {
       >
         <Credits searchParams={props.searchParams} />
       </Suspense>
-    </main>
+    </MyShell>
   );
 }

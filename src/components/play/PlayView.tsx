@@ -465,7 +465,7 @@ export function PlayView({
                 padding: "0 12px",
                 fontSize: 14,
                 borderRadius: 8,
-                border: "1px solid var(--sp-line-normal)",
+                border: "1px solid var(--sp-border-normal)",
                 background: "var(--sp-bg-normal)",
                 color: "var(--sp-fg-normal)",
               }}
@@ -624,7 +624,7 @@ export function PlayView({
                 role="group"
                 aria-label={`${m.label} 설정`}
                 style={{
-                  border: "1px solid var(--sp-line-normal)",
+                  border: "1px solid var(--sp-border-normal)",
                   borderRadius: 12,
                   padding: 12,
                   display: "flex",
@@ -910,7 +910,7 @@ function CreditBox({ summary }: { summary: CreditSummaryDTO }) {
         flexWrap: "wrap",
         alignItems: "center",
         gap: 16,
-        border: "1px solid var(--sp-line-normal)",
+        border: "1px solid var(--sp-border-normal)",
         borderRadius: 12,
         padding: "12px 16px",
         fontSize: 14,

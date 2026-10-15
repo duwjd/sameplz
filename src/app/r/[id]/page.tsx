@@ -23,6 +23,7 @@ import {
   type RecipeDetail,
 } from "@/lib/recipe/detail";
 import { mediaUrl } from "@/lib/upload/media";
+import { getRecipeSamePosts } from "@/data/gallery";
 import { countRecipeView } from "@/data/seller";
 
 const SITE = "https://sameplz.vercel.app";
@@ -159,10 +160,14 @@ export default async function RecipePage(props: PageProps<"/r/[id]">) {
     );
   }
 
-  const referenceData = await getReferenceData();
+  const [referenceData, samePosts] = await Promise.all([
+    getReferenceData(),
+    getRecipeSamePosts(recipe.public_id, recipe.id),
+  ]);
   return (
     <RecipeDetailView
       recipe={recipe}
+      samePosts={samePosts}
       referenceData={referenceData}
       similar={similar}
       refBand={

@@ -634,6 +634,56 @@ test.describe("PLAY screen", () => {
     expect(count).toBe(1);
   });
 
+  test("SCN 6 F4-11 a received recipe's playground result becomes a SAME 인증 marked 「여기서 생성」", async ({
+    page,
+    context,
+  }) => {
+    const user = await loginAsPlayer(context);
+    await adminDb().from("entitlements").insert({
+      user_id: user.id,
+      recipe_id: "aaaaaaaa-0000-0000-0000-000000000004",
+      version_id: "bbbbbbbb-0000-0000-0000-000000000004",
+      source: "free",
+    });
+    await page.goto("/play?recipe=rdetailcopy");
+    await model(page, /^GPT Image 2\.5 Flare/).click();
+    await page.getByRole("button", { name: "예시로 채우기" }).filter({ visible: true }).click();
+    await runButton(page).click();
+    const result = page.getByRole("figure", { name: "GPT Image 2.5 Flare 결과" }).filter({ visible: true }).first();
+    await expect(result.getByRole("img", { name: /AI 생성 이미지/ })).toBeVisible({ timeout: 15_000 });
+    await result.getByRole("button", { name: "SAME 인증 올리기" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText("플레이그라운드 결과를 그대로 올려요")).toBeVisible();
+    const title = `여기서 만든 결과 ${Date.now() % 100000}`;
+    await dialog.getByLabel("한 줄 소개").fill(title);
+    await dialog.getByRole("button", { name: "올리기" }).click();
+    await expect(page.getByText("SAME 인증을 올렸어요. 갤러리 맨 위에 보여요.").filter({ visible: true })).toBeVisible();
+
+    await page.goto("/gallery");
+    const first = page.getByRole("list", { name: "갤러리" }).getByRole("listitem").first();
+    await expect(first).toContainText(title);
+    await expect(first).toContainText("여기서 생성");
+  });
+
+  test("F4-11 a blank-prompt result becomes an upload draft with the prompt and the result", async ({
+    page,
+    context,
+  }) => {
+    await loginAsPlayer(context);
+    await page.goto("/play");
+    await page.getByLabel("프롬프트").filter({ visible: true }).fill("초안으로 보낼 내 프롬프트");
+    await model(page, /^GPT Image 2\.5 Flare/).click();
+    await runButton(page).click();
+    await expect(
+      page.getByRole("img", { name: /AI 생성 이미지/ }).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "이 프롬프트로 레시피 올리기" }).filter({ visible: true }).click();
+    await expect(page).toHaveURL(/\/my\/seller\/upload$/);
+    await page.getByRole("button", { name: "이어서 쓰기" }).filter({ visible: true }).click();
+    await page.getByRole("button", { name: "다음" }).click();
+    await expect(page.getByLabel("프롬프트 본문")).toHaveValue("초안으로 보낼 내 프롬프트");
+  });
+
   test("F4-16 a model whose cheapest setting is over the daily limit cannot be picked", async ({
     page,
     context,

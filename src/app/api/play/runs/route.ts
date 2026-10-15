@@ -113,6 +113,13 @@ export async function POST(request: NextRequest) {
 
   // Fan out (F4-3). A repeated client_request_id returns the existing run without resubmitting;
   // anything left queued is picked up by the sweeper.
+  // F4-11: a blank run keeps the user's own prompt so a result can become an upload draft.
+  if (!started.existing && req.mode === "blank")
+    await createAdminClient().rpc("set_run_prompt_text", {
+      p_run: started.runId,
+      p_user: viewer.id,
+      p_text: rendered,
+    });
   if (!started.existing)
     await Promise.allSettled(started.cellIds.map((id) => submitCell(id)));
 

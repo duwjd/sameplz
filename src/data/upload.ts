@@ -254,7 +254,7 @@ export async function storeRebuiltSkillZip(
 }
 
 export type SubmitOutcome =
-  | { ok: true; publicId: string; status: string; review: boolean }
+  | { ok: true; publicId: string; status: string; review: boolean; recipeId?: string | null }
   | { ok: false; code: string };
 
 /** public.submit_recipe_version with the secret key (clients can never call it). */
@@ -276,11 +276,42 @@ export async function submitVersion(
       code: error.code === "P0001" ? error.message : "FAILED",
     };
   }
-  const r = data as { public_id: string; status: string; review: boolean };
+  const r = data as { public_id: string; status: string; review: boolean; recipe_id?: string };
   return {
     ok: true,
+    recipeId: r.recipe_id ?? null,
     publicId: r.public_id,
     status: r.status,
     review: Boolean(r.review),
   };
+}
+
+/** F6-2: a new recipe made from 「이걸로 만들기」 remembers its origin (public.set_recipe_fork). */
+export async function rememberFork(viewer: Viewer, recipeId: string, fromRecipeId: string) {
+  const { data } = await createAdminClient().rpc("set_recipe_fork", {
+    p_owner: viewer.id,
+    p_recipe: recipeId,
+    p_from_recipe: fromRecipeId,
+  });
+  return data === true;
+}
+
+/**
+ * One uploaded result of the viewer's (SAME 인증): own path, a real image / video whose bytes match
+ * the stored type, within the size limit. The kind comes from the stored file, not the client.
+ */
+export async function inspectOwnUpload(
+  viewer: Viewer,
+  path: string,
+): Promise<{ kind: "image" | "video"; mime: MediaMime } | null> {
+  if (!isOwnMediaPath(path, viewer.id)) return null;
+  const bucket = (await objectInfo(DRAFT_MEDIA_BUCKET, path)) ? DRAFT_MEDIA_BUCKET : MEDIA_BUCKET;
+  const info = await objectInfo(bucket, path);
+  if (!info || !Object.hasOwn(MEDIA_MIME, info.mime)) return null;
+  const mime = info.mime as MediaMime;
+  if (!extMatchesMime(path, mime)) return null;
+  const kind = mediaKindOf(mime);
+  if (!(info.size > 0) || info.size > (kind === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) return null;
+  if (!sniffMatches(mime, await headBytes(bucket, path))) return null;
+  return { kind, mime };
 }

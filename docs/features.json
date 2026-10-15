@@ -531,7 +531,7 @@
       "scn": [
         "trial-to-certify"
       ],
-      "passes": false,
+      "passes": true,
       "mvp_note": "MVP: SAME 인증은 받은(무료) 레시피에서만"
     },
     {
@@ -762,7 +762,7 @@
       "scn": [
         "same-cert-to-gallery"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F6-2",
@@ -777,7 +777,7 @@
       "scn": [
         "fork-free-share"
       ],
-      "passes": false,
+      "passes": true,
       "mvp_note": "MVP: 원작 표시만. 판매 시 D1 로열티는 유료 전환 단계"
     },
     {
@@ -791,7 +791,7 @@
       "acceptance": "게시 때 이미지 재검사, 신고 버튼, 검토 중이면 숨김",
       "week": 6,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F6-4",

@@ -18,9 +18,11 @@ import {
   type RecipeDetail,
 } from "@/lib/recipe/detail";
 import type { RecipeCardProps } from "@/components/ds";
+import type { GalleryPostDTO } from "@/data/gallery";
 import {
   AgentSections,
   PromptSections,
+  SameResults,
   Section,
   SkillSections,
 } from "./sections";
@@ -190,12 +192,14 @@ export function RecipeDetailView({
   similar,
   actions,
   refBand,
+  samePosts = [],
 }: {
   recipe: RecipeDetail;
   referenceData: ReferenceData;
   similar: RecipeCardProps[];
   actions: ReactNode;
   refBand: ReactNode;
+  samePosts?: GalleryPostDTO[];
 }) {
   const meta = recipe.version.meta;
   return (
@@ -232,6 +236,7 @@ export function RecipeDetailView({
             ]}
           />
           <RecipeBody recipe={recipe} />
+          <SameResults recipe={recipe} posts={samePosts} />
           {recipe.version.changelog && recipe.version.no > 1 && (
             <Section title="업데이트 내용">
               <p

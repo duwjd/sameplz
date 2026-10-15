@@ -320,6 +320,11 @@ export function UploadWizard({
             : "지난 버전 내용을 불러왔어요. 카테고리는 바꿀 수 없고, 4단계에 바뀐 점을 적어야 해요. 받은 사람은 골라서 업데이트해요."}
         </Callout>
       )}
+      {!edit && form.forkOf && (
+        <Callout color="hint" title={`「${form.forkOf.title}」을 바탕으로 만들어요`}>
+          원작의 원문은 복사되지 않아요. 내 프롬프트와 결과물로 채워 올리면 상세에 원작이 표시돼요.
+        </Callout>
+      )}
       {/* 390px cannot fit five labels: phones get the current step as text. */}
       <div className="hidden md:block">
         <Stepper steps={STEPS.map((label) => ({ label }))} current={step - 1} />

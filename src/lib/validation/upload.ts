@@ -40,6 +40,12 @@ const SkillZip = z.object({
 
 export const UploadFormSchema = z.object({
   recipeId: z.guid().nullable().catch(null),
+  /** F6-2: a fork draft remembers its origin (set by 「이걸로 만들기」, applied after submit). */
+  forkOf: z
+    .object({ recipeId: z.guid(), publicId: z.string().max(16), title: z.string().max(60) })
+    .nullable()
+    .catch(null)
+    .default(null),
   category: z.enum(CATEGORIES).nullable().catch(null),
   promptKind: z.enum(PROMPT_KINDS).nullable().catch(null),
   title: str(60),

@@ -8,6 +8,7 @@ import {
   Media,
   PromptPreview,
 } from "@/components/ds";
+import type { GalleryPostDTO } from "@/data/gallery";
 import { KIND } from "@/lib/catalog/card";
 import { mediaUrl } from "@/lib/upload/media";
 import {
@@ -213,16 +214,7 @@ export function PromptSections({ recipe }: { recipe: RecipeDetail }) {
           }))}
         />
       </Section>
-      <Section
-        title="따라 만든 결과"
-        hint="받은 사람이 올린 SAME 인증이 여기에 모여요."
-      >
-        <p style={{ margin: 0, fontSize: 14, color: "var(--sp-fg-secondary)" }}>
-          {recipe.stats.same_count > 0
-            ? `${recipe.stats.same_count.toLocaleString("ko-KR")}명이 따라 만들었어요. SAME 한 뒤 내 결과도 올릴 수 있어요.`
-            : "아직 올라온 결과가 없어요. SAME 한 뒤 첫 결과를 올릴 수 있어요."}
-        </p>
-      </Section>
+
     </>
   );
 }
@@ -432,6 +424,65 @@ function FileList({ recipe }: { recipe: RecipeDetail }) {
               <span style={{ color: "var(--sp-fg-hint)" }}>
                 {formatFileSize(f.size)}
               </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
+  );
+}
+
+/** GAL on the detail page: SAME 인증 posted by people who received this recipe (public, cached). */
+export function SameResults({
+  recipe,
+  posts,
+}: {
+  recipe: RecipeDetail;
+  posts: GalleryPostDTO[];
+}) {
+  return (
+    <Section title="따라 만든 결과" hint="받은 사람이 올린 SAME 인증이 여기에 모여요.">
+      <p style={{ margin: 0, fontSize: 14, color: "var(--sp-fg-secondary)" }}>
+        {recipe.stats.same_count > 0
+          ? `${recipe.stats.same_count.toLocaleString("ko-KR")}명이 따라 만들었어요. 받은 뒤 내 결과도 올릴 수 있어요.`
+          : "아직 올라온 결과가 없어요. 받은 뒤 첫 결과를 올려 보세요."}
+      </p>
+      {posts.length > 0 && (
+        <ul
+          aria-label="따라 만든 결과"
+          style={{
+            listStyle: "none",
+            margin: 0,
+            padding: 0,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+            gap: 12,
+          }}
+        >
+          {posts.map((p) => (
+            <li key={p.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <Media
+                src={p.media ?? undefined}
+                alt={p.alt ?? `${p.author}님의 결과: ${p.title}`}
+                ratio={p.ratio}
+                kind={p.kind === "video" ? "영상" : "이미지"}
+                video={p.kind === "video"}
+                radius={10}
+                topLeft={
+                  <Badge color="contrast" variant="fill" size="sm">
+                    AI 생성
+                  </Badge>
+                }
+                topRight={
+                  p.madeHere ? (
+                    <Badge color="primary" variant="fill" size="sm">
+                      여기서 생성
+                    </Badge>
+                  ) : null
+                }
+              />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{p.title}</span>
+              <span style={{ fontSize: 12, color: "var(--sp-fg-secondary)" }}>{p.author}</span>
             </li>
           ))}
         </ul>

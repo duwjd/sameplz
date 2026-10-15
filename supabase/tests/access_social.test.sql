@@ -41,9 +41,11 @@ select throws_ok($$ insert into public.gallery_posts (author_id, recipe_id, kind
           '42501', null, 'gallery: anon cannot post');
 
 select pg_temp.login_as('00000000-0000-0000-0000-000000000001');
-select lives_ok($$ insert into public.gallery_posts (author_id, recipe_id, kind, title)
+-- W6: SAME 인증 goes through the server (post_same_cert re-checks the image, F6-3), so even a holder
+-- cannot insert directly; the entitlement rule is enforced in post_same_cert (gallery.test.sql).
+select throws_ok($$ insert into public.gallery_posts (author_id, recipe_id, kind, title)
                    values ('00000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000003', 'same_cert', '또 해 봤어요') $$,
-          'F6 same_cert: allowed with entitlement');
+          '42501', null, 'F6 same_cert: a direct client insert is refused even with an entitlement (server-only)');
 select throws_ok($$ insert into public.gallery_posts (author_id, recipe_id, kind, title)
                     values ('00000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 'same_cert', '안 받았는데') $$,
           '42501', null, 'F6 same_cert: denied without entitlement');
@@ -63,9 +65,10 @@ select throws_ok($$ insert into public.gallery_posts (author_id, recipe_id, kind
           '42501', null, 'gallery: version must belong to the recipe');
 
 select pg_temp.login_as('00000000-0000-0000-0000-000000000005');
-select lives_ok($$ insert into public.gallery_posts (author_id, recipe_id, kind, title)
+-- W6: originals are server-only too (a client insert could publish unchecked media, D18 / F6-3).
+select throws_ok($$ insert into public.gallery_posts (author_id, recipe_id, kind, title)
                    values ('00000000-0000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-000000000001', 'original', '새 결과물') $$,
-          'gallery original: allowed for recipe owner');
+          '42501', null, 'gallery original: a direct client insert is refused even for the recipe owner (server-only)');
 
 -- likes / follows
 select pg_temp.login_as('00000000-0000-0000-0000-000000000001');

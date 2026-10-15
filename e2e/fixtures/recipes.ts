@@ -20,6 +20,7 @@ export interface SubmittedRecipe {
   publicId: string;
   versionId: string;
   status: string;
+  mediaPath: string;
 }
 
 /** Submits a recipe for `ownerId` with an uploaded 1×1 result, as if both check layers passed. */
@@ -32,12 +33,14 @@ export async function submitRecipeAs(
     body?: string;
     recipeId?: string;
     changelog?: string;
+    /** D18: where the result is uploaded (the app uploads to the draft bucket). */
+    mediaBucket?: "recipe-media" | "recipe-media-draft";
   },
 ): Promise<SubmittedRecipe> {
   const db = admin();
   const path = `${ownerId}/${randomUUID()}.png`;
   const up = await db.storage
-    .from("recipe-media")
+    .from(opts.mediaBucket ?? "recipe-media")
     .upload(path, PNG, { contentType: "image/png" });
   if (up.error) throw up.error;
   const category = opts.category ?? "prompt";
@@ -92,7 +95,18 @@ export async function submitRecipeAs(
     publicId: r.public_id,
     versionId: r.version_id,
     status: r.status,
+    mediaPath: path,
   };
+}
+
+/** The seed admin approves a version in the review queue. */
+export async function approveVersion(versionId: string) {
+  const { error } = await admin().rpc("admin_decide_review", {
+    p_actor: "00000000-0000-0000-0000-000000000011",
+    p_version: versionId,
+    p_decision: "approve",
+  });
+  if (error) throw error;
 }
 
 /** The seed admin rejects a version in the review queue (ADM UI is W6). */

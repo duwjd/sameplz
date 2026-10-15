@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { hasSupabaseEnv } from "@/lib/supabase/public";
 import { createClient } from "@/lib/supabase/server";
 import {
+  DRAFT_MEDIA_BUCKET,
   MEDIA_BUCKET,
   MEDIA_MIME,
   isOwnMediaPath,
@@ -53,6 +54,11 @@ export async function getMyDraft(
   const form = UploadFormSchema.parse(data.payload ?? {});
   // A draft always belongs to the recipe it is filed under.
   form.recipeId = recipeId;
+  // Saved preview URLs expire (D18 signed URLs): sign them again — own paths only.
+  const { data: claims } = await supabase.auth.getClaims();
+  const owner = claims?.claims.sub;
+  const urls = owner ? await mediaPreviewUrls(owner, form.media.map((m) => m.path)) : new Map<string, string>();
+  form.media = form.media.map((m) => ({ ...m, url: urls.get(m.path) ?? "" }));
   return { form, step: data.step, updatedAt: data.updated_at };
 }
 
@@ -63,7 +69,9 @@ export async function saveMyDraft(
 ) {
   const supabase = await createClient();
   const recipeId = form.recipeId ?? null;
-  const row = { payload: form, step, category: form.category };
+  // Drop results that are not the viewer's own uploads (D18: a draft never vouches for others' files).
+  const clean = { ...form, media: form.media.filter((m) => isOwnMediaPath(m.path, viewer.id)) };
+  const row = { payload: clean, step, category: form.category };
   const { data: existing } = await byRecipe(
     supabase.from("recipe_drafts").select("id"),
     recipeId,
@@ -85,6 +93,21 @@ export async function deleteMyDraft(recipeId: string | null = null) {
   return !error;
 }
 
+/**
+ * D18: preview URLs for the owner's own results — a 1-hour signed URL from the draft bucket, or the
+ * public URL when the result is already published. Unknown paths map to "".
+ */
+export async function mediaPreviewUrls(ownerId: string, paths: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  // Only the caller's own results: a draft payload is user-written and may name anyone's path.
+  const valid = paths.filter((p) => mediaUrl(p) && isOwnMediaPath(p, ownerId));
+  if (!valid.length) return out;
+  const { data } = await createAdminClient().storage.from(DRAFT_MEDIA_BUCKET).createSignedUrls(valid, 3600);
+  for (const s of data ?? []) if (s.path && s.signedUrl && !s.error) out.set(s.path, s.signedUrl);
+  for (const p of valid) if (!out.has(p)) out.set(p, mediaUrl(p)!);
+  return out;
+}
+
 /** Server-minted signed upload target. The path is fixed here, never taken from the client. */
 async function signedUpload(bucket: string, path: string) {
   const { data, error } = await createAdminClient()
@@ -95,10 +118,14 @@ async function signedUpload(bucket: string, path: string) {
 }
 
 export async function createMediaUploadTarget(viewer: Viewer, mime: MediaMime) {
-  return signedUpload(
-    MEDIA_BUCKET,
-    `${viewer.id}/${crypto.randomUUID()}.${MEDIA_MIME[mime]}`,
-  );
+  // D18: uploads go to the private draft bucket; publishing moves them (src/data/media-sync.ts).
+  // Until the migration that creates the bucket is applied (app deploys first), fall back to the
+  // public bucket so uploads keep working; the queued sync moves them once the bucket exists.
+  const path = `${viewer.id}/${crypto.randomUUID()}.${MEDIA_MIME[mime]}`;
+  const draft = await signedUpload(DRAFT_MEDIA_BUCKET, path);
+  if (draft) return { ...draft, bucket: DRAFT_MEDIA_BUCKET };
+  const legacy = await signedUpload(MEDIA_BUCKET, path);
+  return legacy ? { ...legacy, bucket: MEDIA_BUCKET } : null;
 }
 
 export async function createSkillZipTarget(viewer: Viewer, name: string) {
@@ -137,7 +164,9 @@ export async function verifyMedia(
 ): Promise<boolean> {
   for (const m of media) {
     if (!isOwnMediaPath(m.path, viewer.id)) return false;
-    const info = await objectInfo(MEDIA_BUCKET, m.path);
+    // New uploads sit in the draft bucket; a new version may reuse an already public result.
+    const bucket = (await objectInfo(DRAFT_MEDIA_BUCKET, m.path)) ? DRAFT_MEDIA_BUCKET : MEDIA_BUCKET;
+    const info = await objectInfo(bucket, m.path);
     if (!info || !Object.hasOwn(MEDIA_MIME, info.mime)) return false;
     if (!extMatchesMime(m.path, info.mime as MediaMime)) return false;
     const kind = mediaKindOf(info.mime as MediaMime);
@@ -147,16 +176,17 @@ export async function verifyMedia(
       info.size > (kind === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)
     )
       return false;
-    if (!sniffMatches(info.mime as MediaMime, await headBytes(m.path)))
+    if (!sniffMatches(info.mime as MediaMime, await headBytes(bucket, m.path)))
       return false;
   }
   return true;
 }
 
-/** First bytes of a public result file (Range request; the bucket is public). */
-async function headBytes(path: string): Promise<Uint8Array> {
-  const url = mediaUrl(path);
-  if (!url) return new Uint8Array();
+/** First bytes of a result file (Range request on a short signed URL; works for both buckets). */
+async function headBytes(bucket: string, path: string): Promise<Uint8Array> {
+  const signed = await createAdminClient().storage.from(bucket).createSignedUrl(path, 60);
+  const url = signed.data?.signedUrl;
+  if (signed.error || !url) return new Uint8Array();
   try {
     const res = await fetch(url, {
       headers: { range: "bytes=0-31" },

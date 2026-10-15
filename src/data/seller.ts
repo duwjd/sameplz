@@ -1,4 +1,5 @@
 import "server-only";
+import { mediaPreviewUrls } from "@/data/upload";
 import { createHmac } from "node:crypto";
 import { after } from "next/server";
 import { ipHash } from "@/lib/abuse/fingerprint";
@@ -10,7 +11,6 @@ import {
   UploadFormSchema,
   type UploadForm,
 } from "@/lib/validation/upload";
-import { mediaUrl } from "@/lib/upload/media";
 import { isRejectCode, type RejectCode } from "@/lib/moderation/reject-codes";
 
 export type RecipeStatus =
@@ -123,6 +123,12 @@ export async function getRecipeForEdit(
   ) as Record<string, unknown>;
   const category = str(d.category) as UploadForm["category"];
   const files = list(d.files);
+  // D18: results may be private (draft bucket) — sign them for the owner's preview.
+  const { data: claims } = await supabase.auth.getClaims();
+  const previews = await mediaPreviewUrls(
+    claims?.claims.sub ?? "",
+    list(d.media).map((m) => str(m.path)),
+  );
   const zip =
     category === "skill"
       ? files.find((f) => str(f.filename).endsWith(".zip"))
@@ -186,7 +192,7 @@ export async function getRecipeForEdit(
           : "1/1",
         alt: str(m.alt),
         ai: m.ai !== false,
-        url: mediaUrl(str(m.path)) ?? "",
+        url: previews.get(str(m.path)) ?? "",
       }))
       .filter((m) => m.url),
     visibility: d.status === "private" ? "private" : "public",

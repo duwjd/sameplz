@@ -1,6 +1,7 @@
 "use server";
 import { updateTag } from "next/cache";
 import { z } from "zod";
+import { syncRecipeMedia } from "@/data/media-sync";
 import { recipeTag } from "@/data/recipe";
 import {
   createMediaUploadTarget,
@@ -104,7 +105,8 @@ const MediaUploadInput = z.object({
 });
 
 export type UploadTargetResult =
-  { ok: true; path: string; token: string } | { ok: false; message: string };
+  | { ok: true; path: string; token: string; bucket?: string }
+  | { ok: false; message: string };
 
 /** Signed upload URL for one result file; the server picks the path. */
 export async function createMediaUpload(input: {
@@ -346,6 +348,8 @@ export async function submitRecipe(input: {
   if (!outcome.ok) return fail(outcome.code);
 
   // Detail and every popularity-ordered list may now include this recipe (W3 review requirement).
+  // D18: a version that went live publishes its results before the page is shown again.
+  await syncRecipeMedia().catch(() => null);
   updateTag(recipeTag(outcome.publicId));
   updateTag("rankings");
   updateTag("collections");

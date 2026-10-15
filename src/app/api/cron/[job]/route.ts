@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
+import { syncRecipeMedia } from "@/data/media-sync";
 import { sweep } from "@/data/play";
 
 const digest = (v: string) => createHash("sha256").update(v).digest();
@@ -27,7 +28,9 @@ export async function POST(
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   try {
     const report = await sweep();
-    return NextResponse.json(report, {
+    // D18: move results between the public and draft buckets; delete stale uploads.
+    const media = await syncRecipeMedia().catch(() => null);
+    return NextResponse.json({ ...report, media }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (e) {

@@ -2,6 +2,8 @@
 import { RATIOS } from "@/lib/validation/upload";
 
 export const MEDIA_BUCKET = "recipe-media";
+/** D18: results of recipes that are not public (uploads, review, private, rejected). Private bucket. */
+export const DRAFT_MEDIA_BUCKET = "recipe-media-draft";
 
 export const MEDIA_MIME = {
   "image/png": "png",

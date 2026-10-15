@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { MyShell } from "@/components/my/MyShell";
 import { SellerGuest, SellerView } from "@/components/seller/SellerView";
 import {
   getMyRecipes,
@@ -63,30 +64,14 @@ function SellerSkeleton() {
 
 export default function SellerPage(props: PageProps<"/my/seller">) {
   return (
-    <main
-      data-screen-label="Seller"
-      style={{
-        maxWidth: 960,
-        margin: "0 auto",
-        padding: "32px 24px 80px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 24,
-        color: "var(--sp-fg-normal)",
-        fontFamily: "var(--sp-font-sans)",
-      }}
+    <MyShell
+      active="seller"
+      title="판매자 센터"
+      description="올린 레시피의 상태와 반응을 봐요. 반려된 레시피가 맨 위에 와요."
     >
-      <header style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800 }}>
-          판매자 센터
-        </h1>
-        <p style={{ margin: 0, fontSize: 14, color: "var(--sp-fg-secondary)" }}>
-          올린 레시피의 상태와 반응을 봐요. 반려된 레시피가 맨 위에 와요.
-        </p>
-      </header>
       <Suspense fallback={<SellerSkeleton />}>
         <Seller searchParams={props.searchParams} />
       </Suspense>
-    </main>
+    </MyShell>
   );
 }

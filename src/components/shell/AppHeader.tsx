@@ -41,6 +41,34 @@ export function AppHeader() {
   const menuRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [credits, setCredits] = useState(0);
+  // NOTI-02: unread count, re-read on navigation, on the list being read, and on each new
+  // notification broadcast on the private user:{uid} channel (F7-3).
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    if (!viewer) return;
+    const supabase = createClient();
+    let alive = true;
+    const load = () =>
+      void supabase.rpc("unread_notification_count").then(({ data }) => {
+        if (alive && typeof data === "number") setUnread(data);
+      });
+    load();
+    window.addEventListener("sameplz:notifications", load);
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    void supabase.auth.getUser().then(async ({ data }) => {
+      if (!alive || !data.user) return;
+      await supabase.realtime.setAuth();
+      channel = supabase
+        .channel(`user:${data.user.id}`, { config: { private: true } })
+        .on("broadcast", { event: "notification" }, load)
+        .subscribe();
+    });
+    return () => {
+      alive = false;
+      window.removeEventListener("sameplz:notifications", load);
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, [viewer, pathname]);
   // /play announces settled runs so the GNB balance follows without a navigation.
   const [creditsVersion, setCreditsVersion] = useState(0);
   useEffect(() => {
@@ -100,6 +128,8 @@ export function AppHeader() {
         onAccount={() => setMenuOpen((v) => !v)}
         credits={viewer ? credits : 0}
         onCredits={() => router.push("/my/credits")}
+        notifications={viewer ? unread : 0}
+        onNotifications={() => router.push("/my/notifications")}
       />
       {viewer && menuOpen && (
         <div
@@ -128,6 +158,23 @@ export function AppHeader() {
           >
             {viewer.nickname}님
           </p>
+          <Link
+            href="/my"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              height: 36,
+              padding: "0 8px",
+              borderRadius: 8,
+              fontSize: 14,
+              color: "var(--sp-fg-normal)",
+              textDecoration: "none",
+            }}
+          >
+            마이페이지
+          </Link>
           <Link
             href="/my/library"
             role="menuitem"

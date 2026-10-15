@@ -607,6 +607,46 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"notification_settings": {
+                  Row: {
+                    "follow": boolean,"same_cert": boolean,"updated_at": string,"user_id": string,"version_update": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "follow"?: boolean,"same_cert"?: boolean,"updated_at"?: string,"user_id": string,"version_update"?: boolean
+                  }
+                  Update: {
+                    "follow"?: boolean,"same_cert"?: boolean,"updated_at"?: string,"user_id"?: string,"version_update"?: boolean
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "notification_settings_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: true
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"notifications": {
+                  Row: {
+                    "body": string,"created_at": string,"href": string,"id": number,"kind": string,"read_at": string | null,"title": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body"?: string,"created_at"?: string,"href": string,"id"?: never,"kind": string,"read_at"?: string | null,"title": string,"user_id": string
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"href"?: string,"id"?: never,"kind"?: string,"read_at"?: string | null,"title"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "notifications_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"play_cells": {
                   Row: {
                     "attempts": number,"created_at": string,"deadline_at": string | null,"delete_after": string | null,"error_code": string | null,"finished_at": string | null,"id": string,"model_id": string,"next_attempt_at": string,"params": NonNullable<Json>,"price_credits": number,"price_version": number,"provider_request_id": string | null,"result_path": string | null,"run_id": string,"saved_at": string | null,"status": string,"submitted_at": string | null,"user_id": string,"webhook_token_hash": string | null
@@ -1170,6 +1210,9 @@ isOneToOne: false
 "attach_provider_request":
 { Args: { "p_cell": string,"p_provider_request_id": string }; Returns: boolean
                            },
+"check_handle":
+{ Args: { "p_handle": string }; Returns: string
+                           },
 "claim_cell_submit":
 { Args: { "p_cell": string }; Returns: Json
                            },
@@ -1244,6 +1287,9 @@ isOneToOne: false
 { Args: { "p_limit"?: number }; Returns: {
               "category": string,"creator_handle": string,"creator_nickname": string,"downloads": number,"downloads_7d": number,"filters": Json,"job_codes": (string)[],"likes": number,"popularity": number,"price_krw": number,"prompt_kind": string,"public_id": string,"same_count": number,"summary": string,"title": string,"tool_codes": (string)[]
             }[]
+                           },
+"mark_all_notifications_read":
+{ Args: Record<PropertyKey, never>; Returns: number
                            },
 "mark_budget_alert":
 { Args: { "p_level": number,"p_month": string }; Returns: boolean
@@ -1348,6 +1394,9 @@ isOneToOne: false
               "category": string,"creator_handle": string,"creator_nickname": string,"downloads": number,"filters": Json,"job_codes": (string)[],"likes": number,"popularity": number,"price_krw": number,"prompt_kind": string,"public_id": string,"published_at": string,"same_count": number,"score": number,"summary": string,"title": string,"tool_codes": (string)[],"total_count": number
             }[]
                            },
+"set_notification_setting":
+{ Args: { "p_kind": string,"p_on": boolean }; Returns: boolean
+                           },
 "set_recipe_fork":
 { Args: { "p_from_recipe": string,"p_owner": string,"p_recipe": string }; Returns: boolean
                            },
@@ -1371,8 +1420,14 @@ isOneToOne: false
 "sweep_targets":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"unread_notification_count":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "verify_cell_token":
 { Args: { "p_cell": string,"p_token": string }; Returns: Json
+                           },
+"withdraw_account":
+{ Args: { "p_reason"?: string,"p_user": string }; Returns: Json
                            }
           }
           Enums: {

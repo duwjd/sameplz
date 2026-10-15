@@ -295,3 +295,23 @@ export async function rememberFork(viewer: Viewer, recipeId: string, fromRecipeI
   });
   return data === true;
 }
+
+/**
+ * One uploaded result of the viewer's (SAME 인증): own path, a real image / video whose bytes match
+ * the stored type, within the size limit. The kind comes from the stored file, not the client.
+ */
+export async function inspectOwnUpload(
+  viewer: Viewer,
+  path: string,
+): Promise<{ kind: "image" | "video"; mime: MediaMime } | null> {
+  if (!isOwnMediaPath(path, viewer.id)) return null;
+  const bucket = (await objectInfo(DRAFT_MEDIA_BUCKET, path)) ? DRAFT_MEDIA_BUCKET : MEDIA_BUCKET;
+  const info = await objectInfo(bucket, path);
+  if (!info || !Object.hasOwn(MEDIA_MIME, info.mime)) return null;
+  const mime = info.mime as MediaMime;
+  if (!extMatchesMime(path, mime)) return null;
+  const kind = mediaKindOf(mime);
+  if (!(info.size > 0) || info.size > (kind === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) return null;
+  if (!sniffMatches(mime, await headBytes(bucket, path))) return null;
+  return { kind, mime };
+}

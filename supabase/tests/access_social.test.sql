@@ -65,9 +65,10 @@ select throws_ok($$ insert into public.gallery_posts (author_id, recipe_id, kind
           '42501', null, 'gallery: version must belong to the recipe');
 
 select pg_temp.login_as('00000000-0000-0000-0000-000000000005');
-select lives_ok($$ insert into public.gallery_posts (author_id, recipe_id, kind, title)
+-- W6: originals are server-only too (a client insert could publish unchecked media, D18 / F6-3).
+select throws_ok($$ insert into public.gallery_posts (author_id, recipe_id, kind, title)
                    values ('00000000-0000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-000000000001', 'original', '새 결과물') $$,
-          'gallery original: allowed for recipe owner');
+          '42501', null, 'gallery original: a direct client insert is refused even for the recipe owner (server-only)');
 
 -- likes / follows
 select pg_temp.login_as('00000000-0000-0000-0000-000000000001');

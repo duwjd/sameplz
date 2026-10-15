@@ -162,7 +162,8 @@ export function SameUpDialog({
     setErrors(e);
     const first = Object.keys(e)[0];
     if (first) {
-      document.getElementById(fid(first))?.focus();
+      // The file input is hidden: focus its visible picker button instead.
+      document.getElementById(first === "same-media" ? "same-media-pick" : fid(first))?.focus();
       return;
     }
     setBusy(true);
@@ -257,9 +258,11 @@ export function SameUpDialog({
           {!playResult && (
             <>
               <Button
+                id="same-media-pick"
                 size="md"
                 variant="outline"
                 color="secondary"
+                aria-describedby={errors["same-media"] ? `${fid("same-media")}-error` : undefined}
                 disabled={busy}
                 onClick={() =>
                   document.getElementById(fid("same-media"))?.click()

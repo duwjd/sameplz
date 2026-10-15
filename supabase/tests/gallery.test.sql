@@ -1,7 +1,7 @@
 -- W6 GAL: SAME 인증 posting (server), feed, fork origin, reports, blank prompt text.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(26);
 
 -- jiwoo (…01) holds …03 (live). Upload objects for jiwoo.
 insert into storage.objects (bucket_id, name, owner_id) values
@@ -85,6 +85,23 @@ values ('00000000-0000-0000-0000-0000000fb001', '00000000-0000-0000-0000-0000000
 select ok(public.set_run_prompt_text('00000000-0000-0000-0000-0000000fb001', '00000000-0000-0000-0000-000000000001', '내 프롬프트')
           and public.set_run_prompt_text('00000000-0000-0000-0000-0000000fb001', '00000000-0000-0000-0000-000000000002', 'x') is null,
           'F4-11 the blank prompt is kept for its owner only');
+
+-- prompt_text is server-only; deleted authors leave the feed; action limits.
+set local role authenticated;
+set local request.jwt.claims to '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}';
+select throws_ok($$ select prompt_text from public.play_runs $$, '42501', null,
+                 'F4-11 the kept blank prompt is not client-readable');
+reset role;
+update public.profiles set deleted_at = now() where id = '00000000-0000-0000-0000-000000000001';
+select ok(not exists (select 1 from public.gallery_feed(null, null, null, 48) f
+                       where f.author_id = '00000000-0000-0000-0000-000000000001'),
+          'GAL-01 posts of a withdrawn member leave the feed');
+update public.profiles set deleted_at = null where id = '00000000-0000-0000-0000-000000000001';
+select is((select count(*)::int from generate_series(1, 10) g
+            where public.hit_gallery_limit('00000000-0000-0000-0000-000000000001', 'draft')), 10,
+          'GAL ten drafts from results per hour');
+select ok(not public.hit_gallery_limit('00000000-0000-0000-0000-000000000001', 'draft'),
+          'GAL the 11th draft in an hour is refused before any copy');
 
 select * from finish();
 rollback;

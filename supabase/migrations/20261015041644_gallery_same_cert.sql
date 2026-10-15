@@ -2,8 +2,11 @@
 -- fork origin, reports, and the blank-prompt text kept for 「이 프롬프트로 레시피 올리기」.
 
 -- ---------------------------------------------------------------- SAME 인증 only through the server
--- A direct client insert would skip the image re-check (F6-3): posting is server-only now.
+-- A direct client insert would skip the image re-check (F6-3) and could publish unchecked media
+-- (D18 publishes media of visible posts): every gallery post is server-only now.
 drop policy if exists gallery_posts_insert_same_cert on public.gallery_posts;
+drop policy if exists gallery_posts_insert_original on public.gallery_posts;
+revoke insert, update on public.gallery_posts from anon, authenticated;
 
 -- Post a SAME 인증 for p_user (service_role; the action checks the session, moderation decides the
 -- status). The image is the user's upload in the draft bucket, or a copy of their own playground
@@ -96,7 +99,7 @@ as $$
          g.created_at
     from public.gallery_posts g
     join public.recipes r on r.id = g.recipe_id and r.status = 'live'
-    join public.profiles a on a.id = g.author_id
+    join public.profiles a on a.id = g.author_id and a.deleted_at is null
     left join public.media_assets ma on ma.id = g.media_id
    where g.status = 'visible'
      and (p_kind is null or g.kind = p_kind)
@@ -107,7 +110,7 @@ as $$
 $$;
 revoke execute on function public.gallery_feed(text, timestamptz, uuid, integer, uuid) from public;
 grant execute on function public.gallery_feed(text, timestamptz, uuid, integer, uuid) to anon, authenticated;
-create index if not exists gallery_posts_feed_idx on public.gallery_posts (created_at desc, id desc) where status = 'visible';
+create index if not exists gallery_posts_visible_feed_idx on public.gallery_posts (created_at desc, id desc) where status = 'visible';
 
 -- ---------------------------------------------------------------- fork origin (F6-2)
 -- After a fork draft is submitted as a new recipe: remember where it came from. Only a new recipe of
@@ -174,16 +177,19 @@ begin
      or char_length(coalesce(p_detail, '')) > 500 then
     return jsonb_build_object('ok', false, 'reason', 'INVALID_INPUT');
   end if;
+  -- Counted before any lookup, so the endpoint cannot be used to probe ids.
+  if not private.hit_rate_limit('report:user:' || v_user, 10, interval '1 day', private.kst_day_start()) then
+    return jsonb_build_object('ok', false, 'reason', 'RATE_LIMITED');
+  end if;
   if (p_target_type = 'recipe' and not exists (select 1 from public.recipes r where r.id = p_target and r.status in ('live', 'stopped')))
-     or (p_target_type = 'post' and not exists (select 1 from public.gallery_posts g where g.id = p_target and g.status = 'visible')) then
+     or (p_target_type = 'post' and not exists (select 1 from public.gallery_posts g
+                                                   join public.recipes r on r.id = g.recipe_id and r.status = 'live'
+                                                  where g.id = p_target and g.status = 'visible')) then
     return jsonb_build_object('ok', false, 'reason', 'NOT_FOUND');
   end if;
   if exists (select 1 from public.reports where reporter_id = v_user and target_type = p_target_type
                and target_id = p_target and status = 'open') then
     return jsonb_build_object('ok', false, 'reason', 'ALREADY_REPORTED');
-  end if;
-  if not private.hit_rate_limit('report:user:' || v_user, 10, interval '1 day', private.kst_day_start()) then
-    return jsonb_build_object('ok', false, 'reason', 'RATE_LIMITED');
   end if;
   insert into public.reports (reporter_id, target_type, target_id, reason, detail)
   values (v_user, p_target_type, p_target, p_reason, coalesce(btrim(p_detail), ''))
@@ -197,6 +203,13 @@ grant execute on function public.create_report(text, uuid, text, text) to authen
 -- ---------------------------------------------------------------- blank-prompt text (F4-11)
 -- The user's own blank prompt (not a recipe original), kept so a result can become an upload draft.
 alter table public.play_runs add column prompt_text text check (char_length(prompt_text) <= 4000);
+-- Not client-readable (read on the server only, for the owner's draft) and gone after 30 days,
+-- like the unsaved results (D19).
+revoke select on public.play_runs from authenticated;
+grant select (id, user_id, mode, recipe_version_id, client_request_id, variables, reference_ids,
+              face_consent_at, created_at) on public.play_runs to authenticated;
+select cron.schedule('sameplz-play-prompt-text', '30 3 * * *',
+  $$update public.play_runs set prompt_text = null where prompt_text is not null and created_at < now() - interval '30 days'$$);
 create or replace function public.set_run_prompt_text(p_run uuid, p_user uuid, p_text text)
 returns boolean
 language sql
@@ -209,3 +222,22 @@ as $$
 $$;
 revoke execute on function public.set_run_prompt_text(uuid, uuid, text) from public, anon, authenticated;
 grant execute on function public.set_run_prompt_text(uuid, uuid, text) to service_role;
+
+-- ---------------------------------------------------------------- action limits (GAL)
+-- Checked before costly work (image checks, copies) in the server actions.
+create or replace function public.hit_gallery_limit(p_user uuid, p_action text)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  return case p_action
+    when 'same_try' then private.hit_rate_limit('gal:same_try:' || p_user, 20, interval '1 hour')
+    when 'like' then private.hit_rate_limit('gal:like:' || p_user, 120, interval '1 hour')
+    when 'draft' then private.hit_rate_limit('gal:draft:' || p_user, 10, interval '1 hour')
+    else false end;
+end;
+$$;
+revoke execute on function public.hit_gallery_limit(uuid, text) from public, anon, authenticated;
+grant execute on function public.hit_gallery_limit(uuid, text) to service_role;

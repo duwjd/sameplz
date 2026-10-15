@@ -14,10 +14,10 @@ import {
 } from "@/components/ds";
 
 export const REPORT_REASONS = [
-  { value: "misleading", label: "설명과 달라요" },
-  { value: "malicious", label: "이상한 지시·악성 코드 의심" },
-  { value: "rights", label: "남의 결과물" },
-  { value: "prohibited", label: "금지된 내용" },
+  { value: "misleading", label: "설명과 달라요 (적힌 결과가 안 나와요)" },
+  { value: "malicious", label: "이상한 지시나 악성 코드가 의심돼요" },
+  { value: "rights", label: "남의 결과물을 가져왔어요" },
+  { value: "prohibited", label: "금지된 내용이에요" },
 ] as const;
 
 const REASON_COPY: Record<string, string> = {

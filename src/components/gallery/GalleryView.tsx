@@ -193,6 +193,10 @@ export function GalleryView({
                   alignSelf: "flex-end",
                   fontSize: 12,
                   color: "var(--sp-fg-hint)",
+                  minHeight: 24,
+                  minWidth: 32,
+                  padding: "2px 6px",
+                  textAlign: "center",
                 }}
               >
                 신고

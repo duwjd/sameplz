@@ -157,7 +157,9 @@ export function GalleryTile({
               fontWeight: 600,
               color: liked ? "var(--sp-fg-danger)" : "var(--sp-fg-hint)",
               fontVariantNumeric: "tabular-nums",
-              padding: "2px 0",
+              padding: "2px 2px",
+              minHeight: 24,
+              minWidth: 32,
             }}
           >
             <Icon name={liked ? "HeartIcon" : "HeartOutlineIcon"} size={16} />

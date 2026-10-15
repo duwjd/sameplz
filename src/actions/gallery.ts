@@ -6,7 +6,11 @@ import { z } from "zod";
 import { getGalleryFeed, type GalleryPage } from "@/data/gallery";
 import { syncRecipeMedia } from "@/data/media-sync";
 import { recipeTag } from "@/data/recipe";
-import { createMediaUploadTarget, hitUploadTargetLimit } from "@/data/upload";
+import {
+  createMediaUploadTarget,
+  hitUploadTargetLimit,
+  inspectOwnUpload,
+} from "@/data/upload";
 import { getViewer, type Viewer } from "@/lib/auth/account";
 import { checkImage } from "@/lib/moderation/play";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -14,7 +18,6 @@ import { createClient } from "@/lib/supabase/server";
 import {
   DRAFT_MEDIA_BUCKET,
   isMediaMime,
-  isOwnMediaPath,
   mediaKindOf,
 } from "@/lib/upload/media";
 import {
@@ -32,6 +35,15 @@ async function member(): Promise<Viewer | Gate> {
   if (!viewer) return "LOGIN_REQUIRED";
   if (!viewer.signupComplete) return "SIGNUP_INCOMPLETE";
   return viewer;
+}
+
+/** Per-user limit checked before any costly work (image checks, copies). */
+async function allowed(viewer: Viewer, action: "same_try" | "like" | "draft") {
+  const { data } = await createAdminClient().rpc("hit_gallery_limit", {
+    p_user: viewer.id,
+    p_action: action,
+  });
+  return data === true;
 }
 
 const refreshGallery = (publicId?: string) => {
@@ -129,15 +141,19 @@ export async function postSameCert(input: unknown): Promise<PostSameResult> {
   const viewer = await member();
   if (typeof viewer === "string") return { ok: false, reason: viewer };
   const v = parsed.data;
+  if (!(await allowed(viewer, "same_try"))) return { ok: false, reason: "RATE_LIMITED" };
 
   let path = v.mediaPath;
-  let kind = v.kind;
+  let kind: "image" | "video";
   if (v.playCellId) {
     const copy = await copyPlayResult(viewer, v.playCellId);
     if (!copy) return { ok: false, reason: "NOT_FOUND" };
     ({ path, kind } = copy);
-  } else if (!path || !isOwnMediaPath(path, viewer.id)) {
-    return { ok: false, reason: "MEDIA_NOT_UPLOADED" };
+  } else {
+    // The stored file decides the kind (type, size and bytes checked), never the client.
+    const upload = path ? await inspectOwnUpload(viewer, path) : null;
+    if (!upload) return { ok: false, reason: "MEDIA_NOT_UPLOADED" };
+    kind = upload.kind;
   }
 
   // F6-3: re-check the image before it is shown. A checker that is down sends the post to review
@@ -156,7 +172,10 @@ export async function postSameCert(input: unknown): Promise<PostSameResult> {
       return { ok: false, reason: "SAFETY_BLOCKED" };
     }
     if (verdict === "unavailable") status = "pending_review";
-  } else if (!v.playCellId) status = "pending_review";
+  } else {
+    // Videos cannot be checked here (uploaded or generated): a person looks first.
+    status = "pending_review";
+  }
 
   const { data, error } = await admin.rpc("post_same_cert", {
     p_user: viewer.id,
@@ -217,6 +236,7 @@ export async function togglePostLike(
   if (!parsed.success) return { ok: false };
   const viewer = await member();
   if (typeof viewer === "string") return { ok: false, reason: viewer };
+  if (!(await allowed(viewer, "like"))) return { ok: false };
   const supabase = await createClient();
   const { data: existing } = await supabase
     .from("post_likes")
@@ -233,8 +253,9 @@ export async function togglePostLike(
     : await supabase
         .from("post_likes")
         .insert({ user_id: viewer.id, post_id: parsed.data.postId });
+  // No cache tag: like counts in cached lists may lag a few minutes; a like never purges every
+  // recipe page.
   if (error) return { ok: false };
-  updateTag("gallery");
   return { ok: true, liked: !existing };
 }
 
@@ -342,14 +363,23 @@ export async function draftFromRun(
   if (!parsed.success) return { ok: false, reason: "NOT_FOUND" };
   const viewer = await member();
   if (typeof viewer === "string") return { ok: false, reason: viewer };
+  if (!(await allowed(viewer, "draft")) || !(await hitUploadTargetLimit(viewer)))
+    return { ok: false, reason: "RATE_LIMITED" };
   const supabase = await createClient();
-  const { data: run } = await supabase
+  // Ownership through RLS; the kept prompt is server-only and read with the admin client.
+  const { data: own } = await supabase
     .from("play_runs")
-    .select("id, mode, prompt_text")
+    .select("id, mode")
     .eq("id", parsed.data.runId)
     .maybeSingle();
-  if (!run || run.mode !== "blank" || !run.prompt_text)
-    return { ok: false, reason: "NOT_FOUND" };
+  if (!own || own.mode !== "blank") return { ok: false, reason: "NOT_FOUND" };
+  const { data: run } = await createAdminClient()
+    .from("play_runs")
+    .select("id, prompt_text")
+    .eq("id", own.id)
+    .eq("user_id", viewer.id)
+    .maybeSingle();
+  if (!run?.prompt_text) return { ok: false, reason: "NOT_FOUND" };
   const { data: cells } = await supabase
     .from("play_cells")
     .select("id, result_path, status")

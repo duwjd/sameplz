@@ -23,9 +23,6 @@ test("F6-2 SCN 8 a fork from the gallery is published free with its origin", asy
     .getByRole("listitem")
     .filter({ has: page.getByRole("button", { name: "이걸로 만들기" }) })
     .first();
-  const origin = (
-    await tile.getByRole("button").filter({ hasText: /./ }).allInnerTexts()
-  ).join(" ");
   await tile.getByRole("button", { name: "이걸로 만들기" }).click();
   await expect(page).toHaveURL(/\/my\/seller\/upload$/);
   await page

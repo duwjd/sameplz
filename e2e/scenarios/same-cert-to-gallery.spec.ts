@@ -131,7 +131,7 @@ test.describe("EX", () => {
       .first()
       .click();
     const dialog = page.getByRole("dialog");
-    await dialog.getByText("남의 결과물", { exact: true }).click();
+    await dialog.getByText("남의 결과물을 가져왔어요", { exact: true }).click();
     await dialog.getByRole("button", { name: "신고 접수하기" }).click();
     await expect(
       page

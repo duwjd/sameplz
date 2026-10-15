@@ -2,6 +2,7 @@
 // the failure matrix rows that the API path decides, then the /play screen and /my/credits.
 import { createHash, randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import sharp from "sharp";
 import {
   adminDb,
   available,
@@ -584,6 +585,53 @@ test.describe("PLAY screen", () => {
         .filter({ visible: true })
         .first(),
     ).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("F4-8 F4-9 a face reference needs consent, and its image result carries a visible AI mark", async ({
+    page,
+    context,
+  }) => {
+    const player = await loginAsPlayer(context);
+    await page.goto("/play");
+    await page.getByLabel("프롬프트").filter({ visible: true }).fill("레퍼런스 얼굴로 프로필 사진");
+    await model(page, /^GPT Image 2\.5 Flare/).click();
+    const face = await sharp({ create: { width: 64, height: 64, channels: 3, background: "#c08060" } })
+      .png()
+      .toBuffer();
+    await page.locator("#up-refs").setInputFiles({ name: "face.png", mimeType: "image/png", buffer: face });
+    await expect(page.getByRole("img", { name: "레퍼런스 face.png" }).filter({ visible: true })).toBeVisible();
+
+    await runButton(page).click();
+    const consent = page.locator("#up-consent");
+    await expect(consent).toBeFocused();
+    await expect(page.getByText("얼굴 사진 사용 동의에 체크해 주세요.").filter({ visible: true })).toBeVisible();
+    await page.getByText(/^본인 사진이거나 사진 속 인물의 동의를 받았어요/).filter({ visible: true }).click();
+    await expect(consent).toBeChecked();
+    await runButton(page).click();
+    await expect(
+      page.getByRole("img", { name: /GPT Image 2\.5 Flare로 만든 AI 생성 이미지/ }).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 15_000 });
+
+    // The stored file itself is marked: dark box in the bottom-right corner, untouched elsewhere.
+    const db = adminDb();
+    const { data: cell } = await db
+      .from("play_cells")
+      .select("result_path")
+      .eq("user_id", player.id)
+      .not("result_path", "is", null)
+      .single();
+    const file = await db.storage.from("play-results").download(cell!.result_path!);
+    const { data, info } = await sharp(Buffer.from(await file.data!.arrayBuffer()))
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const at = (x: number, y: number) => data[(y * info.width + x) * info.channels];
+    expect(at(info.width - 8, info.height - 8)).toBeLessThan(200);
+    expect(at(8, 8)).toBeGreaterThan(200);
+    const { count } = await db
+      .from("face_consents")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", player.id);
+    expect(count).toBe(1);
   });
 
   test("F4-16 a model whose cheapest setting is over the daily limit cannot be picked", async ({

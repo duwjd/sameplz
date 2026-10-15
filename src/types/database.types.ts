@@ -481,14 +481,14 @@ isOneToOne: false
                   ]
                 },"generation_budget": {
                   Row: {
-                    "alerted_80_at": string | null,"cap_credits": number,"month": string,"reserved": number,"spent": number,"state": string,"updated_at": string
+                    "alerted_80_at": string | null,"cap_credits": number,"month": string,"notified_100_at": string | null,"notified_80_at": string | null,"reserved": number,"spent": number,"state": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "alerted_80_at"?: string | null,"cap_credits": number,"month": string,"reserved"?: number,"spent"?: number,"state"?: string,"updated_at"?: string
+                    "alerted_80_at"?: string | null,"cap_credits": number,"month": string,"notified_100_at"?: string | null,"notified_80_at"?: string | null,"reserved"?: number,"spent"?: number,"state"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "alerted_80_at"?: string | null,"cap_credits"?: number,"month"?: string,"reserved"?: number,"spent"?: number,"state"?: string,"updated_at"?: string
+                    "alerted_80_at"?: string | null,"cap_credits"?: number,"month"?: string,"notified_100_at"?: string | null,"notified_80_at"?: string | null,"reserved"?: number,"spent"?: number,"state"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -1185,6 +1185,9 @@ isOneToOne: false
               "category": string,"creator_handle": string,"creator_nickname": string,"downloads": number,"downloads_7d": number,"filters": Json,"job_codes": (string)[],"likes": number,"popularity": number,"price_krw": number,"prompt_kind": string,"public_id": string,"same_count": number,"summary": string,"title": string,"tool_codes": (string)[]
             }[]
                            },
+"mark_budget_alert":
+{ Args: { "p_level": number,"p_month": string }; Returns: boolean
+                           },
 "mark_cell_running":
 { Args: { "p_cell": string }; Returns: boolean
                            },
@@ -1220,6 +1223,9 @@ isOneToOne: false
                            },
 "open_original":
 { Args: { "p_entitlement_id": string }; Returns: Json
+                           },
+"pending_budget_alerts":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "play_precheck":
 { Args: { "p_user": string }; Returns: string

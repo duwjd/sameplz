@@ -4,6 +4,7 @@
 //   [[mock:rate]] 429 on submit · [[mock:result-block]] result fails our output moderation
 import "server-only";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import sharp from "sharp";
 import {
   ProviderSubmitError,
   type ProviderAdapter,
@@ -122,7 +123,16 @@ export const mockAdapter: ProviderAdapter = {
     if (!m) return null;
     return m[1] === "video"
       ? { bytes: new Uint8Array(MP4_HEAD), contentType: "video/mp4" }
-      : { bytes: new Uint8Array(PNG_1X1), contentType: "image/png" };
+      : {
+          // A real-size image so the F4-9 face mark has room (the 1×1 is only a fallback).
+          bytes: new Uint8Array(
+            await sharp({ create: { width: 256, height: 256, channels: 3, background: "#f4f6f5" } })
+              .png()
+              .toBuffer()
+              .catch(() => PNG_1X1),
+          ),
+          contentType: "image/png",
+        };
   },
 };
 

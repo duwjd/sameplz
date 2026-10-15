@@ -47,8 +47,8 @@ export type RunMode = "own" | "free" | "blank";
 
 /**
  * Template and declared [변수] for own / free modes (authorization inside promptBodyForRun). The
- * declared names are the version's public [변수] list — the same names the /play form shows —
- * falling back to the tokens in the body when the list is empty.
+ * declared names are the version's public [변수] list — the same names the /play form shows. An
+ * owner's recipe with an empty list falls back to the tokens in its own body.
  */
 export async function recipeTemplate(
   userId: string,
@@ -63,7 +63,12 @@ export async function recipeTemplate(
     .eq("id", versionId)
     .maybeSingle();
   const declared = parseRecipeMeta(v?.public_meta).variables.map((x) => x.name);
-  return { template, variables: declared.length ? declared : detectVariables(template) };
+  // Only the owner may fall back to the tokens in the body: for a received recipe they would name
+  // parts of the hidden original (they come back in INVALID_VARIABLES errors).
+  return {
+    template,
+    variables: declared.length || mode === "free" ? declared : detectVariables(template),
+  };
 }
 
 // ---------------------------------------------------------------- references (F4-7, F4-8)

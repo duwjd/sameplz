@@ -74,6 +74,7 @@ export function PlayView({
   recipes,
   initialRecipe,
   notice,
+  noticeRecipe = null,
   runs: initialRuns,
   summary,
 }: {
@@ -81,6 +82,7 @@ export function PlayView({
   recipes: PlayRecipeDTO[];
   initialRecipe: string | null;
   notice: PlayNotice;
+  noticeRecipe?: string | null;
   runs: PlayRunDTO[];
   summary: CreditSummaryDTO;
 }) {
@@ -283,6 +285,7 @@ export function PlayView({
     if (finishedCount !== anyFinished.current) {
       anyFinished.current = finishedCount;
       router.refresh();
+      window.dispatchEvent(new Event("sameplz:credits"));
     }
   }, [finishedCount, router]);
 
@@ -308,10 +311,11 @@ export function PlayView({
     const e: Errors = {};
     if (!recipe && !prompt.trim()) e.prompt = "프롬프트를 입력해 주세요.";
     if (recipe)
-      for (const v of recipe.variables)
+      recipe.variables.forEach((v, i) => {
         if (!values[v.name]?.trim())
-          e[`var-${v.name}`] =
+          e[`var-${i}`] =
             `[${v.name}]을(를) 채워 주세요. 「예시로 채우기」를 눌러도 돼요.`;
+      });
     if (!selected.length) e.models = "모델을 하나 이상 골라 주세요.";
     if (refs.length > refMax)
       e.refs =
@@ -432,6 +436,14 @@ export function PlayView({
         >
           상세에서 먼저 받은 뒤 다시 와 주세요. 지금은 빈 프롬프트나 받은
           레시피로 해 볼 수 있어요.
+          {noticeRecipe && (
+            <>
+              {" "}
+              <Link href={`/r/${noticeRecipe}`} style={{ color: "var(--sp-fg-accent)", fontWeight: 600 }}>
+                상세로 가기
+              </Link>
+            </>
+          )}
         </Callout>
       )}
       <Callout color="primary" title={modeBanner.title}>
@@ -480,8 +492,9 @@ export function PlayView({
                   이 레시피는 채울 [변수]가 없어요. 모델만 골라 만들면 돼요.
                 </p>
               )}
-              {recipe.variables.map((v) => {
-                const field = `var-${v.name}`;
+              {recipe.variables.map((v, i) => {
+                // Index, not name: Korean names would collapse to the same element id.
+                const field = `var-${i}`;
                 return (
                   <FormField
                     key={v.name}
@@ -707,9 +720,22 @@ export function PlayView({
             description={`선택 · PNG·JPG·WEBP 10MB 이하 · 고른 모델 기준 ${refMax}장까지 · 24시간 뒤 자동 삭제돼요`}
             errors={errors}
           >
+            <Button
+              size="md"
+              variant="outline"
+              color="secondary"
+              disabled={uploading || refs.length >= refMax || refMax === 0}
+              aria-describedby={errors.refs ? `${fid("refs")}-error` : undefined}
+              onClick={() => document.getElementById(fid("refs"))?.click()}
+              style={{ alignSelf: "flex-start" }}
+            >
+              {uploading ? "올리는 중…" : "이미지 고르기"}
+            </Button>
             <input
               {...ariaFor("refs", errors)}
               type="file"
+              hidden
+              tabIndex={-1}
               accept={REF_MIME.join(",")}
               disabled={
                 uploading || refs.length >= Math.max(refMax, 0) || refMax === 0
@@ -719,7 +745,6 @@ export function PlayView({
                 e.target.value = "";
                 if (f) void addRef(f);
               }}
-              style={{ fontSize: 14 }}
             />
             {refs.length > 0 && (
               <ul
@@ -869,7 +894,7 @@ export function PlayView({
             닫기
           </Button>
           <Button color="primary" onClick={() => void acknowledge()}>
-            확인했어요
+            확인하고 만들기
           </Button>
         </DialogFooter>
       </Dialog>

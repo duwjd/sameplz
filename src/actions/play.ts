@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createRefUpload, isRefMime, MAX_REF_BYTES } from "@/data/play";
 import { getMyRuns, type PlayRunDTO } from "@/data/playground";
 import { getViewer } from "@/lib/auth/account";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { RunCellSchema } from "@/lib/validation/play";
 
@@ -137,6 +138,8 @@ export async function refreshRuns(input: unknown): Promise<PlayRunDTO[]> {
   if (!parsed.success) return [];
   const who = await member();
   if (typeof who === "string") return [];
+  const { data: allowed } = await createAdminClient().rpc("hit_play_refresh", { p_user: who.id });
+  if (allowed !== true) return [];
   return getMyRuns({ runIds: parsed.data, limit: parsed.data.length });
 }
 

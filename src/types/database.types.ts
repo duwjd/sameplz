@@ -1156,6 +1156,9 @@ isOneToOne: false
 "hit_judge_budget":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"hit_play_refresh":
+{ Args: { "p_user": string }; Returns: boolean
+                           },
 "hit_upload_limit":
 { Args: { "p_user": string }; Returns: string
                            },

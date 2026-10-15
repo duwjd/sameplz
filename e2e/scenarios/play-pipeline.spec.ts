@@ -480,7 +480,7 @@ test.describe("PLAY screen", () => {
     await expect(
       dialog.getByText("이 화면의 결과물은 생성형 AI로 만들었어요"),
     ).toBeVisible();
-    await dialog.getByRole("button", { name: "확인했어요" }).click();
+    await dialog.getByRole("button", { name: "확인하고 만들기" }).click();
 
     const result = page
       .getByRole("figure", { name: "GPT Image 2.5 Flare 결과" })

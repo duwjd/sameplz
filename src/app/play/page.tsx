@@ -25,7 +25,11 @@ async function Play({
 }) {
   const sp = await searchParams;
   const viewer = await getViewer();
-  if (!viewer) return <PlayGuest />;
+  const wanted =
+    typeof sp.recipe === "string" && isPublicId(sp.recipe) ? sp.recipe : null;
+  // Keep the recipe from the detail page across login (PLAY EX playGate).
+  if (!viewer)
+    return <PlayGuest next={wanted ? `/play?recipe=${wanted}` : "/play"} />;
   if (!viewer.signupComplete)
     return (
       <EmptyState
@@ -49,8 +53,6 @@ async function Play({
         description="잠시 뒤에 새로고침해 주세요."
       />
     );
-  const wanted =
-    typeof sp.recipe === "string" && isPublicId(sp.recipe) ? sp.recipe : null;
   const initial =
     wanted && recipes.some((r) => r.publicId === wanted) ? wanted : null;
   return (
@@ -59,6 +61,7 @@ async function Play({
       recipes={recipes}
       initialRecipe={initial}
       notice={wanted && !initial ? "not_received" : null}
+      noticeRecipe={wanted && !initial ? wanted : null}
       runs={runs}
       summary={summary}
     />

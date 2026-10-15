@@ -56,7 +56,7 @@ export function RunList({
             <EmptyState
               icon="MagicWandIcon"
               title="아직 만든 게 없어요"
-              description="왼쪽에서 모델을 고르고 「만들기」를 눌러 보세요. 모델을 2~3개 고르면 나란히 비교돼요."
+              description="모델을 고르고 「만들기」를 눌러 보세요. 모델을 2~3개 고르면 나란히 비교돼요."
             />
           ) : (
             <ol

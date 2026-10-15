@@ -8,7 +8,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const RESULTS_BUCKET = "play-results";
-const RESULT_URL_SECONDS = 3600;
+// Short-lived (F4-8 ≤ 10 min): polling and refreshes re-sign anyway, and a copied link soon stops working.
+const RESULT_URL_SECONDS = 600;
 
 // ---------------------------------------------------------------- models
 

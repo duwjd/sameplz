@@ -29,7 +29,8 @@ export function activeFor(pathname: string): SiteHeaderActive {
   if (pathname.startsWith("/market/collections")) return "collection";
   if (pathname.startsWith("/market") || pathname.startsWith("/r/"))
     return "market";
-  return "home";
+  // Account pages (/my/*) and others: no main-menu item is current.
+  return "" as SiteHeaderActive;
 }
 
 export function AppHeader() {
@@ -40,6 +41,13 @@ export function AppHeader() {
   const menuRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [credits, setCredits] = useState(0);
+  // /play announces settled runs so the GNB balance follows without a navigation.
+  const [creditsVersion, setCreditsVersion] = useState(0);
+  useEffect(() => {
+    const bump = () => setCreditsVersion((v) => v + 1);
+    window.addEventListener("sameplz:credits", bump);
+    return () => window.removeEventListener("sameplz:credits", bump);
+  }, []);
 
   // GNB balance (CRD-01): re-read on navigation, so it follows playground runs.
   useEffect(() => {
@@ -54,7 +62,7 @@ export function AppHeader() {
     return () => {
       alive = false;
     };
-  }, [viewer, pathname]);
+  }, [viewer, pathname, creditsVersion]);
 
   // Open: focus the first item. Esc (anywhere): close and return focus to the account button.
   useEffect(() => {

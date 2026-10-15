@@ -3,7 +3,7 @@
 -- its selection is exercised manually and by the sweeper e2e.)
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(15);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000a7a01', 'guard-a@example.test'),
@@ -50,6 +50,13 @@ select ok(not public.attach_provider_request('00000000-0000-0000-0000-0000000a7a
 
 -- 3. one sweep per minute
 select ok(public.claim_play_sweep() and not public.claim_play_sweep(), 'PLAY only one sweeper run per minute window');
+
+-- 3b. grid refresh limit
+select is((select count(*)::int from generate_series(1, 60) g
+            where public.hit_play_refresh('00000000-0000-0000-0000-0000000a7a01')), 60,
+          'PLAY-05 sixty grid refreshes per minute are allowed');
+select ok(not public.hit_play_refresh('00000000-0000-0000-0000-0000000a7a01'),
+          'PLAY-05 the 61st refresh in a minute is refused');
 
 -- 4. server-only
 set local role authenticated;

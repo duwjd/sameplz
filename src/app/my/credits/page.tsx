@@ -54,7 +54,12 @@ async function Credits({
   ]);
   if (!summary)
     return <p>크레딧 정보를 불러오지 못했어요. 잠시 뒤에 새로고침해 주세요.</p>;
-  const shown = lines.filter((l) => matches(filter, l));
+  // CRD-03 잔액: walk back from today's balance (newest first), before filtering.
+  const withBalance = lines.map((l, i) => ({
+    ...l,
+    balance: summary.available - lines.slice(0, i).reduce((n, x) => n + x.delta, 0),
+  }));
+  const shown = withBalance.filter((l) => matches(filter, l));
 
   return (
     <>
@@ -187,6 +192,9 @@ async function Credits({
                       ? `${l.delta}C`
                       : `0C (${l.credits}C 반환)`}
                 </b>
+                <span style={{ minWidth: 88, textAlign: "right", color: "var(--sp-fg-secondary)" }}>
+                  잔액 {l.balance}C
+                </span>
               </li>
             ))}
           </ul>

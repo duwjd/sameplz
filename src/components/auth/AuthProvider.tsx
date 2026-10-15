@@ -99,9 +99,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = createClient().auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") refreshViewer();
     });
+    // PRF: a saved profile announces itself so the GNB name follows right away (F7-4).
+    const onProfile = () => void refreshViewer();
+    window.addEventListener("sameplz:viewer", onProfile);
     return () => {
       alive = false;
       data.subscription.unsubscribe();
+      window.removeEventListener("sameplz:viewer", onProfile);
     };
   }, [refreshViewer]);
 

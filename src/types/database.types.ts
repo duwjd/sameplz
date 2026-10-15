@@ -1130,6 +1130,9 @@ isOneToOne: false
 "claim_free_recipe":
 { Args: { "p_recipe_id": string,"p_ref_code"?: string }; Returns: Json
                            },
+"claim_play_sweep":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
 "complete_signup_credits":
 { Args: { "p_device_hash": string,"p_ip_hash": string,"p_user": string }; Returns: Json
                            },
@@ -1215,6 +1218,9 @@ isOneToOne: false
 "open_original":
 { Args: { "p_entitlement_id": string }; Returns: Json
                            },
+"play_precheck":
+{ Args: { "p_user": string }; Returns: string
+                           },
 "play_prompt_for_submit":
 { Args: { "p_cell": string }; Returns: string
                            },
@@ -1226,6 +1232,9 @@ isOneToOne: false
                            },
 "recipe_search_doc":
 { Args: { "nickname": string,"search_tags": (string)[],"summary": string,"title": string }; Returns: (string)[]
+                           },
+"record_play_input_block":
+{ Args: { "p_user": string }; Returns: boolean
                            },
 "record_recipe_view":
 { Args: { "p_public_id": string,"p_visitor_hash": string }; Returns: undefined

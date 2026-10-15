@@ -29,6 +29,7 @@ supabase test db             # pgTAP
 ## 작업 방식
 
 - 한 세션 한 기능. 브랜치 `feat/<CODE>-<slug>`(예: `feat/PAY-consent-gate`), PR 제목 `<ITEM-ID>: …`.
+- **브랜치 흐름**(`docs/branching.md`): 상시 브랜치는 `main`(= prd, 운영) · `stg` · `dev` 3개뿐. 작업 브랜치는 `dev`에서 따고 PR은 `dev`로(`gh pr create --base dev`). 머지되면 GitHub이 작업 브랜치를 지운다. 승격은 `dev → stg → main` PR(머지 커밋, 스쿼시·리베이스 금지). `main` 머지가 운영 배포(Vercel)와 deploy-db다.
 - 여러 파일을 건드리면 계획 모드 → `/feature-from-spec <CODE>`. 한 문장으로 설명되는 diff면 계획 생략.
 - 돈 경로는 테스트 먼저(test-writer). 테스트를 지우거나 약화하지 않는다.
 - DB를 바꾸면 `/supabase-migration` → db-migration-reviewer.

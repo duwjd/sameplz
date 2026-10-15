@@ -5,7 +5,7 @@
 - 기능 묶음: [F4](F4-playground-credits.md) — F4 플레이그라운드·크레딧 — PLAY · CRD
 - 의존 결정: D3, D5, D6, D8 (`docs/decisions.md`) — open이면 해당 부분은 멈추고 묻는다
 
-> **MVP 범위**: **월 무료 크레딧으로만 돈다**(가입 때와 매월 리셋 때 지급, 270C·하루 135C — D11·D17). 충전·크레딧 환불·체험 모드(PLAY-01의 체험, F4-6, F4-10)는 없다 — 전부 무료라 체험이 필요 없다(D6). 모드는 내 레시피·받은 무료 레시피·빈 프롬프트 3가지. 실행 전에 **계정 일일 한도·IP/기기 레이트 리밋(F4-16)**과 **전체 월 예산 킬 스위치(F4-15)**를 서버가 검사한다. 잔액이 모자라면 충전 창 대신 「이번 달 크레딧을 다 썼어요 · 다음 리셋 날짜」. **모더레이션(F4-7)·AI 고지·라벨(F4-9)·얼굴 동의(F4-8)는 그대로 유지.** 체험·충전 내용은 지우지 않고 유료 전환 때 쓴다.
+> **MVP 범위**: **월 무료 크레딧으로만 돈다**(가입 때와 매월 리셋 때 지급, 270C·하루 135C — D11·D17). 충전·크레딧 환불·체험 모드(PLAY-01의 체험, F4-6, F4-10)는 없다 — 전부 무료라 체험이 필요 없다(D6). 모드는 내 레시피·받은 무료 레시피·빈 프롬프트 3가지. 실행 전에 **계정 일일 한도·IP/기기 레이트 리밋(F4-16)**과 **전체 월 예산 킬 스위치(F4-15)**를 서버가 검사한다. 잔액이 모자라면 충전 창 대신 「이번 달 크레딧을 다 썼어요 · 다음 리셋 날짜」. **모더레이션(F4-7)·AI 고지·라벨(F4-9)·얼굴 동의(F4-8)는 그대로 유지.** 체험·충전 내용은 지우지 않고 유료 전환 때 쓴다. **W5 구현에서 뺀 것**: 내 레시피 「원문 고쳐서 쓰기」(원문을 클라이언트에 보내지 않는다 — hidden-content 규칙 2. 원문은 「새 버전 올리기」에서 고친다), 에이전트·스킬 실행(EX 「플레이그라운드로 열면」 2단계 안내 — 상세에 버튼을 두지 않는다), 「SAME 인증 올리기」(F4-11, W6 GAL과 함께), 레시피 도구 목록과 모델의 대응(지금은 모든 활성 모델을 고를 수 있다). 얼굴 레퍼런스로 만든 결과(F4-9)는 이미지에만 파일 안에 「AI」 표시를 새기고, 영상은 화면의 「AI 생성」 배지만 붙인다(영상 처리 도구가 없다, 2026-10-15 사용자 결정). 예산 80%·100% 운영자 알림(F4-15)은 Slack·Discord 웹후크(`OPS_ALERT_WEBHOOK_URL`)로 보낸다(사용자 결정).
 
 ## 목적
 
@@ -68,7 +68,7 @@
 
 ## 데이터 · API
 
-`credit_*`·`play_*` 테이블, RPC `start_run`·`place_hold`·`settle_cell`·`grant_purchase`·`request_paid_refund`·`expire_bonus`, 라우트 `POST /api/play/runs`·`POST /api/webhooks/generation/[provider]`·`/api/cron/play-sweeper`, 비공개 채널 `run:{run_id}`. 크레딧 설계는 로트별 행, 한 트랜잭션 안의 잔액 감소와 원장 기록, `FOR UPDATE` 직렬화, 멱등 키, 무료 크레딧 먼저 쓰기. 단가는 `크레딧 ≈ 공급자 USD × 1,450 × 1.8 ÷ 8.75 ≈ USD × 298`(`.claude/skills/generation-pipeline/models.md`). 실패 처리 24행은 `.claude/skills/generation-pipeline/failure-matrix.md`.
+`credit_*`·`play_*` 테이블, RPC `start_run`·`place_hold`·`settle_cell`·`grant_purchase`·`request_paid_refund`·`expire_bonus`, 라우트 `POST /api/play/runs`·`POST /api/webhooks/generation/[provider]`·`/api/cron/play-sweeper`, 비공개 채널 `run:{run_id}`. 크레딧 설계는 로트별 행, 한 트랜잭션 안의 잔액 감소와 원장 기록, `FOR UPDATE` 직렬화, 멱등 키, 무료 크레딧 먼저 쓰기. 단가는 `크레딧 ≈ 공급자 USD × 1,450 × 1.8 ÷ 8.75 ÷ 0.37 ≈ USD × 805`(D17, 올림)(`.claude/skills/generation-pipeline/models.md`). 실패 처리 24행은 `.claude/skills/generation-pipeline/failure-matrix.md`.
 
 ## 수용 기준
 

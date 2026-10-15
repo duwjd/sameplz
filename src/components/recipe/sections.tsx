@@ -8,7 +8,9 @@ import {
   Media,
   PromptPreview,
 } from "@/components/ds";
+import type { GalleryPostDTO } from "@/data/gallery";
 import { KIND } from "@/lib/catalog/card";
+import { mediaUrl } from "@/lib/upload/media";
 import {
   formatFileSize,
   maskedTemplate,
@@ -115,30 +117,55 @@ function ResultGallery({ recipe }: { recipe: RecipeDetail }) {
         gap: 12,
       }}
     >
-      {recipe.media.map((m) => (
-        <figure key={m.id} style={{ margin: 0 }}>
-          <Media
-            ratio={m.ratio ?? "1/1"}
-            kind={m.kind === "video" ? "영상" : "이미지"}
-            video={m.kind === "video"}
-            label={m.alt ?? undefined}
-            alt={m.alt ?? undefined}
-            topLeft={
-              m.ai ? (
-                <Badge size="sm" color="contrast" variant="fill">
-                  AI 생성
-                </Badge>
-              ) : undefined
-            }
-          />
-          {m.alt && (
-            <figcaption style={{ ...hintStyle, marginTop: 6 }}>
-              {m.alt}
-              {m.ai ? " · AI로 만든 결과물이에요" : ""}
-            </figcaption>
-          )}
-        </figure>
-      ))}
+      {recipe.media.map((m) => {
+        const src = mediaUrl(m.path);
+        const aiBadge = m.ai ? (
+          <Badge size="sm" color="contrast" variant="fill">
+            AI 생성
+          </Badge>
+        ) : undefined;
+        return (
+          <figure key={m.id} style={{ margin: 0 }}>
+            {src && m.kind === "video" ? (
+              // No autoplay: the first frame is the poster, the viewer presses play.
+              <Media ratio={m.ratio ?? "9/16"} kind="영상" topLeft={aiBadge}>
+                <video
+                  src={src}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  aria-label={m.alt ?? "결과물 영상"}
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    background: "#000",
+                  }}
+                />
+              </Media>
+            ) : (
+              <Media
+                src={src ?? undefined}
+                ratio={m.ratio ?? "1/1"}
+                kind={m.kind === "video" ? "영상" : "이미지"}
+                video={m.kind === "video"}
+                label={m.alt ?? undefined}
+                alt={m.alt ?? ""}
+                topLeft={aiBadge}
+              />
+            )}
+            {(m.alt || m.ai) && (
+              <figcaption style={{ ...hintStyle, marginTop: 6 }}>
+                {[m.alt, m.ai ? "AI로 만든 결과물이에요" : null]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </figcaption>
+            )}
+          </figure>
+        );
+      })}
     </div>
   );
 }
@@ -182,18 +209,23 @@ export function PromptSections({ recipe }: { recipe: RecipeDetail }) {
           template={maskedTemplate(meta.variables)}
           variables={meta.variables.map((v) => ({
             name: v.name,
+            description: v.description,
             example: v.example,
           }))}
         />
       </Section>
-      <Section title="따라 만든 결과" hint="받은 사람이 올린 SAME 인증이 여기에 모여요.">
-        <p style={{ margin: 0, fontSize: 14, color: "var(--sp-fg-secondary)" }}>
-          {recipe.stats.same_count > 0
-            ? `${recipe.stats.same_count.toLocaleString("ko-KR")}명이 따라 만들었어요. SAME 한 뒤 내 결과도 올릴 수 있어요.`
-            : "아직 올라온 결과가 없어요. SAME 한 뒤 첫 결과를 올릴 수 있어요."}
-        </p>
-      </Section>
+
     </>
+  );
+}
+
+/** Agents and skills show uploaded results (screenshots, outputs) once any exist. */
+function ResultsSection({ recipe }: { recipe: RecipeDetail }) {
+  if (recipe.media.length === 0) return null;
+  return (
+    <Section title="결과물" hint="크리에이터가 이 레시피로 만든 결과예요.">
+      <ResultGallery recipe={recipe} />
+    </Section>
   );
 }
 
@@ -201,6 +233,7 @@ export function AgentSections({ recipe }: { recipe: RecipeDetail }) {
   const meta = recipe.version.meta;
   return (
     <>
+      <ResultsSection recipe={recipe} />
       {meta.flow.length > 0 && (
         <Section title="동작 흐름" hint="입력부터 결과까지 이렇게 움직여요.">
           <AgentFlow steps={meta.flow.map((title) => ({ title }))} />
@@ -270,6 +303,7 @@ export function SkillSections({ recipe }: { recipe: RecipeDetail }) {
   const tool = recipe.tools[0]?.label;
   return (
     <>
+      <ResultsSection recipe={recipe} />
       {meta.examples.length > 0 && (
         <Section title="이렇게 말하면 작동해요">
           {meta.examples.map((e, i) => (
@@ -390,6 +424,65 @@ function FileList({ recipe }: { recipe: RecipeDetail }) {
               <span style={{ color: "var(--sp-fg-hint)" }}>
                 {formatFileSize(f.size)}
               </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
+  );
+}
+
+/** GAL on the detail page: SAME 인증 posted by people who received this recipe (public, cached). */
+export function SameResults({
+  recipe,
+  posts,
+}: {
+  recipe: RecipeDetail;
+  posts: GalleryPostDTO[];
+}) {
+  return (
+    <Section title="따라 만든 결과" hint="받은 사람이 올린 SAME 인증이 여기에 모여요.">
+      <p style={{ margin: 0, fontSize: 14, color: "var(--sp-fg-secondary)" }}>
+        {recipe.stats.same_count > 0
+          ? `${recipe.stats.same_count.toLocaleString("ko-KR")}명이 따라 만들었어요. 받은 뒤 내 결과도 올릴 수 있어요.`
+          : "아직 올라온 결과가 없어요. 받은 뒤 첫 결과를 올려 보세요."}
+      </p>
+      {posts.length > 0 && (
+        <ul
+          aria-label="따라 만든 결과"
+          style={{
+            listStyle: "none",
+            margin: 0,
+            padding: 0,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+            gap: 12,
+          }}
+        >
+          {posts.map((p) => (
+            <li key={p.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <Media
+                src={p.media ?? undefined}
+                alt={p.alt ?? `${p.author}님의 결과: ${p.title}`}
+                ratio={p.ratio}
+                kind={p.kind === "video" ? "영상" : "이미지"}
+                video={p.kind === "video"}
+                radius={10}
+                topLeft={
+                  <Badge color="contrast" variant="fill" size="sm">
+                    AI 생성
+                  </Badge>
+                }
+                topRight={
+                  p.madeHere ? (
+                    <Badge color="primary" variant="fill" size="sm">
+                      여기서 생성
+                    </Badge>
+                  ) : null
+                }
+              />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{p.title}</span>
+              <span style={{ fontSize: 12, color: "var(--sp-fg-secondary)" }}>{p.author}</span>
             </li>
           ))}
         </ul>

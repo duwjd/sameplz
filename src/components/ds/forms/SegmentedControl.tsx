@@ -20,6 +20,8 @@ export interface SegmentedControlProps {
   size?: "sm" | "md" | "lg";
   stretch?: boolean;
   style?: React.CSSProperties;
+  /** Accessible name of the group (e.g. "기간"). */
+  "aria-label"?: string;
 }
 
 const SIZES: Record<
@@ -38,10 +40,13 @@ export function SegmentedControl({
   size = "md",
   stretch = false,
   style = {},
+  "aria-label": ariaLabel,
 }: SegmentedControlProps) {
   const s = SIZES[size] || SIZES.md;
   return (
     <div
+      role="group"
+      aria-label={ariaLabel}
       style={{
         display: "inline-flex",
         padding: 3,
@@ -59,6 +64,7 @@ export function SegmentedControl({
           <button
             key={it.value}
             type="button"
+            aria-pressed={active}
             onClick={() => {
               if (onChange) onChange(it.value);
             }}
@@ -79,7 +85,6 @@ export function SegmentedControl({
               fontSize: s.font,
               fontWeight: active ? 600 : 500,
               cursor: "pointer",
-              outline: "none",
               whiteSpace: "nowrap",
               transition:
                 "background var(--sp-duration-default) var(--sp-easing-standard), color var(--sp-duration-default) var(--sp-easing-standard)",

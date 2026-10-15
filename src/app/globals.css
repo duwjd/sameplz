@@ -24,3 +24,13 @@
 a:hover {
   color: var(--sp-fg-normal);
 }
+
+/* Keyboard focus ring (WCAG 2.4.7). Many controls reset their styles inline (`all: unset`), which
+   also drops the outline, so the ring is applied with !important for keyboard focus only. */
+button:focus-visible,
+a:focus-visible,
+[role="checkbox"]:focus-visible,
+[role="tab"]:focus-visible {
+  outline: 2px solid var(--sp-border-primary) !important;
+  outline-offset: 2px !important;
+}

@@ -1,7 +1,7 @@
 // W5 gate (F4-2~5, F4-7, F4-15, F4-16): POST /api/play/runs → mock provider → webhook → settle, with
-// the failure matrix rows that the API path decides. The /play screen comes with PR G.
+// the failure matrix rows that the API path decides, then the /play screen and /my/credits.
 import { createHash, randomUUID } from "node:crypto";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   adminDb,
   available,
@@ -211,14 +211,12 @@ test("F4-2 free mode renders the received recipe on the server; the original nev
   const db = adminDb();
   const recipe = "aaaaaaaa-0000-0000-0000-000000000004";
   const version = "bbbbbbbb-0000-0000-0000-000000000004";
-  const granted = await db
-    .from("entitlements")
-    .insert({
-      user_id: user.id,
-      recipe_id: recipe,
-      version_id: version,
-      source: "free",
-    });
+  const granted = await db.from("entitlements").insert({
+    user_id: user.id,
+    recipe_id: recipe,
+    version_id: version,
+    source: "free",
+  });
   expect(granted.error).toBeNull();
 
   const missing = await context.request.post("/api/play/runs", {
@@ -237,7 +235,11 @@ test("F4-2 free mode renders the received recipe on the server; the original nev
       mode: "free",
       recipeVersionId: version,
       prompt: "",
-      variables: { 변수: "텀블러" },
+      variables: {
+        상품명: "텀블러",
+        "장점 3개": "가볍고 튼튼함",
+        말투: "친근하게",
+      },
     }),
   });
   expect(res.status()).toBe(201);
@@ -283,36 +285,60 @@ test("F4-15 the kill switch: a paused budget refuses runs (BUDGET_EXHAUSTED)", a
   }
 });
 
-test("FM-9 the same webhook delivered twice settles once and keeps the result", async ({ context, request }) => {
+test("FM-9 the same webhook delivered twice settles once and keeps the result", async ({
+  context,
+  request,
+}) => {
   const user = await loginAsPlayer(context);
   const res = await context.request.post("/api/play/runs", { data: runBody() });
   const id = (await res.json()).cellIds[0];
   const done = await waitTerminal(id);
   expect(done.status).toBe("succeeded");
   const db = adminDb();
-  const { data: row } = await db.from("play_cells").select("provider_request_id").eq("id", id).single();
+  const { data: row } = await db
+    .from("play_cells")
+    .select("provider_request_id")
+    .eq("id", id)
+    .single();
   // Only the token hash is stored: give the cell a known token to replay the provider's event.
   const token = randomUUID();
   await db
     .from("play_cells")
-    .update({ webhook_token_hash: createHash("sha256").update(token).digest("hex") })
+    .update({
+      webhook_token_hash: createHash("sha256").update(token).digest("hex"),
+    })
     .eq("id", id);
   const body = JSON.stringify({
     request_id: row!.provider_request_id,
     status: "OK",
     payload: { url: "mock://image/ok/x" },
   });
-  const again = await request.post(`/api/webhooks/generation/mock?cell=${id}&t=${token}`, {
-    data: body,
-    headers: { "content-type": "application/json", "x-mock-signature": mockSign(body) },
-  });
+  const again = await request.post(
+    `/api/webhooks/generation/mock?cell=${id}&t=${token}`,
+    {
+      data: body,
+      headers: {
+        "content-type": "application/json",
+        "x-mock-signature": mockSign(body),
+      },
+    },
+  );
   expect(again.status()).toBe(200);
-  const wrong = await request.post(`/api/webhooks/generation/mock?cell=${id}&t=not-the-token`, {
-    data: body,
-    headers: { "content-type": "application/json", "x-mock-signature": mockSign(body) },
-  });
+  const wrong = await request.post(
+    `/api/webhooks/generation/mock?cell=${id}&t=not-the-token`,
+    {
+      data: body,
+      headers: {
+        "content-type": "application/json",
+        "x-mock-signature": mockSign(body),
+      },
+    },
+  );
   expect(wrong.status()).toBe(401);
-  expect(await cellRow(id)).toMatchObject({ status: "succeeded", result_path: done.result_path });
+  expect(await cellRow(id)).toMatchObject({
+    status: "succeeded",
+    result_path: done.result_path,
+  });
   expect(await available(user.id)).toBe(270 - CHEAP.credits);
   const listed = await db.storage.from("play-results").list(user.id);
   expect((listed.data ?? []).map((f) => f.name)).toContain(`${id}.png`);
@@ -329,18 +355,33 @@ test("FM-7 a cell long past its deadline is looked up, cancelled and expired; th
   expect((await cellRow(id)).status).toBe("submitted");
   expect(await available(user.id)).toBe(270 - CHEAP.credits);
   const db = adminDb();
-  const before = (await db.from("generation_budget").select("spent").eq("month", kstMonth()).single()).data!
-    .spent as number;
+  const before = (
+    await db
+      .from("generation_budget")
+      .select("spent")
+      .eq("month", kstMonth())
+      .single()
+  ).data!.spent as number;
   await db
     .from("play_cells")
-    .update({ deadline_at: new Date(Date.now() - 25 * 3600 * 1000).toISOString() })
+    .update({
+      deadline_at: new Date(Date.now() - 25 * 3600 * 1000).toISOString(),
+    })
     .eq("id", id);
   expect((await callSweeper(context.request)).status()).toBe(200);
-  expect(await cellRow(id)).toMatchObject({ status: "expired", error_code: "TIMEOUT" });
+  expect(await cellRow(id)).toMatchObject({
+    status: "expired",
+    error_code: "TIMEOUT",
+  });
   expect(await available(user.id)).toBe(270);
   // It reached the provider, so the budget still counts it (D12).
-  const after = (await db.from("generation_budget").select("spent").eq("month", kstMonth()).single()).data!
-    .spent as number;
+  const after = (
+    await db
+      .from("generation_budget")
+      .select("spent")
+      .eq("month", kstMonth())
+      .single()
+  ).data!.spent as number;
   expect(after - before).toBeGreaterThanOrEqual(CHEAP.credits);
 });
 
@@ -391,5 +432,199 @@ test.describe("EX", () => {
         })
       ).status(),
     ).toBe(401);
+  });
+});
+
+// ---------------------------------------------------------------- PLAY screen (PLAY-01~07, CRD)
+// Same file as the API rows: every test that generates or touches the shared budget runs serially.
+
+const model = (page: Page, name: RegExp) =>
+  page.getByRole("checkbox", { name }).filter({ visible: true });
+const runButton = (page: Page) =>
+  page.locator("#play-run").filter({ visible: true });
+
+test.describe("PLAY screen", () => {
+  test("PLAY guest is asked to log in", async ({ page }) => {
+    await page.goto("/play");
+    await expect(
+      page
+        .getByText("로그인하면 바로 만들어 볼 수 있어요")
+        .filter({ visible: true }),
+    ).toBeVisible();
+  });
+
+  test("PLAY-04 PLAY-05 a blank prompt run shows the AI notice, the quote, the result and the credit history", async ({
+    page,
+    context,
+  }) => {
+    const player = await loginAsPlayer(context);
+    // The fixture acknowledged the notice; reset it so the first-run popup shows (F4-9).
+    await adminDb()
+      .from("profiles")
+      .update({ ai_notice_ack_at: null })
+      .eq("id", player.id);
+
+    await page.goto("/play");
+    await expect(
+      page.getByTestId("play-balance").filter({ visible: true }),
+    ).toHaveText("270C");
+    await page
+      .getByLabel("프롬프트")
+      .filter({ visible: true })
+      .fill("푸른 바다 위 등대, 수채화");
+    await model(page, /^GPT Image 2\.5 Flare/).click();
+    await expect(runButton(page)).toHaveText("만들기 · 11C");
+    await runButton(page).click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(
+      dialog.getByText("이 화면의 결과물은 생성형 AI로 만들었어요"),
+    ).toBeVisible();
+    await dialog.getByRole("button", { name: "확인하고 만들기" }).click();
+
+    const result = page
+      .getByRole("figure", { name: "GPT Image 2.5 Flare 결과" })
+      .filter({ visible: true })
+      .first();
+    await expect(
+      result.getByRole("img", { name: /AI 생성 이미지/ }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(result.getByText("AI 생성", { exact: true })).toBeVisible();
+    await expect(
+      page.getByTestId("play-balance").filter({ visible: true }),
+    ).toHaveText("259C");
+
+    await result.getByRole("button", { name: "저장" }).click();
+    await expect(
+      result.getByRole("button", { name: "저장됨" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await page.goto("/my/credits");
+    await expect(
+      page.getByTestId("crd-available").filter({ visible: true }),
+    ).toHaveText("259C");
+    await expect(
+      page.getByText("플레이그라운드 사용").filter({ visible: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("-11C").filter({ visible: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("이번 달 무료 크레딧").filter({ visible: true }).first(),
+    ).toBeVisible();
+  });
+
+  test("FM-5 a model error shows the refund in the cell", async ({
+    page,
+    context,
+  }) => {
+    await loginAsPlayer(context);
+    await page.goto("/play");
+    await page
+      .getByLabel("프롬프트")
+      .filter({ visible: true })
+      .fill("실패 시험 [[mock:error]]");
+    await model(page, /^GPT Image 2\.5 Flare/).click();
+    await runButton(page).click();
+    await expect(
+      page
+        .getByText("모델 오류로 만들지 못했어요 · 11C를 돌려드렸어요")
+        .filter({ visible: true }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByTestId("play-balance").filter({ visible: true }),
+    ).toHaveText("270C");
+  });
+
+  test("F2-5 PLAY-02 the detail button opens the received recipe; empty [변수] is caught under the field", async ({
+    page,
+    context,
+  }) => {
+    const user = await loginAsPlayer(context);
+    await adminDb().from("entitlements").insert({
+      user_id: user.id,
+      recipe_id: "aaaaaaaa-0000-0000-0000-000000000004",
+      version_id: "bbbbbbbb-0000-0000-0000-000000000004",
+      source: "free",
+    });
+    await page.goto("/r/rdetailcopy");
+    await page
+      .getByRole("button", { name: "바로 만들어 보기" })
+      .filter({ visible: true })
+      .click();
+    await expect(page).toHaveURL(/\/play\?recipe=rdetailcopy$/);
+    await expect(
+      page.getByText("받은 무료 레시피").filter({ visible: true }),
+    ).toBeVisible();
+
+    await model(page, /^GPT Image 2\.5 Flare/).click();
+    await runButton(page).click();
+    const field = page.getByLabel("[상품명]").filter({ visible: true });
+    await expect(
+      page
+        .getByText(/\[상품명\]을\(를\) 채워 주세요/)
+        .filter({ visible: true }),
+    ).toBeVisible();
+    await expect(field).toBeFocused();
+    await expect(field).toHaveAttribute("aria-invalid", "true");
+    // hidden-content: the playground page never carries the original.
+    expect(await page.content()).not.toContain("SAMEPLZ-SECRET-SAMPLE");
+
+    await page
+      .getByRole("button", { name: "예시로 채우기" })
+      .filter({ visible: true })
+      .click();
+    await expect(field).toHaveValue("저자극 수분크림");
+    await runButton(page).click();
+    await expect(
+      page
+        .getByRole("img", {
+          name: /GPT Image 2\.5 Flare로 만든 AI 생성 이미지/,
+        })
+        .filter({ visible: true })
+        .first(),
+    ).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("F4-16 a model whose cheapest setting is over the daily limit cannot be picked", async ({
+    page,
+    context,
+  }) => {
+    await loginAsPlayer(context);
+    await page.goto("/play");
+    const kling = model(page, /^Kling 3 Standard/);
+    await expect(kling).toHaveAttribute("aria-disabled", "true");
+    await expect(kling).toContainText("하루 한도(135C)를 넘어요");
+  });
+
+  test("F4-15 when this month's budget is closed the run button is off and says when it reopens", async ({
+    page,
+    context,
+  }) => {
+    await loginAsPlayer(context);
+    const db = adminDb();
+    await db
+      .from("generation_budget")
+      .update({ state: "paused" })
+      .eq("month", kstMonth());
+    try {
+      await page.goto("/play");
+      await page
+        .getByLabel("프롬프트")
+        .filter({ visible: true })
+        .fill("마감 시험");
+      await model(page, /^GPT Image 2\.5 Flare/).click();
+      await expect(runButton(page)).toBeDisabled();
+      await expect(
+        page
+          .getByText(/이번 달 생성이 마감됐어요 · \d+월 1일에 다시 열려요/)
+          .filter({ visible: true }),
+      ).toBeVisible();
+    } finally {
+      await db
+        .from("generation_budget")
+        .update({ state: "open" })
+        .eq("month", kstMonth());
+    }
   });
 });

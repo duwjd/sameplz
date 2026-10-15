@@ -68,10 +68,12 @@ export function ModelOption({
         boxShadow: selected
           ? "inset 0 0 0 1px var(--sp-border-primary)"
           : "none",
+        // Off: muted surface instead of opacity, so the stated reason stays readable (contrast).
         background: selected
           ? "var(--sp-bg-primary-tint)"
-          : "var(--sp-bg-surface)",
-        opacity: off ? 0.5 : 1,
+          : off
+            ? "var(--sp-bg-secondary)"
+            : "var(--sp-bg-surface)",
         fontFamily: "var(--sp-font-sans)",
         transition: "border-color 150ms ease, background 150ms ease",
         ...style,

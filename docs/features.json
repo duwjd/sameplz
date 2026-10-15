@@ -376,7 +376,7 @@
       "scn": [
         "trial-to-certify"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F4-2",
@@ -466,7 +466,7 @@
       "acceptance": "변수 텍스트는 홀드 전에 omni-moderation + 한국어 금지어 검사. 레퍼런스 이미지는 업로드 때 검사. 결과 이미지는 방송 전에 검사, 걸리면 삭제·반환. omni-moderation의 `sexual/minors`는 텍스트 전용",
       "week": 5,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F4-8",
@@ -479,7 +479,7 @@
       "acceptance": "실행마다 동의 체크 없으면 비활성. 비공개 버킷 `play-refs/{user}/{upload}`, 공급자에는 10분 이하 서명 URL, 24시간~7일 뒤 삭제",
       "week": 5,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F4-9",
@@ -549,7 +549,7 @@
       "scn": [
         "trial-to-certify"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F4-15",
@@ -576,7 +576,7 @@
       "acceptance": "계정별 일일 사용 한도(D11)를 넘으면 `DAILY_LIMIT` + 내일 다시 안내. IP·기기 해시 단위 분당 실행·하루 가입 수 제한(D13)을 넘으면 429 + 「잠시 뒤에 다시 해 주세요」. 한도 판정은 서버(SQL)에서, 클라이언트 값 무시. 남용 신호는 `abuse_signals`에 남김",
       "week": 5,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F5-1",

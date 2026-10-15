@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/actions/auth";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SiteHeader, type SiteHeaderActive } from "@/components/ds";
+import { createClient } from "@/lib/supabase/client";
 
 const ROUTES: Record<string, string> = {
   home: "/",
@@ -28,7 +29,8 @@ export function activeFor(pathname: string): SiteHeaderActive {
   if (pathname.startsWith("/market/collections")) return "collection";
   if (pathname.startsWith("/market") || pathname.startsWith("/r/"))
     return "market";
-  return "home";
+  // Account pages (/my/*) and others: no main-menu item is current.
+  return "" as SiteHeaderActive;
 }
 
 export function AppHeader() {
@@ -38,6 +40,29 @@ export function AppHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const [credits, setCredits] = useState(0);
+  // /play announces settled runs so the GNB balance follows without a navigation.
+  const [creditsVersion, setCreditsVersion] = useState(0);
+  useEffect(() => {
+    const bump = () => setCreditsVersion((v) => v + 1);
+    window.addEventListener("sameplz:credits", bump);
+    return () => window.removeEventListener("sameplz:credits", bump);
+  }, []);
+
+  // GNB balance (CRD-01): re-read on navigation, so it follows playground runs.
+  useEffect(() => {
+    if (!viewer) return;
+    let alive = true;
+    void createClient()
+      .rpc("my_credit_summary")
+      .then(({ data }) => {
+        const available = (data as { available?: number } | null)?.available;
+        if (alive && typeof available === "number") setCredits(available);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [viewer, pathname, creditsVersion]);
 
   // Open: focus the first item. Esc (anywhere): close and return focus to the account button.
   useEffect(() => {
@@ -73,6 +98,8 @@ export function AppHeader() {
         }}
         onLogin={() => requireLogin()}
         onAccount={() => setMenuOpen((v) => !v)}
+        credits={viewer ? credits : 0}
+        onCredits={() => router.push("/my/credits")}
       />
       {viewer && menuOpen && (
         <div
@@ -117,6 +144,23 @@ export function AppHeader() {
             }}
           >
             라이브러리
+          </Link>
+          <Link
+            href="/my/credits"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              height: 36,
+              padding: "0 8px",
+              borderRadius: 8,
+              fontSize: 14,
+              color: "var(--sp-fg-normal)",
+              textDecoration: "none",
+            }}
+          >
+            크레딧
           </Link>
           <Link
             href="/my/seller/upload"

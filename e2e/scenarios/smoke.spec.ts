@@ -50,3 +50,15 @@ test("SEC main screens load without CSP violations", async ({
   }
   expect(violations).toEqual([]);
 });
+
+// D21: without NEXT_PUBLIC_GA_ID / a Sentry DSN nothing is loaded or sent.
+test("D21 no analytics or error-tracking requests without their keys", async ({ page }) => {
+  const outbound: string[] = [];
+  page.on("request", (r) => {
+    if (/googletagmanager|google-analytics|sentry\.io/.test(r.url())) outbound.push(r.url());
+  });
+  await page.goto("/");
+  await page.goto("/gallery");
+  await page.waitForLoadState("networkidle");
+  expect(outbound).toEqual([]);
+});

@@ -1,6 +1,7 @@
 "use client";
 // PRM-06 / AGT-06 / SKL-07 (F2-1): one main button per viewer state, plus like, link copy and follow.
 // The initial state comes from the server (Suspense hole); a login replay (F7-1) refreshes it.
+import { track } from "@/lib/analytics";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ReportDialog } from "@/components/gallery/ReportDialog";
@@ -36,7 +37,8 @@ const CLAIM_FAILED: Record<string, string> = {
     "지금은 받을 수 없는 레시피예요. 비슷한 레시피를 둘러봐 주세요.",
   OWN_RECIPE: "내 레시피라 받지 않아도 돼요.",
   NOT_FREE: "무료 레시피만 바로 받을 수 있어요.",
-  ACCOUNT_SUSPENDED: "이용이 제한된 계정이라 지금은 할 수 없어요. 자세한 건 알림을 확인해 주세요.",
+  ACCOUNT_SUSPENDED:
+    "이용이 제한된 계정이라 지금은 할 수 없어요. 자세한 건 알림을 확인해 주세요.",
   FAILED: "받지 못했어요. 잠시 뒤 다시 눌러 주세요.",
 };
 
@@ -103,6 +105,7 @@ export function RecipeActions({ recipe, state }: RecipeActionsProps) {
     setBusy(false);
     if (res.ok) {
       setEntitlementId(res.entitlementId);
+      if (res.created) track("same_claim", { public_id: recipe.publicId });
       notify(
         "라이브러리에 담았어요. 「라이브러리에서 열기」로 바로 쓸 수 있어요.",
       );

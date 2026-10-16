@@ -24,7 +24,7 @@
 | 열기 전 환불 | `scenarios/refund-before-open.spec.ts` | 유료 전환 |
 | 열어 본 뒤엔 환불 대신 신고 | `scenarios/report-after-open.spec.ts` | 유료 전환 |
 | SAME 인증이 갤러리로 | `scenarios/same-cert-to-gallery.spec.ts` | W6 |
-| 체험 → SAME → 충전 → 생성 → 인증 | `scenarios/trial-to-certify.spec.ts` | W6 |
+| 체험 → SAME → 충전 → 생성 → 인증 (MVP: 무료 받기 → 월 크레딧 → 생성 → 인증) | `scenarios/trial-to-certify.spec.ts` | W7 |
 | 첫 판매 등록(본인인증) | `scenarios/first-sale-registration.spec.ts` | W4 |
 | 갤러리에서 포크 → 무료 공유 | `scenarios/fork-free-share.spec.ts` | W6 |
 | 판매 중지된 레시피 | `scenarios/stopped-recipe.spec.ts` | W3 |

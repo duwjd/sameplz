@@ -15,9 +15,12 @@ import {
 import { checkImage } from "@/lib/moderation/play";
 import {
   budgetAlertText,
+  ledgerAlertText,
   postOpsAlert,
+  providerAlertText,
   slaAlertText,
   type BudgetAlert,
+  type OpsHealth,
   type SlaAlert,
 } from "@/lib/ops/alert";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -797,6 +800,21 @@ export async function sweep(budgetMs = 40_000): Promise<SweepReport> {
       const ids = due.filter((a) => a.kind === kind).map((a) => a.id);
       if (ids.length)
         await db.rpc("mark_sla_alerts", { p_kind: kind, p_ids: ids });
+    }
+  }
+
+  // Runbook 10 P0: ledger invariants and provider failure rate, each at most once an hour.
+  const { data: health } = await db.rpc("ops_health");
+  if (health) {
+    const h = health as unknown as OpsHealth;
+    for (const [kind, alertText] of [
+      ["ledger", ledgerAlertText(h)],
+      ["provider", providerAlertText(h)],
+    ] as const) {
+      if (!alertText) continue;
+      const { data: due } = await db.rpc("ops_alert_due", { p_kind: kind });
+      if (due && (await postOpsAlert(alertText)))
+        await db.rpc("mark_ops_alert", { p_kind: kind });
     }
   }
   return report;

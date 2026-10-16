@@ -26,7 +26,7 @@
 
 | 아이템 | 필수 콘텐츠 |
 |---|---|
-| 분석 | PostHog 하나. 무료 구간은 이벤트 100만 건과 리플레이 5천 건. 결제·환불·지급·귀속 이벤트는 서버가 DB 기준으로 보낸다. `identify()` 범위를 처리방침과 가입 동의 문구에 적는다 |
+| 분석 | GA4 하나(D21, 원안은 PostHog). 무료 구간은 이벤트 100만 건과 리플레이 5천 건. 결제·환불·지급·귀속 이벤트는 서버가 DB 기준으로 보낸다. `identify()` 범위를 처리방침과 가입 동의 문구에 적는다 |
 | 북극성 | **주간 성공 SAME**: 한 주 받은 레시피 중 7일 안에 환불되거나 「설명과 달라요」가 인정되지 않은 건수 + SAME 인증 게시. 수수료 구조 성패는 **마켓 유입 매출 비중** |
 | 핵심 이벤트 | `signup_completed`, `recipe_viewed`, `search_performed`, `play_run`, `checkout_started`, `purchase_completed`, `original_opened`, `refund_completed`, `report_submitted`, `same_posted`, `share_link_clicked`, `recipe_submitted`, `recipe_review_decided`, `payout_paid`. 이름·전화·이메일·프롬프트 텍스트는 속성에 넣지 않는다 |
 | 관측 | Sentry(오류·크론 체크인), Better Stack 무료(모니터 10개, Slack 알림), Supabase 로그 7일 |

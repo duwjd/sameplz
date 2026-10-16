@@ -24,7 +24,7 @@ async function liveRecipes(): Promise<
   return data;
 }
 
-// Live recipes only: STOP is noindex, hidden recipes are 404.
+// Live recipes only: STOP is noindex, hidden recipes are 404. Policy pages (F7-7) are static.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const recipes = await liveRecipes();
   return [
@@ -34,6 +34,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily" as const,
       priority: 0.8,
     })),
+    ...["/guide", "/terms", "/privacy", "/policy/content", "/policy/ai"].map(
+      (p) => ({
+        url: `${SITE}${p}`,
+        changeFrequency: "monthly" as const,
+        priority: 0.3,
+      }),
+    ),
     ...recipes.map((r) => ({
       url: `${SITE}/r/${r.public_id}`,
       lastModified: r.updated_at,

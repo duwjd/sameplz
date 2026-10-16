@@ -40,7 +40,7 @@ jobs:
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
       - uses: actions/checkout@v6
-      - uses: supabase/setup-cli@v1 # keep version in sync with ci.yml
+      - uses: supabase/setup-cli@v3 # keep version in sync with ci.yml
         with:
           version: 2.120.0 # pinned: "latest" queries the GitHub API unauthenticated and hits rate limits
       - name: Check secrets

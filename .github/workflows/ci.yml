@@ -90,7 +90,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
-      - uses: supabase/setup-cli@v1         # CLI version pinned below; bump with local `supabase --version`
+      - uses: supabase/setup-cli@v3         # CLI version pinned below; bump with local `supabase --version`
         with:
           version: 2.120.0 # pinned: "latest" queries the GitHub API unauthenticated and hits rate limits
       - run: supabase start
@@ -116,7 +116,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
           version: 2.120.0 # pinned: "latest" queries the GitHub API unauthenticated and hits rate limits
       - run: supabase start

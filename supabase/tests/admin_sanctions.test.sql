@@ -3,7 +3,7 @@
 -- adjustments as adjust rows, linked accounts by device / IP hash (D13, probabilistic).
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(50);
+select plan(57);
 
 -- S is sanctioned; T shares S's device and gets credit adjustments. A is the seed admin (…0011).
 insert into auth.users (id, email) values
@@ -199,6 +199,45 @@ select ok((select a.available = (select sum(g.delta) from public.credit_ledger g
 select is((select count(*)::integer from public.notifications
             where user_id = '00000000-0000-0000-0000-00000000b802' and kind = 'credit_adjusted'), 2,
           'F8-4 the member is told of each adjustment');
+
+-- Credit audit follow-ups.
+-- A ban cannot be undone by sending the signup action again; banning before any credit account exists
+-- still blocks later grants.
+select public.complete_signup_credits('00000000-0000-0000-0000-00000000b801', null, null);
+select is((select grant_eligible from public.credit_accounts where user_id = '00000000-0000-0000-0000-00000000b801'), false,
+          'F8-4 a banned member cannot become grant-eligible again through the signup path');
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-00000000b803', 'sanc-u@example.test');
+update public.profiles set terms_version = '2026-10-v1', terms_accepted_at = now(), adult_confirmed_at = now()
+ where id = '00000000-0000-0000-0000-00000000b803';
+select public.admin_sanction('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-00000000b803',
+                             'banned', 'abuse', '', null);
+select public.complete_signup_credits('00000000-0000-0000-0000-00000000b803', null, null);
+select is((select count(*)::integer from public.credit_lots where user_id = '00000000-0000-0000-0000-00000000b803'), 0,
+          'F8-4 a member banned before their first grant gets none afterwards');
+-- Lifting the ban gives back exactly the eligibility they had.
+select public.admin_lift_sanction('00000000-0000-0000-0000-000000000011',
+  (select id from public.account_sanctions where user_id = '00000000-0000-0000-0000-00000000b803' and level = 'banned'), '오인');
+select is((select grant_eligible from public.credit_accounts where user_id = '00000000-0000-0000-0000-00000000b803'), false,
+          'F8-4 a lifted ban restores the prior eligibility (never eligible → still not)');
+-- Same idem key, different amount: refused instead of silently reporting success.
+select throws_ok($$ select pg_temp.adjust(70, 'adj-1') $$, 'P0001', 'IDEM_CONFLICT',
+                 'F8-4 a reused idem key with a different amount is refused');
+-- A deduction spanning two lots: one row per lot, remaining >= held everywhere, INV-C2.
+select pg_temp.adjust(-200, 'adj-6');
+select is((select count(*)::integer from public.credit_ledger
+            where user_id = '00000000-0000-0000-0000-00000000b802' and idem_key like 'adjust:adj-6:%'), 2,
+          'F8-4 a deduction across two lots writes one adjust row per lot');
+select ok((select bool_and(remaining >= held) and sum(remaining) = (select available + held from public.credit_accounts
+             where user_id = '00000000-0000-0000-0000-00000000b802')
+             from public.credit_lots where user_id = '00000000-0000-0000-0000-00000000b802'),
+          'INV-C2 available + held = Σ remaining after a multi-lot deduction');
+-- D13 stays about signup devices: a device only seen at login does not cost a second account its grant.
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-00000000b804', 'sanc-v@example.test');
+update public.profiles set terms_version = '2026-10-v1', terms_accepted_at = now(), adult_confirmed_at = now()
+ where id = '00000000-0000-0000-0000-00000000b804';
+select public.record_member_device('00000000-0000-0000-0000-00000000b804', repeat('e', 64), null);
+select is((public.complete_signup_credits('00000000-0000-0000-0000-00000000b804', repeat('9', 64), null) ->> 'granted')::boolean, true,
+          'D13 a device seen only at login does not block another account''s monthly grant');
 
 -- ---------------------------------------------------------------- linked accounts, privileges, RLS
 insert into res select 'linked', public.admin_linked_accounts('00000000-0000-0000-0000-000000000011',

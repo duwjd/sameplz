@@ -61,17 +61,23 @@ async function Upload({
     );
   // Rendered inside the wizard so a submit (which re-renders this page) keeps its done screen.
   const blocked =
-    edit?.status === "stopped"
+    edit?.status === "taken_down"
       ? {
-          title: "판매가 멈춘 레시피예요",
-          description: "판매가 멈춘 레시피는 새 버전을 올릴 수 없어요.",
+          title: "게시가 중단된 레시피예요",
+          description:
+            "운영 정책에 따라 게시가 중단된 레시피는 새 버전을 올릴 수 없어요. 이의는 고객센터로 알려 주세요.",
         }
-      : edit?.reviewPending
+      : edit?.status === "stopped"
         ? {
-            title: "사람이 확인하고 있는 버전이 있어요",
-            description: "1~2일 안에 확인이 끝나면 새 버전을 올릴 수 있어요.",
+            title: "판매가 멈춘 레시피예요",
+            description: "판매가 멈춘 레시피는 새 버전을 올릴 수 없어요.",
           }
-        : null;
+        : edit?.reviewPending
+          ? {
+              title: "사람이 확인하고 있는 버전이 있어요",
+              description: "1~2일 안에 확인이 끝나면 새 버전을 올릴 수 있어요.",
+            }
+          : null;
   return (
     <UploadWizard
       key={recipeId ?? "new"}

@@ -11,6 +11,8 @@ export interface Viewer {
   handle: string;
   avatarUrl: string | null;
   signupComplete: boolean;
+  /** profiles.role (user · staff · admin), read through my_account_status. */
+  role: string;
 }
 
 /** Signed-in viewer from verified claims (never getSession for authorization). */
@@ -36,5 +38,6 @@ export async function getViewer(): Promise<Viewer | null> {
     handle: profile.data.handle,
     avatarUrl: profile.data.avatar_url,
     signupComplete: Boolean(status.data?.[0]?.signup_complete),
+    role: status.data?.[0]?.role ?? "user",
   };
 }

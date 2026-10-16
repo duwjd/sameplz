@@ -41,6 +41,8 @@ function kstDate(iso: string): string {
 
 /** LIB-02 (MVP): 열기 전 / 열어 봄 / 판매 종료 — no refund wording (free launch). */
 function statusOf(row: LibraryRowDTO): LibraryRowStatus {
+  if (row.status === "taken_down")
+    return { label: "게시중단 · 열 수 없어요", tone: "ended" };
   if (row.status === "stopped")
     return { label: "판매 종료 · 계속 사용", tone: "ended" };
   return row.openedAt
@@ -189,43 +191,61 @@ export function LibraryView({
               meta={`${row.creatorNickname} · v${row.versionNo} · ${kstDate(row.claimedAt)} 받음`}
               status={statusOf(row)}
               newVersion={
-                row.updateAvailable && row.latestVersionNo
+                row.status !== "taken_down" &&
+                row.updateAvailable &&
+                row.latestVersionNo
                   ? `새 버전 v${row.latestVersionNo}${row.latestChangelog ? ` · ${row.latestChangelog}` : ""}`
                   : undefined
               }
-              onTitle={() => router.push(`/r/${row.publicId}`)}
+              onTitle={
+                row.status === "taken_down"
+                  ? undefined
+                  : () => router.push(`/r/${row.publicId}`)
+              }
               actions={
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  <Button
-                    size="sm"
-                    onClick={() => onOpen(row)}
-                    disabled={busy === row.entitlementId}
-                    aria-label={`「${row.title}」 원문 열기`}
+                row.status === "taken_down" ? (
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 13,
+                      color: "var(--sp-fg-secondary)",
+                    }}
                   >
-                    원문 열기
-                  </Button>
-                  {row.updateAvailable && (
+                    운영 정책에 따라 게시가 중단돼서 원문과 파일을 열 수 없어요.
+                  </p>
+                ) : (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     <Button
                       size="sm"
-                      variant="outline"
-                      onClick={() => onUpdate(row)}
+                      onClick={() => onOpen(row)}
                       disabled={busy === row.entitlementId}
-                      aria-label={`「${row.title}」 v${row.latestVersionNo}로 업데이트하기`}
+                      aria-label={`「${row.title}」 원문 열기`}
                     >
-                      업데이트하기
+                      원문 열기
                     </Button>
-                  )}
-                  {row.files.map((f) => (
-                    <a
-                      key={f.id}
-                      href={`/api/files/${row.versionId}?file=${f.id}`}
-                      style={linkStyle}
-                      aria-label={`${f.name} 파일 받기 (${formatFileSize(f.size)})`}
-                    >
-                      {f.name}
-                    </a>
-                  ))}
-                </div>
+                    {row.updateAvailable && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onUpdate(row)}
+                        disabled={busy === row.entitlementId}
+                        aria-label={`「${row.title}」 v${row.latestVersionNo}로 업데이트하기`}
+                      >
+                        업데이트하기
+                      </Button>
+                    )}
+                    {row.files.map((f) => (
+                      <a
+                        key={f.id}
+                        href={`/api/files/${row.versionId}?file=${f.id}`}
+                        style={linkStyle}
+                        aria-label={`${f.name} 파일 받기 (${formatFileSize(f.size)})`}
+                      >
+                        {f.name}
+                      </a>
+                    ))}
+                  </div>
+                )
               }
             />
           </li>

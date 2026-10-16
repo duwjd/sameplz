@@ -44,8 +44,10 @@ export async function getMyLibrary(): Promise<LibraryRowDTO[]> {
     updateAvailable: r.update_available,
     openedAt: r.opened_at ?? null,
     claimedAt: r.claimed_at,
-    files: Array.isArray(r.files)
-      ? (r.files as { id: string; name: string; size: number }[])
-      : [],
+    // F8-3: a taken-down recipe's files are not offered (the download is refused anyway).
+    files:
+      r.status !== "taken_down" && Array.isArray(r.files)
+        ? (r.files as { id: string; name: string; size: number }[])
+        : [],
   }));
 }

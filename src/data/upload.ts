@@ -119,13 +119,9 @@ async function signedUpload(bucket: string, path: string) {
 
 export async function createMediaUploadTarget(viewer: Viewer, mime: MediaMime) {
   // D18: uploads go to the private draft bucket; publishing moves them (src/data/media-sync.ts).
-  // Until the migration that creates the bucket is applied (app deploys first), fall back to the
-  // public bucket so uploads keep working; the queued sync moves them once the bucket exists.
   const path = `${viewer.id}/${crypto.randomUUID()}.${MEDIA_MIME[mime]}`;
   const draft = await signedUpload(DRAFT_MEDIA_BUCKET, path);
-  if (draft) return { ...draft, bucket: DRAFT_MEDIA_BUCKET };
-  const legacy = await signedUpload(MEDIA_BUCKET, path);
-  return legacy ? { ...legacy, bucket: MEDIA_BUCKET } : null;
+  return draft ? { ...draft, bucket: DRAFT_MEDIA_BUCKET } : null;
 }
 
 export async function createSkillZipTarget(viewer: Viewer, name: string) {

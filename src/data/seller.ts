@@ -14,7 +14,7 @@ import {
 import { isRejectCode, type RejectCode } from "@/lib/moderation/reject-codes";
 
 export type RecipeStatus =
-  "rejected" | "in_review" | "private" | "live" | "stopped";
+  "rejected" | "in_review" | "private" | "live" | "stopped" | "taken_down";
 
 export interface MyRecipeDTO {
   recipeId: string;
@@ -43,6 +43,7 @@ const STATUSES: RecipeStatus[] = [
   "private",
   "live",
   "stopped",
+  "taken_down",
 ];
 
 /** SELL-03 / F5-10: own recipes, rejected → in review → private → live, stats for the period. */

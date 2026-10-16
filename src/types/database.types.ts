@@ -995,14 +995,14 @@ isOneToOne: false
                   ]
                 },"recipes": {
                   Row: {
-                    "category": string,"created_at": string,"creator_nickname": string,"current_version_id": string | null,"filters": NonNullable<Json>,"fork_allowed": boolean,"forked_from_recipe_id": string | null,"forked_from_version_id": string | null,"id": string,"job_codes": (string)[],"owner_id": string,"price_krw": number,"prompt_kind": string | null,"public_id": string,"published_at": string | null,"search_tags": (string)[],"status": string,"stopped_at": string | null,"stopped_reason": string | null,"summary": string,"title": string,"tool_codes": (string)[],"updated_at": string
+                    "category": string,"created_at": string,"creator_nickname": string,"current_version_id": string | null,"filters": NonNullable<Json>,"fork_allowed": boolean,"forked_from_recipe_id": string | null,"forked_from_version_id": string | null,"id": string,"job_codes": (string)[],"owner_id": string,"price_krw": number,"prompt_kind": string | null,"public_id": string,"published_at": string | null,"search_tags": (string)[],"status": string,"stopped_at": string | null,"stopped_reason": string | null,"summary": string,"takedown_prior": Json | null,"title": string,"tool_codes": (string)[],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "category": string,"created_at"?: string,"creator_nickname"?: string,"current_version_id"?: string | null,"filters"?: NonNullable<Json>,"fork_allowed"?: boolean,"forked_from_recipe_id"?: string | null,"forked_from_version_id"?: string | null,"id"?: string,"job_codes": (string)[],"owner_id": string,"price_krw"?: number,"prompt_kind"?: string | null,"public_id"?: string,"published_at"?: string | null,"search_tags"?: (string)[],"status"?: string,"stopped_at"?: string | null,"stopped_reason"?: string | null,"summary"?: string,"title": string,"tool_codes"?: (string)[],"updated_at"?: string
+                    "category": string,"created_at"?: string,"creator_nickname"?: string,"current_version_id"?: string | null,"filters"?: NonNullable<Json>,"fork_allowed"?: boolean,"forked_from_recipe_id"?: string | null,"forked_from_version_id"?: string | null,"id"?: string,"job_codes": (string)[],"owner_id": string,"price_krw"?: number,"prompt_kind"?: string | null,"public_id"?: string,"published_at"?: string | null,"search_tags"?: (string)[],"status"?: string,"stopped_at"?: string | null,"stopped_reason"?: string | null,"summary"?: string,"takedown_prior"?: Json | null,"title": string,"tool_codes"?: (string)[],"updated_at"?: string
                   }
                   Update: {
-                    "category"?: string,"created_at"?: string,"creator_nickname"?: string,"current_version_id"?: string | null,"filters"?: NonNullable<Json>,"fork_allowed"?: boolean,"forked_from_recipe_id"?: string | null,"forked_from_version_id"?: string | null,"id"?: string,"job_codes"?: (string)[],"owner_id"?: string,"price_krw"?: number,"prompt_kind"?: string | null,"public_id"?: string,"published_at"?: string | null,"search_tags"?: (string)[],"status"?: string,"stopped_at"?: string | null,"stopped_reason"?: string | null,"summary"?: string,"title"?: string,"tool_codes"?: (string)[],"updated_at"?: string
+                    "category"?: string,"created_at"?: string,"creator_nickname"?: string,"current_version_id"?: string | null,"filters"?: NonNullable<Json>,"fork_allowed"?: boolean,"forked_from_recipe_id"?: string | null,"forked_from_version_id"?: string | null,"id"?: string,"job_codes"?: (string)[],"owner_id"?: string,"price_krw"?: number,"prompt_kind"?: string | null,"public_id"?: string,"published_at"?: string | null,"search_tags"?: (string)[],"status"?: string,"stopped_at"?: string | null,"stopped_reason"?: string | null,"summary"?: string,"takedown_prior"?: Json | null,"title"?: string,"tool_codes"?: (string)[],"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -1039,19 +1039,25 @@ isOneToOne: false
                   ]
                 },"reports": {
                   Row: {
-                    "answer": string | null,"created_at": string,"detail": string,"id": string,"reason": string,"reporter_id": string,"resolved_at": string | null,"status": string,"target_id": string,"target_type": string
+                    "answer": string | null,"created_at": string,"detail": string,"id": string,"outcome": string | null,"reason": string,"reporter_id": string,"resolved_at": string | null,"resolved_by": string | null,"status": string,"target_id": string,"target_type": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "answer"?: string | null,"created_at"?: string,"detail"?: string,"id"?: string,"reason": string,"reporter_id": string,"resolved_at"?: string | null,"status"?: string,"target_id": string,"target_type": string
+                    "answer"?: string | null,"created_at"?: string,"detail"?: string,"id"?: string,"outcome"?: string | null,"reason": string,"reporter_id": string,"resolved_at"?: string | null,"resolved_by"?: string | null,"status"?: string,"target_id": string,"target_type": string
                   }
                   Update: {
-                    "answer"?: string | null,"created_at"?: string,"detail"?: string,"id"?: string,"reason"?: string,"reporter_id"?: string,"resolved_at"?: string | null,"status"?: string,"target_id"?: string,"target_type"?: string
+                    "answer"?: string | null,"created_at"?: string,"detail"?: string,"id"?: string,"outcome"?: string | null,"reason"?: string,"reporter_id"?: string,"resolved_at"?: string | null,"resolved_by"?: string | null,"status"?: string,"target_id"?: string,"target_type"?: string
                   }
                   Relationships: [
                     {
       foreignKeyName: "reports_reporter_id_fkey"
       columns: ["reporter_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "reports_resolved_by_fkey"
+      columns: ["resolved_by"]
 isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
@@ -1204,6 +1210,15 @@ isOneToOne: false
 "admin_decide_review":
 { Args: { "p_actor": string,"p_code"?: string,"p_decision": string,"p_note"?: string,"p_version": string }; Returns: Json
                            },
+"admin_hide_post":
+{ Args: { "p_actor": string,"p_post": string,"p_reason": string }; Returns: Json
+                           },
+"admin_resolve_report":
+{ Args: { "p_actor": string,"p_answer": string,"p_outcome": string,"p_report": string }; Returns: Json
+                           },
+"admin_set_recipe_status":
+{ Args: { "p_action": string,"p_actor": string,"p_note"?: string,"p_reason": string,"p_recipe": string }; Returns: Json
+                           },
 "apply_update":
 { Args: { "p_entitlement_id": string }; Returns: Json
                            },
@@ -1300,6 +1315,9 @@ isOneToOne: false
 "mark_cell_submitted":
 { Args: { "p_cell": string,"p_provider_request_id": string }; Returns: boolean
                            },
+"mark_sla_alerts":
+{ Args: { "p_ids": (string)[],"p_kind": string }; Returns: number
+                           },
 "media_paths_public":
 { Args: { "p_paths": (string)[] }; Returns: Json
                            },
@@ -1346,6 +1364,9 @@ isOneToOne: false
 { Args: { "p_limit"?: number }; Returns: Json
                            },
 "pending_budget_alerts":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"pending_sla_alerts":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
 "play_precheck":

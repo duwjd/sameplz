@@ -19,7 +19,7 @@ Next.js 16.3.x · Supabase 서울(`ap-northeast-2`) · Vercel `icn1`. ORM은 쓰
 | 작업 | DB 내부 작업은 `pg_cron`(랭킹, 통계, 보류 해제, 정리), Node SDK가 필요한 작업만 Vercel Cron(지급 배치) | Vercel Cron은 Hobby 하루 1회, Pro 분 단위 |
 | UI·폼 | SAMEPLZ 디자인 시스템(Vapor 기반, `src/components/ds`, `--sp-*` 토큰) + Tailwind v4(레이아웃 보조), zod + react-hook-form 공용 스키마 | `docs/design-system.md`. shadcn은 쓰지 않는다 |
 | 테스트 | Vitest(수수료·크레딧 계산), pgTAP(RLS·원장 불변식), Playwright(SCN 12개) | 돈 경로를 테스트로 먼저 고정 |
-| 관측·분석 | Sentry, PostHog Cloud, Better Stack(가동 감시) | 무료 구간으로 출시 가능 |
+| 관측·분석 | Sentry, GA4(D21, PostHog 대신), Better Stack(가동 감시, MVP 뒤) | 무료 구간으로 출시 가능 |
 
 Next 16 변경점: `middleware.ts` → `proxy.ts`(Node 런타임), `params`·`cookies()` 비동기, `revalidateTag`는 cacheLife 프로필 필수.
 
@@ -129,7 +129,7 @@ Next 16 변경점: `middleware.ts` → `proxy.ts`(Node 런타임), `params`·`co
 
 ## 7. 분석·관측
 
-- 분석은 PostHog 하나. 결제·환불·지급·귀속 이벤트는 서버가 DB 기준으로 보낸다. 이름·전화·이메일·프롬프트 텍스트는 이벤트 속성에 넣지 않는다. `identify()` 범위를 처리방침·가입 동의 문구에 적는다.
+- 분석은 GA4 하나(D21, 원안은 PostHog). 결제·환불·지급·귀속 이벤트는 서버가 DB 기준으로 보낸다. 이름·전화·이메일·프롬프트 텍스트는 이벤트 속성에 넣지 않는다. `identify()` 범위를 처리방침·가입 동의 문구에 적는다.
 - 북극성: **주간 성공 SAME**(한 주 받은 레시피 중 7일 안 환불 또는 「설명과 달라요」 인정이 아닌 건 + SAME 인증 게시). 수수료 구조 성패는 **마켓 유입 매출 비중**.
 - 핵심 이벤트: `signup_completed`, `recipe_viewed`, `search_performed`, `play_run`, `checkout_started`, `purchase_completed`, `original_opened`, `refund_completed`, `report_submitted`, `same_posted`, `share_link_clicked`, `recipe_submitted`, `recipe_review_decided`, `payout_paid`.
 - 관측: Sentry(오류·크론 체크인), Better Stack 무료(모니터 10개, Slack 알림), Supabase 로그 7일.

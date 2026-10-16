@@ -20,13 +20,13 @@ Next.js 16.3.x App Router, `cacheComponents: true`. 서버 컴포넌트가 기�
 | `/admin/**` | ADM | 동적, noindex. MVP는 페이지마다 `requireAdmin()`(`profiles.role = 'admin'`, 아니면 NF) — `admin` 클레임 + MFA는 F8-4 |
 | `/auth/callback`(구글), `/auth/kakao`·`/auth/kakao/callback`(카카오 OIDC → ID 토큰), `/auth/naver`·`/auth/naver/callback`(D4-B) | 로그인 | Route Handler. 성공하면 가입 미완료는 `/welcome`, 실패는 `next?auth_error=` |
 | `/welcome` | 가입 마무리(F7-9) | 동적, 로그인 필수, noindex |
-| `/terms`, `/privacy` | 정책(초안 자리) | 정적 |
+| `/terms`, `/privacy`, `/policy/content`, `/policy/ai` | 정책(F7-7, 운영자 정보는 `src/lib/policy/operator.ts`) | 정적 |
 | `/api/webhooks/toss`, `/api/webhooks/generation/[provider]`, `/api/play/runs`, `/api/files/[versionId]`, `/api/cron/[job]` | — | Node 런타임, 원본 body로 서명 검증 |
 
 없는 주소·비공개·심사 중·반려 레시피는 같은 NF 화면(`src/app/not-found.tsx`, HTTP 404)이다. 존재 여부를 알리지 않는다.
 `/r/[id]`는 `params`와 캐시된 `getRecipePublic`을 Suspense **앞에서** 확인하고 `notFound()`한다(스트리밍이 시작되면 404 상태를 못 보낸다). `generateStaticParams`는 인기 레시피 20개(없으면 자리표시 1개 — Cache Components는 빈 배열을 거부).
 `/my/library`(LIB): 비회원은 로그인 안내, `?open=<권리 id>`면 그 원문을 바로 연다. 원문은 서버 액션 결과로만 클라이언트에 가고(`src/data/secrets.ts`), 파일은 `/api/files/[versionId]?file=<id>` → 60초 서명 URL 302.
-`sitemap.ts`(라이브 레시피·마켓)와 `robots.ts`(`/my`·`/checkout`·`/play`·`/admin`·`/welcome`·`/auth`·`/api` 제외).
+`sitemap.ts`(라이브 레시피·마켓·정책)와 `robots.ts`(`/my`·`/checkout`·`/play`·`/admin`·`/welcome`·`/auth`·`/api` 제외).
 
 ## 규칙
 

@@ -1,6 +1,8 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
+import { deviceHash, ipHash } from "@/lib/abuse/fingerprint";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { safeNext, withAuthError } from "./next-path";
 
@@ -62,6 +64,25 @@ export function loginFailed(
 export async function loginSucceeded(request: NextRequest, next: string) {
   const supabase = await createClient();
   const { data } = await supabase.rpc("my_account_status");
+  // F8-4: a banned account does not get a session.
+  if (data?.[0]?.sanction_level === "banned") {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(new URL("/blocked", request.nextUrl.origin));
+  }
+  // D13 linked accounts: record the device used to log in (hashes only), not only the signup one.
+  const secret = process.env.SUPABASE_SECRET_KEY;
+  const { data: claims } = await supabase.auth.getClaims();
+  if (secret && claims?.claims.sub)
+    await createAdminClient()
+      .rpc("record_member_device", {
+        p_user: claims.claims.sub,
+        p_device_hash: await deviceHash(secret),
+        p_ip_hash: (await ipHash(secret)) as string,
+      })
+      .then(
+        () => null,
+        () => null,
+      );
   const complete = Boolean(data?.[0]?.signup_complete);
   const target = complete
     ? safeNext(next)

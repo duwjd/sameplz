@@ -984,7 +984,7 @@
       "acceptance": "모든 조치는 사유 필수, `admin_actions`에 insert만",
       "week": 7,
       "scn": [],
-      "passes": false,
+      "passes": true,
       "mvp_note": "MVP: 크레딧 조정·제재 사다리·연결 계정(기기·IP 해시, CI 없음, D13)만. 주문·환불 예외·지급 모니터는 유료 전환 단계"
     }
   ]

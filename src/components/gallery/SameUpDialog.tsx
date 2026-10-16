@@ -38,6 +38,7 @@ const REASON_COPY: Record<string, string> = {
   RATE_LIMITED: "한 시간에 10개까지 올릴 수 있어요. 잠시 뒤에 다시 해 주세요.",
   MEDIA_NOT_UPLOADED: "이미지를 다시 올려 주세요.",
   SIGNUP_INCOMPLETE: "가입을 마치면 올릴 수 있어요.",
+  ACCOUNT_SUSPENDED: "이용이 제한된 계정이라 지금은 할 수 없어요. 자세한 건 알림을 확인해 주세요.",
   LOGIN_REQUIRED: "로그인하고 올려 주세요.",
 };
 

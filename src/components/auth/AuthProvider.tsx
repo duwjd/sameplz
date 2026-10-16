@@ -278,5 +278,14 @@ function AuthRouteEffects({
     };
   }, [needsSignup, pathname, router, refreshViewer]);
 
+  // F8-4: a banned account is signed out and shown /blocked (the server refuses its writes anyway).
+  const banned = viewer?.sanction?.level === "banned";
+  useEffect(() => {
+    if (!banned) return;
+    void createClient()
+      .auth.signOut()
+      .finally(() => router.replace("/blocked"));
+  }, [banned, router]);
+
   return null;
 }

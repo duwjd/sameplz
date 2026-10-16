@@ -9,7 +9,8 @@ import { getAdmin } from "@/lib/auth/admin";
 import { REJECT_CODES } from "@/lib/moderation/reject-codes";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export type AdminResult = { ok: true } | { ok: false; reason: string };
+export type AdminResult =
+  { ok: true; duplicate?: boolean } | { ok: false; reason: string };
 
 const rpcCode = (e: { code?: string; message: string } | null) =>
   e?.code === "P0001" ? e.message : "FAILED";
@@ -190,4 +191,114 @@ export async function resolveReport(input: unknown): Promise<AdminResult> {
   });
   if (error) return { ok: false, reason: rpcCode(error) };
   return { ok: true };
+}
+
+// ---------------------------------------------------------------- members (F8-4)
+
+const SanctionInput = z.object({
+  userId: z.uuid(),
+  level: z.enum(["warning", "seller_suspended", "account_suspended", "banned"]),
+  reason: z.enum([
+    "policy_violation",
+    "rights_claim",
+    "abuse",
+    "spam",
+    "other",
+  ]),
+  note: z.string().trim().max(500).default(""),
+  days: z.number().int().min(1).max(365).nullable().default(null),
+});
+
+export async function sanctionUser(input: unknown): Promise<AdminResult> {
+  const parsed = SanctionInput.safeParse(input);
+  if (!parsed.success) return { ok: false, reason: "INVALID" };
+  const admin = await getAdmin();
+  if (!admin) return { ok: false, reason: "NOT_ADMIN" };
+  const p = parsed.data;
+  const { error } = await createAdminClient().rpc("admin_sanction", {
+    p_actor: admin.id,
+    p_user: p.userId,
+    p_level: p.level,
+    p_reason: p.reason,
+    p_note: p.note,
+    // Warnings and bans have no period.
+    p_days: (p.level === "seller_suspended" || p.level === "account_suspended"
+      ? p.days
+      : null) as number,
+  });
+  return error ? { ok: false, reason: rpcCode(error) } : { ok: true };
+}
+
+const LiftInput = z.object({
+  sanctionId: z.uuid(),
+  note: z.string().trim().min(1).max(500),
+});
+
+export async function liftSanction(input: unknown): Promise<AdminResult> {
+  const parsed = LiftInput.safeParse(input);
+  if (!parsed.success) return { ok: false, reason: "REASON_REQUIRED" };
+  const admin = await getAdmin();
+  if (!admin) return { ok: false, reason: "NOT_ADMIN" };
+  const { error } = await createAdminClient().rpc("admin_lift_sanction", {
+    p_actor: admin.id,
+    p_sanction: parsed.data.sanctionId,
+    p_note: parsed.data.note,
+  });
+  return error ? { ok: false, reason: rpcCode(error) } : { ok: true };
+}
+
+const ResumeInput = z.object({
+  userId: z.uuid(),
+  note: z.string().trim().min(1).max(500),
+});
+
+export async function liftGenerationSuspension(
+  input: unknown,
+): Promise<AdminResult> {
+  const parsed = ResumeInput.safeParse(input);
+  if (!parsed.success) return { ok: false, reason: "REASON_REQUIRED" };
+  const admin = await getAdmin();
+  if (!admin) return { ok: false, reason: "NOT_ADMIN" };
+  const { error } = await createAdminClient().rpc(
+    "admin_lift_generation_suspension",
+    { p_actor: admin.id, p_user: parsed.data.userId, p_note: parsed.data.note },
+  );
+  return error ? { ok: false, reason: rpcCode(error) } : { ok: true };
+}
+
+const AdjustInput = z.object({
+  userId: z.uuid(),
+  amount: z
+    .number()
+    .int()
+    .min(-1000)
+    .max(1000)
+    .refine((n) => n !== 0),
+  reason: z.string().trim().min(1).max(200),
+  /** Generated once per opened form, so a double submit adjusts once. */
+  idem: z.uuid(),
+});
+
+/** Money: the amount is the admin's input, the SQL function does the ledger work (rule 4). */
+export async function adjustCredits(input: unknown): Promise<AdminResult> {
+  const parsed = AdjustInput.safeParse(input);
+  if (!parsed.success) return { ok: false, reason: "INVALID_AMOUNT" };
+  const admin = await getAdmin();
+  if (!admin) return { ok: false, reason: "NOT_ADMIN" };
+  const p = parsed.data;
+  const { data, error } = await createAdminClient().rpc(
+    "admin_adjust_credits",
+    {
+      p_actor: admin.id,
+      p_user: p.userId,
+      p_amount: p.amount,
+      p_reason: p.reason,
+      p_idem: p.idem,
+    },
+  );
+  if (error) return { ok: false, reason: rpcCode(error) };
+  return {
+    ok: true,
+    duplicate: Boolean((data as { duplicate?: boolean } | null)?.duplicate),
+  };
 }

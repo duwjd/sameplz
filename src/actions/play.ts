@@ -2,17 +2,18 @@
 import { z } from "zod";
 import { createRefUpload, isRefMime, MAX_REF_BYTES } from "@/data/play";
 import { getMyRuns, type PlayRunDTO } from "@/data/playground";
-import { getViewer } from "@/lib/auth/account";
+import { getViewer, sanctionBlock } from "@/lib/auth/account";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { RunCellSchema } from "@/lib/validation/play";
 
-type Gate = "LOGIN_REQUIRED" | "SIGNUP_INCOMPLETE";
+type Gate = "LOGIN_REQUIRED" | "SIGNUP_INCOMPLETE" | "ACCOUNT_SUSPENDED";
 
 async function member(): Promise<{ id: string } | Gate> {
   const viewer = await getViewer();
   if (!viewer) return "LOGIN_REQUIRED";
   if (!viewer.signupComplete) return "SIGNUP_INCOMPLETE";
+  if (sanctionBlock(viewer, "account")) return "ACCOUNT_SUSPENDED";
   return viewer;
 }
 
@@ -138,7 +139,9 @@ export async function refreshRuns(input: unknown): Promise<PlayRunDTO[]> {
   if (!parsed.success) return [];
   const who = await member();
   if (typeof who === "string") return [];
-  const { data: allowed } = await createAdminClient().rpc("hit_play_refresh", { p_user: who.id });
+  const { data: allowed } = await createAdminClient().rpc("hit_play_refresh", {
+    p_user: who.id,
+  });
   if (allowed !== true) return [];
   return getMyRuns({ runIds: parsed.data, limit: parsed.data.length });
 }

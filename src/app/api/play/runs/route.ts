@@ -90,6 +90,8 @@ export async function POST(request: NextRequest) {
     return fail(refs);
   }
 
+  const runIp = await ipHash(secret);
+  const runDevice = await deviceHash(secret);
   const started = await startRun({
     userId: viewer.id,
     clientRequestId: req.clientRequestId,
@@ -102,8 +104,8 @@ export async function POST(request: NextRequest) {
     referenceIds: req.referenceIds,
     faceConsent: req.faceConsent,
     renderedPrompt: rendered,
-    ipHash: await ipHash(secret),
-    deviceHash: await deviceHash(secret),
+    ipHash: runIp,
+    deviceHash: runDevice,
   });
   if (!started.ok)
     return fail(
@@ -120,8 +122,20 @@ export async function POST(request: NextRequest) {
       p_user: viewer.id,
       p_text: rendered,
     });
-  if (!started.existing)
+  if (!started.existing) {
+    // D13 linked accounts: the device that generates is recorded too (hashes only).
+    await createAdminClient()
+      .rpc("record_member_device", {
+        p_user: viewer.id,
+        p_device_hash: runDevice,
+        p_ip_hash: runIp as string,
+      })
+      .then(
+        () => null,
+        () => null,
+      );
     await Promise.allSettled(started.cellIds.map((id) => submitCell(id)));
+  }
 
   return NextResponse.json(
     {

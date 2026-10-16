@@ -11,7 +11,7 @@ import {
   hitUploadTargetLimit,
   inspectOwnUpload,
 } from "@/data/upload";
-import { getViewer, type Viewer } from "@/lib/auth/account";
+import { getViewer, sanctionBlock, type Viewer } from "@/lib/auth/account";
 import { checkImage } from "@/lib/moderation/play";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -28,12 +28,13 @@ import {
   type UploadForm,
 } from "@/lib/validation/upload";
 
-type Gate = "LOGIN_REQUIRED" | "SIGNUP_INCOMPLETE";
+type Gate = "LOGIN_REQUIRED" | "SIGNUP_INCOMPLETE" | "ACCOUNT_SUSPENDED";
 
 async function member(): Promise<Viewer | Gate> {
   const viewer = await getViewer();
   if (!viewer) return "LOGIN_REQUIRED";
   if (!viewer.signupComplete) return "SIGNUP_INCOMPLETE";
+  if (sanctionBlock(viewer, "account")) return "ACCOUNT_SUSPENDED";
   return viewer;
 }
 
@@ -233,8 +234,9 @@ const PostId = z.object({ postId: z.guid() });
 export async function removeSameCert(input: unknown): Promise<{ ok: boolean }> {
   const parsed = PostId.safeParse(input);
   if (!parsed.success) return { ok: false };
-  const viewer = await member();
-  if (typeof viewer === "string") return { ok: false };
+  // Taking one's own post down is always allowed, sanctioned or not.
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("gallery_posts")

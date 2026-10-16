@@ -161,6 +161,7 @@ export async function promptBodyForRun(
       .select("id")
       .eq("user_id", userId)
       .eq("recipe_id", v.recipe_id)
+      .eq("version_id", versionId) // F3-8: only the version they received
       .is("revoked_at", null)
       .limit(1);
     if (!e?.length) return null;

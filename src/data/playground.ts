@@ -82,7 +82,8 @@ export interface PlayRecipeDTO {
   variables: PlayVariable[];
 }
 
-/** Own prompt recipes (not stopped) and received live prompt recipes, latest version each. */
+/** Own prompt recipes (not stopped, latest version) and received live prompt recipes at the version
+ * the member received (F3-8: pinned until they update in the library). */
 export async function getPlayRecipes(viewer: Viewer): Promise<PlayRecipeDTO[]> {
   const supabase = await createClient();
   const [own, received] = await Promise.all([
@@ -97,16 +98,19 @@ export async function getPlayRecipes(viewer: Viewer): Promise<PlayRecipeDTO[]> {
       .limit(50),
     supabase
       .from("entitlements")
-      .select("recipe_id")
+      .select("recipe_id, version_id")
       .eq("user_id", viewer.id)
       .is("revoked_at", null)
       .limit(200),
   ]);
   const ownRows = own.data ?? [];
   const ownIds = new Set(ownRows.map((r) => r.id));
-  const receivedIds = (received.data ?? [])
-    .map((e) => e.recipe_id)
-    .filter((id) => !ownIds.has(id));
+  const pinned = new Map(
+    (received.data ?? [])
+      .filter((e) => !ownIds.has(e.recipe_id))
+      .map((e) => [e.recipe_id, e.version_id]),
+  );
+  const receivedIds = [...pinned.keys()];
   const { data: recv } = receivedIds.length
     ? await supabase
         .from("recipes")
@@ -118,14 +122,18 @@ export async function getPlayRecipes(viewer: Viewer): Promise<PlayRecipeDTO[]> {
     : { data: [] as typeof ownRows };
   const rows = [
     ...ownRows.map((r) => ({ ...r, mode: "own" as const })),
-    ...(recv ?? []).map((r) => ({ ...r, mode: "free" as const })),
+    ...(recv ?? []).map((r) => ({
+      ...r,
+      current_version_id: pinned.get(r.id) ?? r.current_version_id,
+      mode: "free" as const,
+    })),
   ];
   if (!rows.length) return [];
   // Public meta only ([변수] names, help, examples). Read with the admin client: an own recipe's
   // version under review is not readable through public RLS.
   const { data: versions } = await createAdminClient()
     .from("recipe_versions")
-    .select("id, public_meta")
+    .select("id, public_meta, review_status")
     .in(
       "id",
       rows.map((r) => r.current_version_id!),
@@ -133,19 +141,27 @@ export async function getPlayRecipes(viewer: Viewer): Promise<PlayRecipeDTO[]> {
   const metaOf = new Map(
     (versions ?? []).map((v) => [v.id, parseRecipeMeta(v.public_meta)]),
   );
-  return rows.map((r) => ({
-    publicId: r.public_id,
-    title: r.title,
-    versionId: r.current_version_id!,
-    mode: r.mode,
-    variables: (metaOf.get(r.current_version_id!)?.variables ?? []).map(
-      (v) => ({
-        name: v.name,
-        description: v.description,
-        example: v.example,
-      }),
-    ),
-  }));
+  // A received recipe is runnable only at an approved version (start_run refuses anything else).
+  const approved = new Set(
+    (versions ?? [])
+      .filter((v) => v.review_status === "approved")
+      .map((v) => v.id),
+  );
+  return rows
+    .filter((r) => r.mode === "own" || approved.has(r.current_version_id!))
+    .map((r) => ({
+      publicId: r.public_id,
+      title: r.title,
+      versionId: r.current_version_id!,
+      mode: r.mode,
+      variables: (metaOf.get(r.current_version_id!)?.variables ?? []).map(
+        (v) => ({
+          name: v.name,
+          description: v.description,
+          example: v.example,
+        }),
+      ),
+    }));
 }
 
 // ---------------------------------------------------------------- runs (PLAY-05/06)
@@ -267,7 +283,9 @@ export async function getMyRuns(
     recipeTitle: r.recipe_version_id
       ? (titles.get(r.recipe_version_id) ?? null)
       : null,
-    recipeId: r.recipe_version_id ? (recipeOf.get(r.recipe_version_id) ?? null) : null,
+    recipeId: r.recipe_version_id
+      ? (recipeOf.get(r.recipe_version_id) ?? null)
+      : null,
     cells: (cells ?? [])
       .filter((c) => c.run_id === r.id)
       .map((c) => {

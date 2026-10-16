@@ -35,6 +35,20 @@ export async function GET(
     p_version_id: versionId,
     p_file_id: fileId!,
   });
+  if (error?.message === "RATE_LIMITED")
+    // A plain link opens this in the browser: answer with a readable page, not JSON.
+    return new NextResponse(
+      '<!doctype html><meta charset="utf-8"><title>잠시 뒤에 받아 주세요 · SAMEPLZ</title>' +
+        '<p style="font-family:sans-serif;padding:24px">한 시간에 받을 수 있는 파일 수(120개)를 넘었어요. 1시간 뒤에 다시 받아 주세요.</p>',
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+          "Retry-After": "3600",
+        },
+      },
+    );
   const file = data?.[0];
   if (error || !file) return notFound();
 

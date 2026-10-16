@@ -3,7 +3,7 @@
 -- adjustments as adjust rows, linked accounts by device / IP hash (D13, probabilistic).
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(40);
+select plan(50);
 
 -- S is sanctioned; T shares S's device and gets credit adjustments. A is the seed admin (…0011).
 insert into auth.users (id, email) values
@@ -23,6 +23,12 @@ insert into public.recipes (id, public_id, owner_id, category, prompt_kind, titl
 values ('00000000-0000-0000-0000-00000000b810', 'rsanc00001', '00000000-0000-0000-0000-00000000b801',
         'prompt', 'image', '제재 시험', '요약', 'private', '제재', array['commerce']);
 
+-- A live recipe of S and an open session (a ban must end both).
+insert into public.recipes (id, public_id, owner_id, category, prompt_kind, title, summary, status, creator_nickname, job_codes, published_at)
+values ('00000000-0000-0000-0000-00000000b811', 'rsanc00002', '00000000-0000-0000-0000-00000000b801',
+        'prompt', 'image', '제재 공개 시험', '요약', 'live', '제재', array['commerce'], now());
+insert into auth.sessions (id, user_id, created_at, updated_at)
+values (gen_random_uuid(), '00000000-0000-0000-0000-00000000b801', now(), now());
 create function pg_temp.login_as(uid text) returns void language plpgsql as $$
 begin
   perform set_config('role', 'authenticated', true);
@@ -62,6 +68,8 @@ select lives_ok($$ select public.claim_free_recipe('aaaaaaaa-0000-0000-0000-0000
                 'F8-4 a warned member still receives recipes');
 select pg_temp.as_postgres();
 
+insert into public.recipe_drafts (id, owner_id, category, payload)
+values ('00000000-0000-0000-0000-00000000b820', '00000000-0000-0000-0000-00000000b801', 'prompt', '{}');
 -- ---------------------------------------------------------------- seller suspension: uploads only
 insert into res select 'seller', pg_temp.sanction('seller_suspended', 7);
 select throws_ok($$ insert into public.recipe_drafts (owner_id, category, payload)
@@ -70,6 +78,12 @@ select throws_ok($$ insert into public.recipe_drafts (owner_id, category, payloa
 select throws_ok($$ insert into public.recipe_versions (recipe_id, version_no, changelog, review_status, public_meta)
                     values ('00000000-0000-0000-0000-00000000b810', 1, '첫 버전', 'draft', '{}') $$,
                  'P0001', 'SELLER_SUSPENDED', 'F8-4 a seller suspension refuses new versions');
+select throws_ok($$ update public.recipe_drafts set step = 2 where id = '00000000-0000-0000-0000-00000000b820' $$,
+                 'P0001', 'SELLER_SUSPENDED', 'F8-4 a seller suspension also freezes existing drafts');
+select pg_temp.login_as('00000000-0000-0000-0000-00000000b801');
+select throws_ok($$ select public.set_recipe_visibility('00000000-0000-0000-0000-00000000b810', 'public') $$,
+                 'P0001', 'SELLER_SUSPENDED', 'F8-4 a seller-suspended creator cannot republish');
+select pg_temp.as_postgres();
 select pg_temp.login_as('00000000-0000-0000-0000-00000000b801');
 select lives_ok($$ insert into public.recipe_likes (user_id, recipe_id)
                    values ('00000000-0000-0000-0000-00000000b801', 'aaaaaaaa-0000-0000-0000-000000000002') $$,
@@ -129,6 +143,24 @@ select throws_ok($$ update public.account_sanctions set level = 'warning'
                     where user_id = '00000000-0000-0000-0000-00000000b801' and level = 'banned' $$,
                  'P0001', 'SANCTION_IMMUTABLE', 'F8-4 a sanction cannot be rewritten, only lifted');
 
+-- What a ban (and any suspension) must also stop (security audit).
+select pg_temp.login_as('00000000-0000-0000-0000-00000000b801');
+select throws_ok($$ select public.set_recipe_visibility('00000000-0000-0000-0000-00000000b810', 'public') $$,
+                 'P0001', 'ACCOUNT_SUSPENDED', 'F8-4 a sanctioned creator cannot put a recipe back on the market');
+select throws_ok($$ update public.profiles set bio = '스팸' where id = '00000000-0000-0000-0000-00000000b801' $$,
+                 'P0001', 'ACCOUNT_SUSPENDED', 'F8-4 a suspended member cannot rewrite their public profile');
+select pg_temp.as_postgres();
+select throws_ok($$ insert into public.share_links (recipe_id, creator_id, code)
+                    values ('00000000-0000-0000-0000-00000000b810', '00000000-0000-0000-0000-00000000b801', 'sancshare1') $$,
+                 'P0001', 'ACCOUNT_SUSPENDED', 'F8-4 a sanctioned creator cannot mint share links');
+select is((select count(*)::integer from auth.sessions where user_id = '00000000-0000-0000-0000-00000000b801'), 0,
+          'F8-4 a ban ends the member''s sessions');
+select is((select count(*)::integer from public.recipes
+            where owner_id = '00000000-0000-0000-0000-00000000b801' and status = 'live'), 0,
+          'F8-4 a ban stops the member''s live recipes (holders keep what they received)');
+select ok(not has_function_privilege('authenticated', 'private.active_sanction(uuid)', 'execute'),
+          'F8-4 members cannot look up anyone''s sanction level');
+
 -- ---------------------------------------------------------------- generation suspension lift
 update public.credit_accounts set generation_suspended_at = now() where user_id = '00000000-0000-0000-0000-00000000b802';
 select public.admin_lift_generation_suspension('00000000-0000-0000-0000-000000000011',
@@ -145,6 +177,10 @@ select ok((select count(*) = 1 from public.credit_lots
           'F8-4 +50C is a promo lot that lapses at this month''s reset (no carry-over, D11)');
 select is(pg_temp.adjust(50, 'adj-1') ->> 'duplicate', 'true', 'F8-4 the same idem key adjusts once');
 select is(pg_temp.avail(), 320, 'F8-4 a repeated adjustment changes nothing');
+-- Rows made in one transaction share created_at, so give the lots distinct expiries: the monthly lot
+-- expires first and must be the one held and deducted from.
+update public.credit_lots set expires_at = expires_at + interval '1 day'
+ where user_id = '00000000-0000-0000-0000-00000000b802' and kind = 'promo';
 select private.place_hold('c0000000-0000-0000-0000-0000000b8001', '00000000-0000-0000-0000-00000000b802', 20);
 select pg_temp.adjust(-100, 'adj-2');
 select ok((select remaining = 170 and held = 20 from public.credit_lots
@@ -177,6 +213,12 @@ select pg_temp.login_as('00000000-0000-0000-0000-00000000b802');
 select is((select count(*)::integer from public.account_sanctions where user_id = '00000000-0000-0000-0000-00000000b801'), 0,
           'F8-4 a member cannot see someone else''s sanctions');
 select pg_temp.as_postgres();
+
+select public.record_member_device('00000000-0000-0000-0000-00000000b802', repeat('a', 63) || 'b', null);
+select is((select count(*)::integer from public.account_devices where user_id = '00000000-0000-0000-0000-00000000b802'), 2,
+          'F8-4 a device seen at login is recorded for linked-account matching');
+select ok(not has_function_privilege('authenticated', 'public.record_member_device(uuid, text, text)', 'execute'),
+          'F8-4 members cannot write device records');
 
 select * from finish();
 rollback;

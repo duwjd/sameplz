@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Fira_Code } from "next/font/google";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { Analytics } from "@/components/shell/Analytics";
+import { ErrorReporter } from "@/components/shell/ErrorReporter";
 import { SanctionBanner } from "@/components/shell/SanctionBanner";
 import { AppFooter } from "@/components/shell/AppFooter";
 import { Suspense } from "react";
@@ -39,6 +41,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <SanctionBanner />
           {children}
           <AppFooter />
+          {/* usePathname() is request data: keep it out of the static shell. */}
+          <Suspense fallback={null}>
+            <Analytics />
+          </Suspense>
+          <ErrorReporter />
         </AuthProvider>
       </body>
     </html>

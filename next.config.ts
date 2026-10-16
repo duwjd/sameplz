@@ -26,7 +26,7 @@ const gaConnect = gaOn
     ]
   : [];
 const sentry = process.env.NEXT_PUBLIC_SENTRY_DSN
-  ? ["https://*.ingest.sentry.io", "https://*.ingest.us.sentry.io"]
+  ? ["https://*.ingest.sentry.io", "https://*.ingest.us.sentry.io", "https://*.ingest.de.sentry.io"]
   : [];
 // OAuth avatars (Google, Kakao, Naver) shown as profile pictures.
 const avatars = [

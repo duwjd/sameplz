@@ -117,7 +117,8 @@ export async function searchMarket(query: MarketQuery): Promise<MarketResult> {
     p_limit: MARKET_PAGE_SIZE,
     p_offset: (query.page - 1) * MARKET_PAGE_SIZE,
   });
-  if (error) throw error;
+  // Code only: Postgres messages can echo the search terms (they would reach error tracking).
+  if (error) throw new Error(`search_recipes failed: ${error.code}`);
 
   const rows = data ?? [];
   const total = rows.length > 0 ? Number(rows[0].total_count) : 0;

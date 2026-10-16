@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 
 // GA4 / Sentry (D21) are listed only once they are switched on, so the policy never claims more than runs.
 const GA_ON = Boolean(process.env.NEXT_PUBLIC_GA_ID);
-const SENTRY_ON = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN);
+const SENTRY_ON = Boolean(process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN);
 
 const PROCESSORS: [string, string, string, string][] = [
   [

@@ -1365,6 +1365,9 @@ isOneToOne: false
 "mark_cell_submitted":
 { Args: { "p_cell": string,"p_provider_request_id": string }; Returns: boolean
                            },
+"mark_ops_alert":
+{ Args: { "p_kind": string }; Returns: undefined
+                           },
 "mark_sla_alerts":
 { Args: { "p_ids": (string)[],"p_kind": string }; Returns: number
                            },
@@ -1409,6 +1412,12 @@ isOneToOne: false
                            },
 "open_original":
 { Args: { "p_entitlement_id": string }; Returns: Json
+                           },
+"ops_alert_due":
+{ Args: { "p_kind": string }; Returns: boolean
+                           },
+"ops_health":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "orphan_uploads":
 { Args: { "p_limit"?: number }; Returns: Json

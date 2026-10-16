@@ -1,6 +1,7 @@
 "use client";
 // m:sameup / m:sameupEmpty (GAL-04, F6-1/3, F4-11): post a SAME 인증 for a received recipe. From the
 // playground the result comes as it is (「여기서 생성」); otherwise the user uploads an image.
+import { track } from "@/lib/analytics";
 import Link from "next/link";
 import { useState } from "react";
 import { createSameUpload, postSameCert } from "@/actions/gallery";
@@ -38,7 +39,8 @@ const REASON_COPY: Record<string, string> = {
   RATE_LIMITED: "한 시간에 10개까지 올릴 수 있어요. 잠시 뒤에 다시 해 주세요.",
   MEDIA_NOT_UPLOADED: "이미지를 다시 올려 주세요.",
   SIGNUP_INCOMPLETE: "가입을 마치면 올릴 수 있어요.",
-  ACCOUNT_SUSPENDED: "이용이 제한된 계정이라 지금은 할 수 없어요. 자세한 건 알림을 확인해 주세요.",
+  ACCOUNT_SUSPENDED:
+    "이용이 제한된 계정이라 지금은 할 수 없어요. 자세한 건 알림을 확인해 주세요.",
   LOGIN_REQUIRED: "로그인하고 올려 주세요.",
 };
 
@@ -164,7 +166,9 @@ export function SameUpDialog({
     const first = Object.keys(e)[0];
     if (first) {
       // The file input is hidden: focus its visible picker button instead.
-      document.getElementById(first === "same-media" ? "same-media-pick" : fid(first))?.focus();
+      document
+        .getElementById(first === "same-media" ? "same-media-pick" : fid(first))
+        ?.focus();
       return;
     }
     setBusy(true);
@@ -184,6 +188,7 @@ export function SameUpDialog({
       );
       return;
     }
+    track("same_cert_post", { generated_here: Boolean(playResult) });
     notify(
       r.status === "visible"
         ? "SAME 인증을 올렸어요. 갤러리 맨 위에 보여요."
@@ -263,7 +268,11 @@ export function SameUpDialog({
                 size="md"
                 variant="outline"
                 color="secondary"
-                aria-describedby={errors["same-media"] ? `${fid("same-media")}-error` : undefined}
+                aria-describedby={
+                  errors["same-media"]
+                    ? `${fid("same-media")}-error`
+                    : undefined
+                }
                 disabled={busy}
                 onClick={() =>
                   document.getElementById(fid("same-media"))?.click()

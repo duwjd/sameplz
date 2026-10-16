@@ -759,14 +759,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "adult_confirmed_at": string | null,"ai_notice_ack_at": string | null,"avatar_url": string | null,"bio": string | null,"created_at": string,"deleted_at": string | null,"expert_badge": string | null,"handle": string,"id": string,"job_codes": (string)[],"nickname": string,"role": string,"terms_accepted_at": string | null,"terms_version": string | null,"updated_at": string
+                    "adult_confirmed_at": string | null,"ai_notice_ack_at": string | null,"avatar_url": string | null,"bio": string | null,"created_at": string,"deleted_at": string | null,"expert_badge": string | null,"handle": string,"id": string,"job_codes": (string)[],"nickname": string,"purged_at": string | null,"role": string,"terms_accepted_at": string | null,"terms_version": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "adult_confirmed_at"?: string | null,"ai_notice_ack_at"?: string | null,"avatar_url"?: string | null,"bio"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"expert_badge"?: string | null,"handle": string,"id": string,"job_codes"?: (string)[],"nickname": string,"role"?: string,"terms_accepted_at"?: string | null,"terms_version"?: string | null,"updated_at"?: string
+                    "adult_confirmed_at"?: string | null,"ai_notice_ack_at"?: string | null,"avatar_url"?: string | null,"bio"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"expert_badge"?: string | null,"handle": string,"id": string,"job_codes"?: (string)[],"nickname": string,"purged_at"?: string | null,"role"?: string,"terms_accepted_at"?: string | null,"terms_version"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "adult_confirmed_at"?: string | null,"ai_notice_ack_at"?: string | null,"avatar_url"?: string | null,"bio"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"expert_badge"?: string | null,"handle"?: string,"id"?: string,"job_codes"?: (string)[],"nickname"?: string,"role"?: string,"terms_accepted_at"?: string | null,"terms_version"?: string | null,"updated_at"?: string
+                    "adult_confirmed_at"?: string | null,"ai_notice_ack_at"?: string | null,"avatar_url"?: string | null,"bio"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"expert_badge"?: string | null,"handle"?: string,"id"?: string,"job_codes"?: (string)[],"nickname"?: string,"purged_at"?: string | null,"role"?: string,"terms_accepted_at"?: string | null,"terms_version"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     

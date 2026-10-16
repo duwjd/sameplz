@@ -2,7 +2,7 @@
 -- versions, hidden originals (0 policies), frozen approved versions, media, collections, banners.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(20);
 
 create or replace function pg_temp.login_as(uid uuid) returns void language plpgsql as $$
 begin
@@ -34,7 +34,8 @@ select is((select count(*) from public.recipes where id = 'aaaaaaaa-0000-0000-00
           'recipes: owner sees own in_review recipe');
 select is((select count(*) from public.recipe_versions where recipe_id = 'aaaaaaaa-0000-0000-0000-000000000016'), 1::bigint,
           'recipe_versions: owner sees own pending version');
-update public.recipes set title = '남의 레시피 수정' where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+select throws_ok($$ update public.recipes set title = '남의 레시피 수정' where id = 'aaaaaaaa-0000-0000-0000-000000000001' $$,
+          '42501', null, 'recipes: members have no direct update at all (SEC grants)');
 select throws_ok($$ insert into public.recipes (owner_id, category, title, job_codes)
                     values ('00000000-0000-0000-0000-000000000003', 'skill', '직접 올리기', '{office}') $$,
           '42501', null, 'recipes: no client insert even for self (upload RPC only)');

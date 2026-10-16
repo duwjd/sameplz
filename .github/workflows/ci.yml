@@ -40,7 +40,7 @@ jobs:
       app: ${{ steps.d.outputs.app }}
       db: ${{ steps.d.outputs.db }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - id: d
         run: |
           if [ -f package.json ]; then echo "app=true" >> "$GITHUB_OUTPUT"; else echo "app=false" >> "$GITHUB_OUTPUT"; fi
@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Parse harness JSON
         run: |
           for f in .claude/settings.json .mcp.json docs/features.json vercel.json; do
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4          # TODO(unverified): version
       - uses: actions/setup-node@v4         # TODO(unverified): version
         with:
@@ -89,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: supabase/setup-cli@v1         # CLI version pinned below; bump with local `supabase --version`
         with:
           version: 2.120.0 # pinned: "latest" queries the GitHub API unauthenticated and hits rate limits
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -154,7 +154,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2   # TODO(unverified): version / license requirement
@@ -165,6 +165,6 @@ jobs:
   # plugin:
   #   runs-on: ubuntu-latest
   #   steps:
-  #     - uses: actions/checkout@v6
+  #     - uses: actions/checkout@v7
   #     - run: npm install -g @anthropic-ai/claude-code
   #     - run: claude plugin validate --strict plugins/sprint-flow

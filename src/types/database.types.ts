@@ -649,14 +649,14 @@ isOneToOne: false
                   ]
                 },"play_cells": {
                   Row: {
-                    "attempts": number,"created_at": string,"deadline_at": string | null,"delete_after": string | null,"error_code": string | null,"finished_at": string | null,"id": string,"model_id": string,"next_attempt_at": string,"params": NonNullable<Json>,"price_credits": number,"price_version": number,"provider_request_id": string | null,"result_path": string | null,"run_id": string,"saved_at": string | null,"status": string,"submitted_at": string | null,"user_id": string,"webhook_token_hash": string | null
+                    "attempts": number,"created_at": string,"deadline_at": string | null,"delete_after": string | null,"error_code": string | null,"finished_at": string | null,"id": string,"model_id": string,"next_attempt_at": string,"params": NonNullable<Json>,"price_credits": number,"price_version": number,"provider_request_id": string | null,"result_path": string | null,"run_id": string,"saved_at": string | null,"status": string,"submit_pending_at": string | null,"submitted_at": string | null,"user_id": string,"webhook_token_hash": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "attempts"?: number,"created_at"?: string,"deadline_at"?: string | null,"delete_after"?: string | null,"error_code"?: string | null,"finished_at"?: string | null,"id"?: string,"model_id": string,"next_attempt_at"?: string,"params": NonNullable<Json>,"price_credits": number,"price_version": number,"provider_request_id"?: string | null,"result_path"?: string | null,"run_id": string,"saved_at"?: string | null,"status"?: string,"submitted_at"?: string | null,"user_id": string,"webhook_token_hash"?: string | null
+                    "attempts"?: number,"created_at"?: string,"deadline_at"?: string | null,"delete_after"?: string | null,"error_code"?: string | null,"finished_at"?: string | null,"id"?: string,"model_id": string,"next_attempt_at"?: string,"params": NonNullable<Json>,"price_credits": number,"price_version": number,"provider_request_id"?: string | null,"result_path"?: string | null,"run_id": string,"saved_at"?: string | null,"status"?: string,"submit_pending_at"?: string | null,"submitted_at"?: string | null,"user_id": string,"webhook_token_hash"?: string | null
                   }
                   Update: {
-                    "attempts"?: number,"created_at"?: string,"deadline_at"?: string | null,"delete_after"?: string | null,"error_code"?: string | null,"finished_at"?: string | null,"id"?: string,"model_id"?: string,"next_attempt_at"?: string,"params"?: NonNullable<Json>,"price_credits"?: number,"price_version"?: number,"provider_request_id"?: string | null,"result_path"?: string | null,"run_id"?: string,"saved_at"?: string | null,"status"?: string,"submitted_at"?: string | null,"user_id"?: string,"webhook_token_hash"?: string | null
+                    "attempts"?: number,"created_at"?: string,"deadline_at"?: string | null,"delete_after"?: string | null,"error_code"?: string | null,"finished_at"?: string | null,"id"?: string,"model_id"?: string,"next_attempt_at"?: string,"params"?: NonNullable<Json>,"price_credits"?: number,"price_version"?: number,"provider_request_id"?: string | null,"result_path"?: string | null,"run_id"?: string,"saved_at"?: string | null,"status"?: string,"submit_pending_at"?: string | null,"submitted_at"?: string | null,"user_id"?: string,"webhook_token_hash"?: string | null
                   }
                   Relationships: [
                     {
@@ -1224,6 +1224,9 @@ isOneToOne: false
                            },
 "attach_provider_request":
 { Args: { "p_cell": string,"p_provider_request_id": string }; Returns: boolean
+                           },
+"begin_cell_submit":
+{ Args: { "p_cell": string }; Returns: boolean
                            },
 "check_handle":
 { Args: { "p_handle": string }; Returns: string

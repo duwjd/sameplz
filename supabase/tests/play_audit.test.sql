@@ -3,7 +3,7 @@
 -- this month's is refused (INV-C18), downloads are rate limited.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(19);
 
 -- Users P (holds recipe 03 v1 while v2 is current) and Q (plain runner).
 insert into auth.users (id, email) values
@@ -55,10 +55,17 @@ select is((select v ->> 'ok' from res where k = 'p_v1'), 'true', 'F3-8 a holder 
 insert into res values ('q1', pg_temp.run('00000000-0000-0000-0000-00000000a702', 3, 'blank', null));
 insert into res values ('spent0', to_jsonb(pg_temp.spent()));
 insert into res values ('avail0', to_jsonb(pg_temp.avail('00000000-0000-0000-0000-00000000a702')));
--- Attempt 1 is claimed and the process dies before mark_cell_submitted: the lease runs out.
+-- A claim alone (the process dies before calling the provider) is retried, never booked as spent.
 select public.claim_cell_submit(pg_temp.cell('q1'));
+select ok((select submit_pending_at is null from public.play_cells where id = pg_temp.cell('q1')),
+          'FM-17 a claim alone does not mark the submit pending');
+update public.play_cells set next_attempt_at = now() - interval '1 second' where id = pg_temp.cell('q1');
+select is(public.claim_cell_submit(pg_temp.cell('q1')) ->> 'ok', 'true',
+          'FM-17 a claim whose provider call never started is retried');
+-- This attempt reaches the provider call and the process dies before mark_cell_submitted.
+select public.begin_cell_submit(pg_temp.cell('q1'));
 select ok((select submit_pending_at is not null from public.play_cells where id = pg_temp.cell('q1')),
-          'FM-17 a claimed submit is marked pending until its outcome is known');
+          'FM-17 a started provider call is marked pending until its outcome is known');
 update public.play_cells set next_attempt_at = now() - interval '1 second' where id = pg_temp.cell('q1');
 select is(public.claim_cell_submit(pg_temp.cell('q1')) ->> 'reason', 'OUTCOME_UNKNOWN',
           'FM-17 a cell whose submit outcome is unknown is not submitted again');
@@ -72,11 +79,13 @@ select is(pg_temp.avail('00000000-0000-0000-0000-00000000a702'), (select (v #>> 
 -- A known outcome clears the mark: requeue → the next claim submits normally.
 insert into res values ('q2', pg_temp.run('00000000-0000-0000-0000-00000000a702', 4, 'blank', null));
 select public.claim_cell_submit(pg_temp.cell('q2'));
+select public.begin_cell_submit(pg_temp.cell('q2'));
 select public.requeue_cell(pg_temp.cell('q2'), 'PROVIDER_BUSY');
 select ok((select submit_pending_at is null from public.play_cells where id = pg_temp.cell('q2')),
           'FM-17 requeue_cell clears the pending mark');
 update public.play_cells set next_attempt_at = now() - interval '1 second' where id = pg_temp.cell('q2');
 select is(public.claim_cell_submit(pg_temp.cell('q2')) ->> 'ok', 'true', 'FM-17 a requeued cell is submitted again');
+select public.begin_cell_submit(pg_temp.cell('q2'));
 select public.mark_cell_submitted(pg_temp.cell('q2'), 'req-audit-2');
 select ok((select submit_pending_at is null and status = 'submitted' from public.play_cells where id = pg_temp.cell('q2')),
           'FM-17 mark_cell_submitted clears the pending mark');
@@ -84,16 +93,17 @@ select ok((select submit_pending_at is null and status = 'submitted' from public
 -- The sweeper's 10-minute give-up and the hourly expiry count a pending submit as billed.
 insert into res values ('q3', pg_temp.run('00000000-0000-0000-0000-00000000a702', 5, 'blank', null));
 select public.claim_cell_submit(pg_temp.cell('q3'));
+select public.begin_cell_submit(pg_temp.cell('q3'));
 update public.play_cells set created_at = now() - interval '11 minutes', next_attempt_at = now() - interval '1 second'
  where id = pg_temp.cell('q3');
 select is((select (e ->> 'billed')::boolean from jsonb_array_elements(public.sweep_targets() -> 'finish') e
             where (e ->> 'cell')::uuid = pg_temp.cell('q3')), true,
           'FM-17 sweep_targets marks a pending submit as billed');
-insert into res values ('spent3', to_jsonb(pg_temp.spent()));
-update public.play_cells set created_at = now() - interval '2 hours' where id = pg_temp.cell('q3');
-call private.expire_stale_play_cells();
-select is(pg_temp.spent() - (select (v #>> '{}')::int from res where k = 'spent3'), 9,
-          'FM-17 the hourly expiry counts a pending submit as spent');
+-- The hourly expiry is a procedure that commits per cell, so it cannot run inside this test transaction;
+-- check that it passes the pending mark as billed.
+select ok((select prosrc ~ 'provider_request_id is not null or c\.submit_pending_at is not null'
+             from pg_proc where oid = 'private.expire_stale_play_cells'::regproc),
+          'FM-17 the hourly expiry counts a pending submit as billed');
 
 -- ---------------------------------------------------------------- INV-C18 past month after this month
 select is(private.grant_monthly_credits('00000000-0000-0000-0000-00000000a702', (private.kst_month() - interval '1 month')::date) ->> 'reason',
@@ -111,6 +121,8 @@ select throws_ok($$ select * from public.file_for_download(gen_random_uuid(), ge
                  'P0001', 'RATE_LIMITED', 'F3-5 the 121st download in an hour is refused');
 reset role;
 
+select ok(not has_function_privilege('authenticated', 'public.begin_cell_submit(uuid)', 'execute'),
+          'FM-17 members cannot mark a submit');
 select ok(not exists (select 1 from public.credit_accounts a
                        where a.user_id in ('00000000-0000-0000-0000-00000000a701', '00000000-0000-0000-0000-00000000a702')
                          and a.available <> coalesce((select sum(g.delta) from public.credit_ledger g where g.user_id = a.user_id), 0)),

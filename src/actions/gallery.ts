@@ -141,11 +141,29 @@ export async function postSameCert(input: unknown): Promise<PostSameResult> {
   const viewer = await member();
   if (typeof viewer === "string") return { ok: false, reason: viewer };
   const v = parsed.data;
-  if (!(await allowed(viewer, "same_try"))) return { ok: false, reason: "RATE_LIMITED" };
+  if (!(await allowed(viewer, "same_try")))
+    return { ok: false, reason: "RATE_LIMITED" };
 
   let path = v.mediaPath;
   let kind: "image" | "video";
   if (v.playCellId) {
+    // Received (or own) recipes only, before any file is copied or checked (RLS: own rows).
+    const supabase = await createClient();
+    const [{ data: held }, { data: mine }] = await Promise.all([
+      supabase
+        .from("entitlements")
+        .select("id")
+        .eq("recipe_id", v.recipeId)
+        .is("revoked_at", null)
+        .limit(1),
+      supabase
+        .from("recipes")
+        .select("id")
+        .eq("id", v.recipeId)
+        .eq("owner_id", viewer.id)
+        .maybeSingle(),
+    ]);
+    if (!held?.length && !mine) return { ok: false, reason: "NOT_FOUND" };
     const copy = await copyPlayResult(viewer, v.playCellId);
     if (!copy) return { ok: false, reason: "NOT_FOUND" };
     ({ path, kind } = copy);
@@ -189,7 +207,15 @@ export async function postSameCert(input: unknown): Promise<PostSameResult> {
     p_status: status,
   });
   const r = data as { ok?: boolean; reason?: string } | null;
-  if (error || !r?.ok) return { ok: false, reason: r?.reason ?? "FAILED" };
+  if (error || !r?.ok) {
+    // A copied playground result has no post to belong to (e.g. the recipe was not received).
+    if (v.playCellId)
+      await admin.storage
+        .from(DRAFT_MEDIA_BUCKET)
+        .remove([path!])
+        .catch(() => null);
+    return { ok: false, reason: r?.reason ?? "FAILED" };
+  }
   // The new post's result goes public with its recipe (D18) before the gallery is shown again.
   await syncRecipeMedia().catch(() => null);
   const { data: rec } = await admin
@@ -363,7 +389,10 @@ export async function draftFromRun(
   if (!parsed.success) return { ok: false, reason: "NOT_FOUND" };
   const viewer = await member();
   if (typeof viewer === "string") return { ok: false, reason: viewer };
-  if (!(await allowed(viewer, "draft")) || !(await hitUploadTargetLimit(viewer)))
+  if (
+    !(await allowed(viewer, "draft")) ||
+    !(await hitUploadTargetLimit(viewer))
+  )
     return { ok: false, reason: "RATE_LIMITED" };
   const supabase = await createClient();
   // Ownership through RLS; the kept prompt is server-only and read with the admin client.

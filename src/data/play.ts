@@ -321,6 +321,10 @@ export async function submitCell(cellId: string): Promise<void> {
     refUrls: refs,
   });
 
+  // FM-17: from here the provider may create a job; if this process dies before mark_cell_submitted,
+  // the next claim ends the cell as billed instead of submitting a second job.
+  const { data: begun } = await db.rpc("begin_cell_submit", { p_cell: cellId });
+  if (!begun) return;
   let requestId: string | null = null;
   for (let attempt = 0; attempt < 2 && !requestId; attempt++) {
     try {
@@ -611,7 +615,13 @@ export async function handleWebhook(args: {
 // ---------------------------------------------------------------- sweeper (FM-7/8/17/21, D19)
 
 interface SweepTargets {
-  finish: { cell: string; status: "failed" | "expired"; error_code: string }[];
+  finish: {
+    cell: string;
+    status: "failed" | "expired";
+    error_code: string;
+    /** FM-17: a provider job may exist (pending submit) — book the budget as spent. */
+    billed?: boolean;
+  }[];
   resubmit: string[];
   poll: {
     cell: string;
@@ -704,7 +714,11 @@ export async function sweep(budgetMs = 40_000): Promise<SweepReport> {
           })
         )
           report.finished++;
-      } else if (await finish(f.cell, f.status, f.error_code))
+      } else if (
+        await finish(f.cell, f.status, f.error_code, {
+          providerBilled: Boolean(f.billed),
+        })
+      )
         report.finished++;
     } catch (e) {
       logError("sweep finish", e);

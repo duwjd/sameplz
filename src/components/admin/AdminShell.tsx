@@ -2,13 +2,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-export type AdminKey = "home" | "reviews" | "reports" | "recipes";
+export type AdminKey = "home" | "reviews" | "reports" | "recipes" | "users";
 
 const MENU: { key: AdminKey; href: string; label: string }[] = [
   { key: "home", href: "/admin", label: "개요" },
   { key: "reviews", href: "/admin/reviews", label: "심사 큐" },
   { key: "reports", href: "/admin/reports", label: "신고함" },
   { key: "recipes", href: "/admin/recipes", label: "레시피 조치" },
+  { key: "users", href: "/admin/users", label: "회원" },
 ];
 
 export function AdminShell({

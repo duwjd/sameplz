@@ -23,6 +23,7 @@ const LINE_LABEL: Record<CreditLineDTO["kind"], string> = {
   safety: "안전 필터 · 차감 없음",
   holding: "만드는 중 · 결과가 나오면 정산돼요",
   expire: "지난달 남은 크레딧 소멸",
+  adjust: "운영 조정 · 사유는 알림에 있어요",
 };
 
 const FILTERS = [
@@ -35,8 +36,8 @@ type Filter = (typeof FILTERS)[number]["value"];
 const matches = (f: Filter, l: CreditLineDTO) =>
   f === "all" ||
   (f === "in"
-    ? ["grant", "returned", "safety"].includes(l.kind)
-    : ["use", "holding", "expire"].includes(l.kind));
+    ? ["grant", "returned", "safety"].includes(l.kind) || (l.kind === "adjust" && l.delta > 0)
+    : ["use", "holding", "expire"].includes(l.kind) || (l.kind === "adjust" && l.delta < 0));
 
 async function Credits({
   searchParams,

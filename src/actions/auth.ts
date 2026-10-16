@@ -73,7 +73,9 @@ export async function acceptSignupTerms(
   if (grantError)
     return { errors: { form: "저장하지 못했어요. 잠시 뒤 다시 눌러 주세요." } };
   if ((grant as { reason?: string } | null)?.reason === "RATE_LIMITED")
-    console.warn("[signup] IP signup limit reached; no monthly credits granted");
+    console.warn(
+      "[signup] IP signup limit reached; no monthly credits granted",
+    );
 
   redirect(safeNext(parsed.data.next));
 }
@@ -88,6 +90,7 @@ export async function fetchViewer() {
         handle: v.handle,
         avatarUrl: v.avatarUrl,
         signupComplete: v.signupComplete,
+        sanction: v.sanction,
       }
     : null;
 }

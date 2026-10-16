@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Fira_Code } from "next/font/google";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { SanctionBanner } from "@/components/shell/SanctionBanner";
 import { AppFooter } from "@/components/shell/AppFooter";
 import { Suspense } from "react";
 import { AppHeader, AppHeaderFallback } from "@/components/shell/AppHeader";
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Suspense fallback={<AppHeaderFallback />}>
             <AppHeader />
           </Suspense>
+          <SanctionBanner />
           {children}
           <AppFooter />
         </AuthProvider>

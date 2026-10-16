@@ -45,18 +45,50 @@ isOneToOne: false
                   ]
                 },"account_devices": {
                   Row: {
-                    "device_hash": string,"first_seen": string,"ip_hash": string | null,"user_id": string
+                    "device_hash": string,"first_seen": string,"ip_hash": string | null,"source": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "device_hash": string,"first_seen"?: string,"ip_hash"?: string | null,"user_id": string
+                    "device_hash": string,"first_seen"?: string,"ip_hash"?: string | null,"source"?: string,"user_id": string
                   }
                   Update: {
-                    "device_hash"?: string,"first_seen"?: string,"ip_hash"?: string | null,"user_id"?: string
+                    "device_hash"?: string,"first_seen"?: string,"ip_hash"?: string | null,"source"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
       foreignKeyName: "account_devices_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"account_sanctions": {
+                  Row: {
+                    "created_at": string,"created_by": string,"ends_at": string | null,"id": string,"level": string,"lift_note": string | null,"lifted_at": string | null,"lifted_by": string | null,"note": string,"reason_code": string,"starts_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by": string,"ends_at"?: string | null,"id"?: string,"level": string,"lift_note"?: string | null,"lifted_at"?: string | null,"lifted_by"?: string | null,"note"?: string,"reason_code": string,"starts_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string,"ends_at"?: string | null,"id"?: string,"level"?: string,"lift_note"?: string | null,"lifted_at"?: string | null,"lifted_by"?: string | null,"note"?: string,"reason_code"?: string,"starts_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "account_sanctions_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "account_sanctions_lifted_by_fkey"
+      columns: ["lifted_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "account_sanctions_user_id_fkey"
       columns: ["user_id"]
 isOneToOne: false
       referencedRelation: "profiles"
@@ -1207,14 +1239,29 @@ isOneToOne: false
 "ack_ai_notice":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
+"admin_adjust_credits":
+{ Args: { "p_actor": string,"p_amount": number,"p_idem": string,"p_reason": string,"p_user": string }; Returns: Json
+                           },
 "admin_decide_review":
 { Args: { "p_actor": string,"p_code"?: string,"p_decision": string,"p_note"?: string,"p_version": string }; Returns: Json
                            },
 "admin_hide_post":
 { Args: { "p_actor": string,"p_post": string,"p_reason": string }; Returns: Json
                            },
+"admin_lift_generation_suspension":
+{ Args: { "p_actor": string,"p_note": string,"p_user": string }; Returns: Json
+                           },
+"admin_lift_sanction":
+{ Args: { "p_actor": string,"p_note": string,"p_sanction": string }; Returns: Json
+                           },
+"admin_linked_accounts":
+{ Args: { "p_actor": string,"p_user": string }; Returns: Json
+                           },
 "admin_resolve_report":
 { Args: { "p_actor": string,"p_answer": string,"p_outcome": string,"p_report": string }; Returns: Json
+                           },
+"admin_sanction":
+{ Args: { "p_actor": string,"p_days": number,"p_level": string,"p_note": string,"p_reason": string,"p_user": string }; Returns: Json
                            },
 "admin_set_recipe_status":
 { Args: { "p_action": string,"p_actor": string,"p_note"?: string,"p_reason": string,"p_recipe": string }; Returns: Json
@@ -1335,7 +1382,7 @@ isOneToOne: false
                            },
 "my_account_status":
 { Args: Record<PropertyKey, never>; Returns: {
-              "adult_confirmed_at": string,"role": string,"signup_complete": boolean,"terms_accepted_at": string,"terms_version": string
+              "adult_confirmed_at": string,"role": string,"sanction_ends_at": string,"sanction_level": string,"signup_complete": boolean,"terms_accepted_at": string,"terms_version": string
             }[]
                            },
 "my_credit_summary":
@@ -1389,6 +1436,9 @@ isOneToOne: false
                            },
 "recipe_search_doc":
 { Args: { "nickname": string,"search_tags": (string)[],"summary": string,"title": string }; Returns: (string)[]
+                           },
+"record_member_device":
+{ Args: { "p_device_hash": string,"p_ip_hash": string,"p_user": string }; Returns: undefined
                            },
 "record_play_input_block":
 { Args: { "p_user": string }; Returns: boolean

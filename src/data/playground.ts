@@ -375,7 +375,7 @@ async function budgetClosed(): Promise<boolean> {
 }
 
 export type CreditLineKind =
-  "grant" | "use" | "returned" | "safety" | "holding" | "expire";
+  "grant" | "use" | "returned" | "safety" | "holding" | "expire" | "adjust";
 
 export interface CreditLineDTO {
   at: string;
@@ -385,7 +385,7 @@ export interface CreditLineDTO {
   credits: number;
 }
 
-/** CRD-03: grants and expiries from the ledger, one line per generation from its hold. */
+/** CRD-03: grants, expiries and ops adjustments (F8-4) from the ledger, one line per generation from its hold. */
 export async function getCreditHistory(
   viewer: Viewer,
   limit = 100,
@@ -396,7 +396,7 @@ export async function getCreditHistory(
       .from("credit_ledger")
       .select("entry_type, delta, created_at")
       .eq("user_id", viewer.id)
-      .in("entry_type", ["grant", "expire"])
+      .in("entry_type", ["grant", "expire", "adjust"])
       .order("created_at", { ascending: false })
       .limit(limit),
     supabase
@@ -409,7 +409,7 @@ export async function getCreditHistory(
   const lines: CreditLineDTO[] = [
     ...(ledger ?? []).map((l) => ({
       at: l.created_at,
-      kind: (l.entry_type === "grant" ? "grant" : "expire") as CreditLineKind,
+      kind: l.entry_type as "grant" | "expire" | "adjust",
       delta: l.delta,
       credits: Math.abs(l.delta),
     })),
@@ -430,5 +430,16 @@ export async function getCreditHistory(
       };
     }),
   ];
-  return lines.sort((a, b) => b.at.localeCompare(a.at)).slice(0, limit);
+  // One ops adjustment can touch several lots (one ledger row each, same transaction time): one line.
+  const merged: CreditLineDTO[] = [];
+  for (const l of lines) {
+    const prev = merged.find(
+      (m) => m.kind === "adjust" && l.kind === "adjust" && m.at === l.at,
+    );
+    if (prev) {
+      prev.delta += l.delta;
+      prev.credits = Math.abs(prev.delta);
+    } else merged.push({ ...l });
+  }
+  return merged.sort((a, b) => b.at.localeCompare(a.at)).slice(0, limit);
 }

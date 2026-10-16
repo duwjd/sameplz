@@ -36,6 +36,7 @@ const CLAIM_FAILED: Record<string, string> = {
     "지금은 받을 수 없는 레시피예요. 비슷한 레시피를 둘러봐 주세요.",
   OWN_RECIPE: "내 레시피라 받지 않아도 돼요.",
   NOT_FREE: "무료 레시피만 바로 받을 수 있어요.",
+  ACCOUNT_SUSPENDED: "이용이 제한된 계정이라 지금은 할 수 없어요. 자세한 건 알림을 확인해 주세요.",
   FAILED: "받지 못했어요. 잠시 뒤 다시 눌러 주세요.",
 };
 

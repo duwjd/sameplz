@@ -467,3 +467,187 @@ export async function findRecipes(
       creator: r.creator_nickname,
     }));
 }
+
+// ---------------------------------------------------------------- members (F8-4)
+
+export interface AdminUserRowDTO {
+  id: string;
+  nickname: string;
+  handle: string;
+  createdAt: string;
+  withdrawn: boolean;
+}
+
+/** By exact id, handle or a nickname fragment. */
+export async function findUsers(
+  admin: Viewer,
+  q: string,
+): Promise<AdminUserRowDTO[]> {
+  assertAdmin(admin);
+  const term = q.trim().slice(0, 40);
+  if (!term) return [];
+  const db = createAdminClient();
+  const cols = "id, nickname, handle, created_at, deleted_at";
+  const like = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const isId = /^[0-9a-f-]{36}$/i.test(term);
+  const [byId, byHandle, byName] = await Promise.all([
+    isId
+      ? db.from("profiles").select(cols).eq("id", term).limit(1)
+      : Promise.resolve({ data: [] }),
+    /^[a-z0-9_]{3,15}$/i.test(term)
+      ? db.from("profiles").select(cols).eq("handle", term.toLowerCase()).limit(1)
+      : Promise.resolve({ data: [] }),
+    isId
+      ? Promise.resolve({ data: [] })
+      : db
+          .from("profiles")
+          .select(cols)
+          .ilike("nickname", like)
+          .order("created_at", { ascending: false })
+          .limit(20),
+  ]);
+  const seen = new Set<string>();
+  return [...(byId.data ?? []), ...(byHandle.data ?? []), ...(byName.data ?? [])]
+    .filter((p) => !seen.has(p.id) && seen.add(p.id))
+    .map((p) => ({
+      id: p.id,
+      nickname: p.nickname,
+      handle: p.handle,
+      createdAt: p.created_at,
+      withdrawn: Boolean(p.deleted_at),
+    }));
+}
+
+export interface AdminSanctionDTO {
+  id: string;
+  level: string;
+  reason: string;
+  note: string;
+  startsAt: string;
+  endsAt: string | null;
+  liftedAt: string | null;
+  liftNote: string | null;
+  /** In force now (not lifted, started, not ended). */
+  active: boolean;
+}
+
+export interface AdminLinkedDTO {
+  id: string;
+  nickname: string;
+  handle: string;
+  createdAt: string;
+  withdrawn: boolean;
+  sanction: string | null;
+  via: ("device" | "ip")[];
+}
+
+export interface AdminUserDetailDTO {
+  user: AdminUserRowDTO & { role: string };
+  sanctions: AdminSanctionDTO[];
+  credits: {
+    available: number;
+    held: number;
+    generationSuspendedAt: string | null;
+    grantEligible: boolean;
+  } | null;
+  ledger: { type: string; delta: number; at: string }[];
+  linked: AdminLinkedDTO[];
+  signals: { kind: string; at: string }[];
+}
+
+export async function getUserDetail(
+  admin: Viewer,
+  userId: string,
+): Promise<AdminUserDetailDTO | null> {
+  assertAdmin(admin);
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) return null;
+  const db = createAdminClient();
+  const { data: p } = await db
+    .from("profiles")
+    .select("id, nickname, handle, created_at, deleted_at, role")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!p) return null;
+  const [sanctions, account, ledger, linked] = await Promise.all([
+    db
+      .from("account_sanctions")
+      .select("id, level, reason_code, note, starts_at, ends_at, lifted_at, lift_note")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    db
+      .from("credit_accounts")
+      .select("available, held, generation_suspended_at, grant_eligible")
+      .eq("user_id", userId)
+      .maybeSingle(),
+    db
+      .from("credit_ledger")
+      .select("entry_type, delta, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(20),
+    db.rpc("admin_linked_accounts", { p_actor: admin.id, p_user: userId }),
+  ]);
+  const now = Date.now();
+  const l = (linked.data ?? {}) as {
+    accounts?: {
+      id: string;
+      nickname: string;
+      handle: string;
+      created_at: string;
+      withdrawn: boolean;
+      sanction: string | null;
+      via: ("device" | "ip")[];
+    }[];
+    signals?: { kind: string; created_at: string }[];
+  };
+  return {
+    user: {
+      id: p.id,
+      nickname: p.nickname,
+      handle: p.handle,
+      createdAt: p.created_at,
+      withdrawn: Boolean(p.deleted_at),
+      role: p.role,
+    },
+    sanctions: (sanctions.data ?? []).map((s) => ({
+      id: s.id,
+      level: s.level,
+      reason: s.reason_code,
+      note: s.note,
+      startsAt: s.starts_at,
+      endsAt: s.ends_at,
+      liftedAt: s.lifted_at,
+      liftNote: s.lift_note,
+      active:
+        !s.lifted_at &&
+        new Date(s.starts_at).getTime() <= now &&
+        (!s.ends_at || new Date(s.ends_at).getTime() > now),
+    })),
+    credits: account.data
+      ? {
+          available: account.data.available,
+          held: account.data.held,
+          generationSuspendedAt: account.data.generation_suspended_at,
+          grantEligible: account.data.grant_eligible,
+        }
+      : null,
+    ledger: (ledger.data ?? []).map((g) => ({
+      type: g.entry_type,
+      delta: g.delta,
+      at: g.created_at,
+    })),
+    linked: (l.accounts ?? []).map((a) => ({
+      id: a.id,
+      nickname: a.nickname,
+      handle: a.handle,
+      createdAt: a.created_at,
+      withdrawn: a.withdrawn,
+      sanction: a.sanction,
+      via: a.via,
+    })),
+    // Signal kinds and times only: details can carry hashes.
+    signals: (l.signals ?? []).map((s) => ({ kind: s.kind, at: s.created_at })),
+  };
+}

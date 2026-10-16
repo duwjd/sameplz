@@ -33,6 +33,7 @@
 | D19 | 플레이그라운드 결과물 보관 기간 | 창업자 | W5 | closed |
 | D20 | 탈퇴 회원의 기기·IP 해시와 남용 기록 보관 기간 | 창업자 | W7 | closed |
 | D21 | 사용 분석 도구(PostHog → GA4) | 창업자 | W7 | closed |
+| D22 | 탈퇴 1년 뒤 남은 기록 처리 | 창업자 | W7 | closed |
 ---
 
 ## D1 · 포크 로열티 10%는 누가 내고, 어떤 금액 기준인가
@@ -241,6 +242,17 @@
 - **확인 주체 · 기한**: 창업자 · W7
 - **상태**: closed
 - **결정**: 2026-10-16 B 선택(사용자 결정). 오류 추적은 Sentry.
+
+---
+
+## D22 · 탈퇴 1년 뒤 남은 기록 처리
+
+- **선택지**: A 동의·크레딧·갤러리·플레이그라운드·신고 기록은 지우고 레시피는 「탈퇴한 회원」으로 남김 / B 레시피까지 모두 삭제(받은 사람도 못 씀)
+- **근거**: 처리방침에 탈퇴 후 1년 보관 뒤 삭제를 적었다(보관 기간은 사용자 위임으로 1년, 개인정보보호법 제21조). 로그인 이메일·식별자는 탈퇴 때 auth soft delete가 이미 되돌릴 수 없게 지운다. 레시피는 받은 사람이 계속 쓴다(약관 제3조).
+- **영향**: `private.purge_withdrawn_members()`(매일 `sameplz-purge-withdrawn`). 원장 append-only 예외는 `private.purge_may_delete()` — 정리 플래그 + postgres 세션 + 탈퇴 1년 지난 회원의 행일 때만 DELETE(`consent_events`·`credit_ledger`·`face_consents`). `admin_actions`·`entitlement_version_history`는 예외 없음. 크레딧 홀드는 예산 대사(INV-C20)를 위해 남긴다(익명 프로필에만 연결). `.claude/rules/money.md` 「보관」.
+- **확인 주체 · 기한**: 창업자 · W7
+- **상태**: closed
+- **결정**: 2026-10-16 A 선택(사용자 결정 — B를 골랐다가 권고안 A로 바꿈).
 
 ---
 

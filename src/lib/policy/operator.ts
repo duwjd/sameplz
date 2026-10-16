@@ -3,8 +3,8 @@ export const OPERATOR_NAME = "김정원";
 export const PRIVACY_OFFICER = "김정원";
 export const CONTACT_EMAIL = "2000jeongwon43@gmail.com";
 export const POLICY_EFFECTIVE_DATE = "2026년 10월 16일";
-/** How long consent and credit-ledger history, login identifiers and stopped recipes are kept after
- * withdrawal (fraud and dispute handling, PIPA art. 21: destroy once the purpose ends). No law requires
+/** How long consent and credit records, gallery posts, playground runs and reports are kept after
+ * withdrawal (private.purge_withdrawn_members; PIPA art. 21: destroy once the purpose ends). No law requires
  * longer for a free service; the paid phase adds 전자상거래법 5-year records for orders. */
 export const RECORD_RETENTION = "1년";
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { budgetAlertText, postOpsAlert } from "./alert";
+import { budgetAlertText, postOpsAlert, slaAlertText } from "./alert";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -67,5 +67,21 @@ describe("F4-15 budget alerts", () => {
       vi.fn(async () => new Response("no", { status: 500 })),
     );
     expect(await postOpsAlert("hello")).toBe(false);
+  });
+});
+
+describe("slaAlertText", () => {
+  it("F8-1 F8-2 심사·신고 수를 한 줄로 알린다", () => {
+    const t = slaAlertText([
+      { kind: "review_24h", id: "v1", since: "2026-10-14T00:00:00Z" },
+      { kind: "review_24h", id: "v2", since: "2026-10-14T00:00:00Z" },
+      { kind: "report_20h", id: "r1", since: "2026-10-14T00:00:00Z" },
+    ]);
+    expect(t).toContain("24시간 넘은 심사 2건");
+    expect(t).toContain("신고 1건");
+    expect(t).not.toContain("v1");
+  });
+  it("F8-1 알릴 것이 없으면 보내지 않는다", () => {
+    expect(slaAlertText([])).toBeNull();
   });
 });

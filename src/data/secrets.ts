@@ -147,7 +147,12 @@ export async function promptBodyForRun(
   if (!r || r.category !== "prompt") return null;
   if (mode === "own") {
     if (r.owner_id !== userId) return null;
-    if (v.review_status === "rejected" || v.review_status === "draft" || r.status === "stopped")
+    if (
+      v.review_status === "rejected" ||
+      v.review_status === "draft" ||
+      r.status === "stopped" ||
+      r.status === "taken_down"
+    )
       return null;
   } else {
     if (v.review_status !== "approved" || r.status !== "live") return null;
@@ -179,4 +184,58 @@ export async function renderedPromptForSubmit(
   );
   if (error || typeof data !== "string" || !data) return null;
   return data;
+}
+
+export interface AdminOriginalsDTO {
+  current: string;
+  previous: string | null;
+  previousNo: number | null;
+}
+
+type SecretRow = {
+  prompt_body: string | null;
+  skill_md: string | null;
+  agent_config: unknown;
+};
+const secretText = (s: SecretRow | null | undefined): string =>
+  s?.prompt_body ??
+  s?.skill_md ??
+  (s?.agent_config != null ? JSON.stringify(s.agent_config, null, 2) : "");
+
+/**
+ * ADM review (F8-1): the original under review and the last approved one before it, for the
+ * reviewer's diff. Admins only (checked again here); rendered on the server, never cached.
+ */
+export async function readVersionOriginalsForAdmin(
+  admin: Viewer,
+  versionId: string,
+): Promise<AdminOriginalsDTO | null> {
+  if (admin.role !== "admin") return null;
+  const db = createAdminClient();
+  const { data: v } = await db
+    .from("recipe_versions")
+    .select("recipe_id, version_no")
+    .eq("id", versionId)
+    .maybeSingle();
+  if (!v) return null;
+  const { data: prev } = await db
+    .from("recipe_versions")
+    .select("id, version_no")
+    .eq("recipe_id", v.recipe_id)
+    .not("approved_at", "is", null)
+    .lt("version_no", v.version_no)
+    .order("version_no", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const ids = prev ? [versionId, prev.id] : [versionId];
+  const { data: rows } = await db
+    .from("recipe_version_secrets")
+    .select("version_id, prompt_body, skill_md, agent_config")
+    .in("version_id", ids);
+  const of = (id: string) => rows?.find((r) => r.version_id === id);
+  return {
+    current: secretText(of(versionId)),
+    previous: prev ? secretText(of(prev.id)) : null,
+    previousNo: prev?.version_no ?? null,
+  };
 }

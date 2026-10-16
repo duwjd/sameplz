@@ -31,6 +31,7 @@ const STATUS: Record<
   private: { label: "비공개", color: "hint" },
   live: { label: "공개 중", color: "success" },
   stopped: { label: "판매 중지", color: "contrast" },
+  taken_down: { label: "게시중단", color: "danger" },
 };
 const CATEGORY = {
   prompt: "프롬프트",

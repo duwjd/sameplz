@@ -950,7 +950,7 @@
       "acceptance": "자동 검사 결과, 이전 버전 diff, 승인·반려(R코드 템플릿), 24시간 경과 알림",
       "week": 6,
       "scn": [],
-      "passes": false,
+      "passes": true,
       "mvp_note": "MVP: `/admin` UI가 밀리면 Studio + SQL 함수 + `admin_actions`(잘라 낼 순서 5)"
     },
     {
@@ -962,7 +962,7 @@
       "acceptance": "사유 4종, 열람 시각·구매 이력, 소명 요청, 결정(기각·환불·판매 중지·게시중단·제재), 20시간 무응답 알림",
       "week": 6,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F8-3",
@@ -973,7 +973,7 @@
       "acceptance": "판매 중지는 받은 사람이 계속 쓰고, 게시중단(불법·권리 침해)은 모두에게 숨김. 저작권 신고는 접수 → 즉시 중단 → 게시자 통지 → 복원 요청 → 복원 흐름, 반복 침해자 정책. 명예훼손·사생활은 임시조치 최대 30일",
       "week": 6,
       "scn": [],
-      "passes": false
+      "passes": true
     },
     {
       "id": "F8-4",

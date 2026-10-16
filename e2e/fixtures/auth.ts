@@ -141,6 +141,11 @@ export const SEED_USERS = {
     id: "00000000-0000-0000-0000-000000000002",
     email: "sangse@sameplz.test",
   },
+  /** profiles.role = 'admin' (ADM). */
+  admin: {
+    id: "00000000-0000-0000-0000-000000000011",
+    email: "admin@sameplz.test",
+  },
 } as const;
 
 /** Sign the browser in as a seed user (local Supabase only). */
@@ -151,7 +156,15 @@ export async function loginAsSeedUser(
 ) {
   const env = localSupabaseEnv();
   const { id, email } = SEED_USERS[who];
-  const password = randomUUID();
+  // Same throwaway value every time (local stack only), set only when it is not there yet: resetting
+  // a password signs out the user's other sessions, which broke parallel workers on the same user.
+  const password = `e2e-local-${id}`;
+  try {
+    await signInAndCopyCookies(context, email, password, opts.baseURL);
+    return;
+  } catch {
+    // first login after a db reset
+  }
   const admin = createClient(env.url, env.secretKey, {
     auth: { persistSession: false },
   });

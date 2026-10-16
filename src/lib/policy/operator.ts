@@ -1,11 +1,12 @@
-// F7-7: operator details shown in the policy pages and the footer. The {{…}} values are placeholders
-// the operator fills in before launch (legal review is the operator's, docs/launch-checklist.md).
-export const OPERATOR_NAME = "{{운영자 이름}}";
-export const PRIVACY_OFFICER = "{{개인정보 보호책임자 이름}}";
-export const CONTACT_EMAIL = "{{연락 이메일}}";
-export const POLICY_EFFECTIVE_DATE = "{{시행일}}";
-/** How long consent and credit-ledger history (append-only) is kept after withdrawal. */
-export const RECORD_RETENTION = "{{동의·크레딧 기록 보관 기간}}";
+// F7-7: operator details shown in the policy pages and the footer (legal review is the operator's).
+export const OPERATOR_NAME = "김정원";
+export const PRIVACY_OFFICER = "김정원";
+export const CONTACT_EMAIL = "2000jeongwon43@gmail.com";
+export const POLICY_EFFECTIVE_DATE = "2026년 10월 16일";
+/** How long consent and credit-ledger history, login identifiers and stopped recipes are kept after
+ * withdrawal (fraud and dispute handling, PIPA art. 21: destroy once the purpose ends). No law requires
+ * longer for a free service; the paid phase adds 전자상거래법 5-year records for orders. */
+export const RECORD_RETENTION = "1년";
 
 /** Policy documents, in footer and in-page navigation order. */
 export const POLICY_DOCS = [

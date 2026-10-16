@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { syncRecipeMedia } from "@/data/media-sync";
 import { sweep } from "@/data/play";
+import { captureError } from "@/lib/ops/sentry";
 
 const digest = (v: string) => createHash("sha256").update(v).digest();
 
@@ -30,11 +31,22 @@ export async function POST(
     const report = await sweep();
     // D18: move results between the public and draft buckets; delete stale uploads.
     const media = await syncRecipeMedia().catch(() => null);
-    return NextResponse.json({ ...report, media }, {
-      headers: { "Cache-Control": "no-store" },
-    });
+    return NextResponse.json(
+      { ...report, media },
+      {
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   } catch (e) {
-    console.error("[cron] play-sweeper failed", e instanceof Error ? e.name : "error");
+    console.error(
+      "[cron] play-sweeper failed",
+      e instanceof Error ? e.name : "error",
+    );
+    await captureError({
+      error: e,
+      source: "cron",
+      tags: { job: "play-sweeper" },
+    });
     return NextResponse.json({ error: "failed" }, { status: 500 });
   }
 }

@@ -17,7 +17,7 @@ import {
   submitVersion,
   verifyMedia,
 } from "@/data/upload";
-import { getViewer, type Viewer } from "@/lib/auth/account";
+import { getViewer, sanctionBlock, type Viewer } from "@/lib/auth/account";
 import { runLayer1 } from "@/lib/moderation/layer1";
 import { layer2OptionsFromEnv, runLayer2 } from "@/lib/moderation/layer2";
 import type { Finding } from "@/lib/moderation/reject-codes";
@@ -46,12 +46,21 @@ import {
 
 type Gate =
   | { ok: true; viewer: Viewer }
-  | { ok: false; reason: "LOGIN_REQUIRED" | "SIGNUP_INCOMPLETE" };
+  | {
+      ok: false;
+      reason:
+        | "LOGIN_REQUIRED"
+        | "SIGNUP_INCOMPLETE"
+        | "ACCOUNT_SUSPENDED"
+        | "SELLER_SUSPENDED";
+    };
 
 async function creator(): Promise<Gate> {
   const viewer = await getViewer();
   if (!viewer) return { ok: false, reason: "LOGIN_REQUIRED" };
   if (!viewer.signupComplete) return { ok: false, reason: "SIGNUP_INCOMPLETE" };
+  const blocked = sanctionBlock(viewer, "seller");
+  if (blocked) return { ok: false, reason: blocked };
   return { ok: true, viewer };
 }
 
@@ -194,7 +203,13 @@ export async function inspectSkillZipUpload(input: {
 // ---------------------------------------------------------------- submit (UP-07, F5-3~F5-6)
 
 export type SubmitResult =
-  | { ok: true; publicId: string; status: string; review: boolean; recipeId?: string | null }
+  | {
+      ok: true;
+      publicId: string;
+      status: string;
+      review: boolean;
+      recipeId?: string | null;
+    }
   | {
       ok: false;
       reason: string;

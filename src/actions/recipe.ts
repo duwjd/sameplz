@@ -17,6 +17,7 @@ const RefCode = z.string().regex(/^[a-z0-9]{6,12}$/);
 
 const CLAIM_REASONS = [
   "SIGNUP_INCOMPLETE",
+  "ACCOUNT_SUSPENDED",
   "RECIPE_UNAVAILABLE",
   "OWN_RECIPE",
   "NOT_FREE",

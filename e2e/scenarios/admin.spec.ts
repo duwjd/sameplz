@@ -245,4 +245,86 @@ test.describe("ADM 운영 화면", () => {
     ).toBeVisible();
     await hc.close();
   });
+
+  test("F8-4 계정 정지: 회원에게 배너가 보이고 받기가 막히며, 해제하면 다시 받는다", async ({
+    browser,
+  }) => {
+    const mc = await browser.newContext();
+    const member = await loginAsNewUser(mc, { nickname: "정지회원", completeSignup: true });
+    const mp = await mc.newPage();
+    const { context: ac, page: ap } = await adminPage(browser);
+
+    await ap.goto(`/admin/users/${member.id}`);
+    await ap.getByRole("button", { name: "제재하기" }).click();
+    const dlg = ap.getByRole("dialog");
+    await dlg.getByLabel("단계").selectOption("account_suspended");
+    await dlg.getByLabel(/^사유/).selectOption("policy_violation");
+    await dlg.getByLabel(/^기간/).fill("7");
+    await dlg.getByRole("button", { name: "제재하기" }).click();
+    await expect(dlg).toBeHidden({ timeout: 15_000 });
+    await expect(ap.getByText("지금 적용 중: 계정 정지")).toBeVisible();
+    expect(await notifications(member.id, "account_sanctioned")).toBe(1);
+
+    await mp.goto("/r/rlinkedin01");
+    await expect(mp.getByRole("status").filter({ hasText: "계정 이용이 멈췄어요" })).toBeVisible();
+    await mp.getByRole("button", { name: "무료로 SAME 하기" }).click();
+    await expect(mp.getByText(/이용이 제한된 계정이라 지금은 할 수 없어요/)).toBeVisible();
+
+    await ap.getByRole("button", { name: "해제하기" }).click();
+    const lift = ap.getByRole("dialog");
+    await lift.getByLabel(/^이유/).fill("소명 확인");
+    await lift.getByRole("button", { name: "해제하기" }).click();
+    await expect(lift).toBeHidden({ timeout: 15_000 });
+    await expect(ap.getByText("지금 적용 중인 제재가 없어요.")).toBeVisible();
+
+    await mp.reload();
+    await expect(mp.getByText("계정 이용이 멈췄어요")).toHaveCount(0);
+    await mp.getByRole("button", { name: "무료로 SAME 하기" }).click();
+    await expect(mp.getByText(/라이브러리에 담았어요/)).toBeVisible();
+    await mc.close();
+    await ac.close();
+  });
+
+  test("F8-4 차단된 회원은 로그아웃되고 /blocked로 간다", async ({ browser }) => {
+    const mc = await browser.newContext();
+    const member = await loginAsNewUser(mc, { nickname: "차단회원", completeSignup: true });
+    const { context: ac, page: ap } = await adminPage(browser);
+    await ap.goto(`/admin/users/${member.id}`);
+    await ap.getByRole("button", { name: "제재하기" }).click();
+    const dlg = ap.getByRole("dialog");
+    await dlg.getByLabel("단계").selectOption("banned");
+    await dlg.getByLabel(/^사유/).selectOption("abuse");
+    await dlg.getByRole("button", { name: "제재하기" }).click();
+    await expect(dlg).toBeHidden({ timeout: 15_000 });
+
+    const mp = await mc.newPage();
+    await mp.goto("/");
+    await expect(mp).toHaveURL(/\/blocked$/, { timeout: 15_000 });
+    await expect(mp.getByRole("heading", { name: "이용이 제한된 계정이에요" })).toBeVisible();
+    await mc.close();
+    await ac.close();
+  });
+
+  test("F8-4 크레딧 조정이 회원의 잔액과 내역에 바로 보인다", async ({ browser }) => {
+    const mc = await browser.newContext();
+    const member = await loginAsNewUser(mc, { nickname: "조정회원", completeSignup: true });
+    const { context: ac, page: ap } = await adminPage(browser);
+    await ap.goto(`/admin/users/${member.id}`);
+    await ap.getByRole("button", { name: "크레딧 조정하기" }).click();
+    const dlg = ap.getByRole("dialog");
+    await dlg.getByLabel(/^조정량/).fill("50");
+    await dlg.getByLabel(/^사유/).fill("베타 참여 감사");
+    await dlg.getByRole("button", { name: "크레딧 조정하기" }).click();
+    await expect(dlg).toBeHidden({ timeout: 15_000 });
+    expect(await notifications(member.id, "credit_adjusted")).toBe(1);
+
+    const mp = await mc.newPage();
+    await mp.goto("/my/credits");
+    await expect(
+      mp.getByRole("region", { name: "보유 크레딧" }).getByTestId("crd-available"),
+    ).toHaveText(/50C/);
+    await expect(mp.getByText(/운영 조정/)).toBeVisible();
+    await mc.close();
+    await ac.close();
+  });
 });

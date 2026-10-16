@@ -11,7 +11,7 @@ import {
   hitUploadTargetLimit,
   inspectOwnUpload,
 } from "@/data/upload";
-import { getViewer, type Viewer } from "@/lib/auth/account";
+import { getViewer, sanctionBlock, type Viewer } from "@/lib/auth/account";
 import { checkImage } from "@/lib/moderation/play";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -28,12 +28,13 @@ import {
   type UploadForm,
 } from "@/lib/validation/upload";
 
-type Gate = "LOGIN_REQUIRED" | "SIGNUP_INCOMPLETE";
+type Gate = "LOGIN_REQUIRED" | "SIGNUP_INCOMPLETE" | "ACCOUNT_SUSPENDED";
 
 async function member(): Promise<Viewer | Gate> {
   const viewer = await getViewer();
   if (!viewer) return "LOGIN_REQUIRED";
   if (!viewer.signupComplete) return "SIGNUP_INCOMPLETE";
+  if (sanctionBlock(viewer, "account")) return "ACCOUNT_SUSPENDED";
   return viewer;
 }
 
@@ -141,11 +142,29 @@ export async function postSameCert(input: unknown): Promise<PostSameResult> {
   const viewer = await member();
   if (typeof viewer === "string") return { ok: false, reason: viewer };
   const v = parsed.data;
-  if (!(await allowed(viewer, "same_try"))) return { ok: false, reason: "RATE_LIMITED" };
+  if (!(await allowed(viewer, "same_try")))
+    return { ok: false, reason: "RATE_LIMITED" };
 
   let path = v.mediaPath;
   let kind: "image" | "video";
   if (v.playCellId) {
+    // Received (or own) recipes only, before any file is copied or checked (RLS: own rows).
+    const supabase = await createClient();
+    const [{ data: held }, { data: mine }] = await Promise.all([
+      supabase
+        .from("entitlements")
+        .select("id")
+        .eq("recipe_id", v.recipeId)
+        .is("revoked_at", null)
+        .limit(1),
+      supabase
+        .from("recipes")
+        .select("id")
+        .eq("id", v.recipeId)
+        .eq("owner_id", viewer.id)
+        .maybeSingle(),
+    ]);
+    if (!held?.length && !mine) return { ok: false, reason: "NOT_FOUND" };
     const copy = await copyPlayResult(viewer, v.playCellId);
     if (!copy) return { ok: false, reason: "NOT_FOUND" };
     ({ path, kind } = copy);
@@ -189,7 +208,15 @@ export async function postSameCert(input: unknown): Promise<PostSameResult> {
     p_status: status,
   });
   const r = data as { ok?: boolean; reason?: string } | null;
-  if (error || !r?.ok) return { ok: false, reason: r?.reason ?? "FAILED" };
+  if (error || !r?.ok) {
+    // A copied playground result has no post to belong to (e.g. the recipe was not received).
+    if (v.playCellId)
+      await admin.storage
+        .from(DRAFT_MEDIA_BUCKET)
+        .remove([path!])
+        .catch(() => null);
+    return { ok: false, reason: r?.reason ?? "FAILED" };
+  }
   // The new post's result goes public with its recipe (D18) before the gallery is shown again.
   await syncRecipeMedia().catch(() => null);
   const { data: rec } = await admin
@@ -207,8 +234,9 @@ const PostId = z.object({ postId: z.guid() });
 export async function removeSameCert(input: unknown): Promise<{ ok: boolean }> {
   const parsed = PostId.safeParse(input);
   if (!parsed.success) return { ok: false };
-  const viewer = await member();
-  if (typeof viewer === "string") return { ok: false };
+  // Taking one's own post down is always allowed, sanctioned or not.
+  const viewer = await getViewer();
+  if (!viewer) return { ok: false };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("gallery_posts")
@@ -363,7 +391,10 @@ export async function draftFromRun(
   if (!parsed.success) return { ok: false, reason: "NOT_FOUND" };
   const viewer = await member();
   if (typeof viewer === "string") return { ok: false, reason: viewer };
-  if (!(await allowed(viewer, "draft")) || !(await hitUploadTargetLimit(viewer)))
+  if (
+    !(await allowed(viewer, "draft")) ||
+    !(await hitUploadTargetLimit(viewer))
+  )
     return { ok: false, reason: "RATE_LIMITED" };
   const supabase = await createClient();
   // Ownership through RLS; the kept prompt is server-only and read with the admin client.

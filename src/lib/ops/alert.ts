@@ -37,6 +37,30 @@ export function slaAlertText(alerts: SlaAlert[]): string | null {
   return `[SAMEPLZ] ${parts.join(", ")}이 있어요. /admin 에서 처리해 주세요.`;
 }
 
+export interface OpsHealth {
+  ledger_mismatch: number;
+  cells_finished: number;
+  cells_failed: number;
+}
+
+/** Runbook 10 P0: any account whose balance disagrees with its ledger or lots. */
+export function ledgerAlertText(h: OpsHealth): string | null {
+  return h.ledger_mismatch > 0
+    ? `[SAMEPLZ][P0] 크레딧 원장이 맞지 않는 계정이 ${h.ledger_mismatch}개 있어요. 런북 10을 보고 바로 확인해 주세요.`
+    : null;
+}
+
+export const PROVIDER_ALERT_RATE = 0.3;
+export const PROVIDER_ALERT_MIN_CELLS = 10;
+
+/** Runbook 10 P0: over 30% of the last hour's finished cells failed (at least 10 cells). */
+export function providerAlertText(h: OpsHealth): string | null {
+  if (h.cells_finished < PROVIDER_ALERT_MIN_CELLS) return null;
+  const rate = h.cells_failed / h.cells_finished;
+  if (rate <= PROVIDER_ALERT_RATE) return null;
+  return `[SAMEPLZ][P0] 최근 1시간 생성 ${h.cells_finished}건 중 ${h.cells_failed}건(${Math.round(rate * 100)}%)이 실패했어요. 공급자 상태를 확인해 주세요(런북 10). 크레딧은 자동으로 돌려드리고 있어요.`;
+}
+
 /** POST to the ops webhook. true only on a 2xx (the caller marks the alert sent). */
 export async function postOpsAlert(text: string): Promise<boolean> {
   const url = process.env.OPS_ALERT_WEBHOOK_URL;

@@ -7,6 +7,8 @@ export const SUBMIT_COPY: Record<
 > = {
   LOGIN_REQUIRED: { message: "로그인하고 다시 제출해 주세요." },
   SIGNUP_INCOMPLETE: { message: "가입을 마치면 레시피를 올릴 수 있어요." },
+  ACCOUNT_SUSPENDED: { message: "이용이 제한된 계정이라 지금은 할 수 없어요. 자세한 건 알림을 확인해 주세요." },
+  SELLER_SUSPENDED: { message: "레시피 올리기가 멈춘 계정이에요. 자세한 건 알림을 확인해 주세요." },
   RATE_LIMITED: {
     message: "제출이 너무 잦아요. 1시간 뒤에 다시 제출해 주세요.",
   },

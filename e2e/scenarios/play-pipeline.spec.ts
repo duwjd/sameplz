@@ -261,6 +261,44 @@ test("F4-2 free mode renders the received recipe on the server; the original nev
   expect(await other.text()).not.toContain("SAMEPLZ-SECRET-SAMPLE");
 });
 
+test("F3-8 a holder of an older version runs that version, not the newest, until they update", async ({
+  context,
+}) => {
+  const user = await loginAsPlayer(context);
+  const db = adminDb();
+  // Seed recipe 03 has v1 (…0003) and v2 (…0001-…0003, current).
+  const v1 = "bbbbbbbb-0000-0000-0000-000000000003";
+  const v2 = "bbbbbbbb-0000-0000-0001-000000000003";
+  const granted = await db.from("entitlements").insert({
+    user_id: user.id,
+    recipe_id: "aaaaaaaa-0000-0000-0000-000000000003",
+    version_id: v1,
+    source: "free",
+  });
+  expect(granted.error).toBeNull();
+  const variables = { "메뉴 사진": "라테 사진 1장", "필름 톤": "코닥 포트라" };
+
+  const newer = await context.request.post("/api/play/runs", {
+    data: runBody({ mode: "free", recipeVersionId: v2, prompt: "", variables }),
+  });
+  expect(newer.status()).toBe(404);
+  expect(await newer.text()).not.toContain("SAMEPLZ-SECRET-SAMPLE");
+
+  const pinned = await context.request.post("/api/play/runs", {
+    data: runBody({ mode: "free", recipeVersionId: v1, prompt: "", variables }),
+  });
+  expect(pinned.status()).toBe(201);
+  await waitTerminal((await pinned.json()).cellIds[0]);
+  const { data: run } = await db
+    .from("play_runs")
+    .select("recipe_version_id")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+  expect(run?.recipe_version_id).toBe(v1);
+});
+
 test("F4-15 the kill switch: a paused budget refuses runs (BUDGET_EXHAUSTED)", async ({
   context,
 }) => {
@@ -593,23 +631,46 @@ test.describe("PLAY screen", () => {
   }) => {
     const player = await loginAsPlayer(context);
     await page.goto("/play");
-    await page.getByLabel("프롬프트").filter({ visible: true }).fill("레퍼런스 얼굴로 프로필 사진");
+    await page
+      .getByLabel("프롬프트")
+      .filter({ visible: true })
+      .fill("레퍼런스 얼굴로 프로필 사진");
     await model(page, /^GPT Image 2\.5 Flare/).click();
-    const face = await sharp({ create: { width: 64, height: 64, channels: 3, background: "#c08060" } })
+    const face = await sharp({
+      create: { width: 64, height: 64, channels: 3, background: "#c08060" },
+    })
       .png()
       .toBuffer();
-    await page.locator("#up-refs").setInputFiles({ name: "face.png", mimeType: "image/png", buffer: face });
-    await expect(page.getByRole("img", { name: "레퍼런스 face.png" }).filter({ visible: true })).toBeVisible();
+    await page
+      .locator("#up-refs")
+      .setInputFiles({ name: "face.png", mimeType: "image/png", buffer: face });
+    await expect(
+      page
+        .getByRole("img", { name: "레퍼런스 face.png" })
+        .filter({ visible: true }),
+    ).toBeVisible();
 
     await runButton(page).click();
     const consent = page.locator("#up-consent");
     await expect(consent).toBeFocused();
-    await expect(page.getByText("얼굴 사진 사용 동의에 체크해 주세요.").filter({ visible: true })).toBeVisible();
-    await page.getByText(/^본인 사진이거나 사진 속 인물의 동의를 받았어요/).filter({ visible: true }).click();
+    await expect(
+      page
+        .getByText("얼굴 사진 사용 동의에 체크해 주세요.")
+        .filter({ visible: true }),
+    ).toBeVisible();
+    await page
+      .getByText(/^본인 사진이거나 사진 속 인물의 동의를 받았어요/)
+      .filter({ visible: true })
+      .click();
     await expect(consent).toBeChecked();
     await runButton(page).click();
     await expect(
-      page.getByRole("img", { name: /GPT Image 2\.5 Flare로 만든 AI 생성 이미지/ }).filter({ visible: true }).first(),
+      page
+        .getByRole("img", {
+          name: /GPT Image 2\.5 Flare로 만든 AI 생성 이미지/,
+        })
+        .filter({ visible: true })
+        .first(),
     ).toBeVisible({ timeout: 15_000 });
 
     // The stored file itself is marked: dark box in the bottom-right corner, untouched elsewhere.
@@ -620,11 +681,16 @@ test.describe("PLAY screen", () => {
       .eq("user_id", player.id)
       .not("result_path", "is", null)
       .single();
-    const file = await db.storage.from("play-results").download(cell!.result_path!);
-    const { data, info } = await sharp(Buffer.from(await file.data!.arrayBuffer()))
+    const file = await db.storage
+      .from("play-results")
+      .download(cell!.result_path!);
+    const { data, info } = await sharp(
+      Buffer.from(await file.data!.arrayBuffer()),
+    )
       .raw()
       .toBuffer({ resolveWithObject: true });
-    const at = (x: number, y: number) => data[(y * info.width + x) * info.channels];
+    const at = (x: number, y: number) =>
+      data[(y * info.width + x) * info.channels];
     expect(at(info.width - 8, info.height - 8)).toBeLessThan(200);
     expect(at(8, 8)).toBeGreaterThan(200);
     const { count } = await db
@@ -647,20 +713,37 @@ test.describe("PLAY screen", () => {
     });
     await page.goto("/play?recipe=rdetailcopy");
     await model(page, /^GPT Image 2\.5 Flare/).click();
-    await page.getByRole("button", { name: "예시로 채우기" }).filter({ visible: true }).click();
+    await page
+      .getByRole("button", { name: "예시로 채우기" })
+      .filter({ visible: true })
+      .click();
     await runButton(page).click();
-    const result = page.getByRole("figure", { name: "GPT Image 2.5 Flare 결과" }).filter({ visible: true }).first();
-    await expect(result.getByRole("img", { name: /AI 생성 이미지/ })).toBeVisible({ timeout: 15_000 });
+    const result = page
+      .getByRole("figure", { name: "GPT Image 2.5 Flare 결과" })
+      .filter({ visible: true })
+      .first();
+    await expect(
+      result.getByRole("img", { name: /AI 생성 이미지/ }),
+    ).toBeVisible({ timeout: 15_000 });
     await result.getByRole("button", { name: "SAME 인증 올리기" }).click();
     const dialog = page.getByRole("dialog");
-    await expect(dialog.getByText("플레이그라운드 결과를 그대로 올려요")).toBeVisible();
+    await expect(
+      dialog.getByText("플레이그라운드 결과를 그대로 올려요"),
+    ).toBeVisible();
     const title = `여기서 만든 결과 ${Date.now() % 100000}`;
     await dialog.getByLabel("한 줄 소개").fill(title);
     await dialog.getByRole("button", { name: "올리기" }).click();
-    await expect(page.getByText("SAME 인증을 올렸어요. 갤러리 맨 위에 보여요.").filter({ visible: true })).toBeVisible();
+    await expect(
+      page
+        .getByText("SAME 인증을 올렸어요. 갤러리 맨 위에 보여요.")
+        .filter({ visible: true }),
+    ).toBeVisible();
 
     await page.goto("/gallery");
-    const first = page.getByRole("list", { name: "갤러리" }).getByRole("listitem").first();
+    const first = page
+      .getByRole("list", { name: "갤러리" })
+      .getByRole("listitem")
+      .first();
     await expect(first).toContainText(title);
     await expect(first).toContainText("여기서 생성");
   });
@@ -671,17 +754,31 @@ test.describe("PLAY screen", () => {
   }) => {
     await loginAsPlayer(context);
     await page.goto("/play");
-    await page.getByLabel("프롬프트").filter({ visible: true }).fill("초안으로 보낼 내 프롬프트");
+    await page
+      .getByLabel("프롬프트")
+      .filter({ visible: true })
+      .fill("초안으로 보낼 내 프롬프트");
     await model(page, /^GPT Image 2\.5 Flare/).click();
     await runButton(page).click();
     await expect(
-      page.getByRole("img", { name: /AI 생성 이미지/ }).filter({ visible: true }).first(),
+      page
+        .getByRole("img", { name: /AI 생성 이미지/ })
+        .filter({ visible: true })
+        .first(),
     ).toBeVisible({ timeout: 15_000 });
-    await page.getByRole("button", { name: "이 프롬프트로 레시피 올리기" }).filter({ visible: true }).click();
+    await page
+      .getByRole("button", { name: "이 프롬프트로 레시피 올리기" })
+      .filter({ visible: true })
+      .click();
     await expect(page).toHaveURL(/\/my\/seller\/upload$/);
-    await page.getByRole("button", { name: "이어서 쓰기" }).filter({ visible: true }).click();
+    await page
+      .getByRole("button", { name: "이어서 쓰기" })
+      .filter({ visible: true })
+      .click();
     await page.getByRole("button", { name: "다음" }).click();
-    await expect(page.getByLabel("프롬프트 본문")).toHaveValue("초안으로 보낼 내 프롬프트");
+    await expect(page.getByLabel("프롬프트 본문")).toHaveValue(
+      "초안으로 보낼 내 프롬프트",
+    );
   });
 
   test("F4-16 a model whose cheapest setting is over the daily limit cannot be picked", async ({

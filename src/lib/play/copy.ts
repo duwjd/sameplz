@@ -51,6 +51,8 @@ export function runErrorCopy(
       return "만 18세 이상만 만들 수 있어요.";
     case "AI_NOTICE_REQUIRED":
       return "생성형 AI 안내를 확인한 뒤 만들 수 있어요.";
+    case "ACCOUNT_SUSPENDED":
+      return "이용이 제한된 계정이라 지금은 할 수 없어요. 자세한 건 알림을 확인해 주세요.";
     case "GENERATION_SUSPENDED":
       return "안전 필터에 여러 번 걸려 생성을 잠시 멈췄어요. 사람이 확인한 뒤 다시 열어 드려요.";
     case "DAILY_LIMIT":

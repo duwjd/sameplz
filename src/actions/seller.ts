@@ -4,17 +4,27 @@ import { syncRecipeMedia } from "@/data/media-sync";
 import { z } from "zod";
 import { recipeTag } from "@/data/recipe";
 import { readOwnOriginal, type OwnOriginalDTO } from "@/data/secrets";
-import { getViewer, type Viewer } from "@/lib/auth/account";
+import { getViewer, sanctionBlock, type Viewer } from "@/lib/auth/account";
 import { WAITLIST_CONSENT_VERSION } from "@/lib/seller/waitlist";
 import { createClient } from "@/lib/supabase/server";
 
 type Gate =
   | { ok: true; viewer: Viewer }
-  | { ok: false; reason: "LOGIN_REQUIRED" | "SIGNUP_INCOMPLETE" };
+  | {
+      ok: false;
+      reason:
+        | "LOGIN_REQUIRED"
+        | "SIGNUP_INCOMPLETE"
+        | "ACCOUNT_SUSPENDED"
+        | "SELLER_SUSPENDED";
+    };
 async function creator(): Promise<Gate> {
   const viewer = await getViewer();
   if (!viewer) return { ok: false, reason: "LOGIN_REQUIRED" };
   if (!viewer.signupComplete) return { ok: false, reason: "SIGNUP_INCOMPLETE" };
+  // F8-4: republishing and share links count as selling (the database refuses them too).
+  const blocked = sanctionBlock(viewer, "seller");
+  if (blocked) return { ok: false, reason: blocked };
   return { ok: true, viewer };
 }
 
@@ -31,6 +41,8 @@ export type VisibilityResult =
       reason:
         | "LOGIN_REQUIRED"
         | "SIGNUP_INCOMPLETE"
+        | "ACCOUNT_SUSPENDED"
+        | "SELLER_SUSPENDED"
         | "NOT_FOUND"
         | "NOT_TOGGLEABLE"
         | "FAILED";
@@ -80,6 +92,8 @@ export type ShareLinkResult =
       reason:
         | "LOGIN_REQUIRED"
         | "SIGNUP_INCOMPLETE"
+        | "ACCOUNT_SUSPENDED"
+        | "SELLER_SUSPENDED"
         | "INVALID_CODE"
         | "CODE_TAKEN"
         | "TOO_MANY_LINKS"
@@ -131,7 +145,15 @@ const Categories = z.array(z.enum(["prompt", "agent", "skill"])).max(3);
 
 export type WaitlistResult =
   | { ok: true; joined: boolean }
-  | { ok: false; reason: "LOGIN_REQUIRED" | "SIGNUP_INCOMPLETE" | "FAILED" };
+  | {
+      ok: false;
+      reason:
+        | "LOGIN_REQUIRED"
+        | "SIGNUP_INCOMPLETE"
+        | "ACCOUNT_SUSPENDED"
+        | "SELLER_SUSPENDED"
+        | "FAILED";
+    };
 
 /** 「유료 판매 오픈 알림 신청」 once per user (PK user_id); again → 「신청했어요」, cancel deletes. */
 export async function setWaitlist(input: {

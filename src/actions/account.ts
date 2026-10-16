@@ -1,7 +1,7 @@
 "use server";
 // NOTI · PRF · ACC actions (F7-3~6). zod → verified claims → RPC (own rows only).
 import { z } from "zod";
-import { getViewer } from "@/lib/auth/account";
+import { getViewer, sanctionBlock } from "@/lib/auth/account";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -89,6 +89,9 @@ export async function updateProfile(input: unknown): Promise<ProfileResult> {
   }
   const viewer = await member();
   if (!viewer) return { ok: false, reason: "LOGIN_REQUIRED" };
+  // F8-4: the public profile is 「글쓰기」; a suspended member cannot rewrite it (the database refuses too).
+  if (sanctionBlock(viewer, "account"))
+    return { ok: false, reason: "ACCOUNT_SUSPENDED" };
   const supabase = await createClient();
   const check = await checkHandle({ handle: parsed.data.handle });
   if (check === "TAKEN") return { ok: false, field: "handle", reason: "TAKEN" };
@@ -130,13 +133,21 @@ export async function withdrawAccount(
   const viewer = await getViewer();
   if (!viewer) return { ok: false, reason: "LOGIN_REQUIRED" };
   const admin = createAdminClient();
-  const { data, error } = await admin.rpc("withdraw_account", { p_user: viewer.id, p_reason: parsed.data.reason });
+  const { data, error } = await admin.rpc("withdraw_account", {
+    p_user: viewer.id,
+    p_reason: parsed.data.reason,
+  });
   const r = data as { ok?: boolean; reason?: string } | null;
   if (error) return { ok: false, reason: "FAILED" };
   if (!r?.ok) {
     // Retry after a failed auth step: the profile is already anonymized, finish the rest.
-    const { data: p } = await admin.from("profiles").select("deleted_at").eq("id", viewer.id).maybeSingle();
-    if (r?.reason !== "NOT_FOUND" || !p?.deleted_at) return { ok: false, reason: r?.reason ?? "FAILED" };
+    const { data: p } = await admin
+      .from("profiles")
+      .select("deleted_at")
+      .eq("id", viewer.id)
+      .maybeSingle();
+    if (r?.reason !== "NOT_FOUND" || !p?.deleted_at)
+      return { ok: false, reason: r?.reason ?? "FAILED" };
   }
   const removed = await admin.auth.admin.deleteUser(viewer.id, true);
   if (removed.error) {

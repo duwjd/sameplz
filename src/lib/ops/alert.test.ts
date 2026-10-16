@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { budgetAlertText, postOpsAlert, slaAlertText } from "./alert";
+import {
+  budgetAlertText,
+  ledgerAlertText,
+  postOpsAlert,
+  providerAlertText,
+  slaAlertText,
+} from "./alert";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -83,5 +89,47 @@ describe("slaAlertText", () => {
   });
   it("F8-1 알릴 것이 없으면 보내지 않는다", () => {
     expect(slaAlertText([])).toBeNull();
+  });
+});
+
+describe("runbook 10 P0 alerts", () => {
+  it("P0 ledger mismatch alerts with a count only", () => {
+    expect(
+      ledgerAlertText({
+        ledger_mismatch: 0,
+        cells_finished: 0,
+        cells_failed: 0,
+      }),
+    ).toBeNull();
+    expect(
+      ledgerAlertText({
+        ledger_mismatch: 2,
+        cells_finished: 0,
+        cells_failed: 0,
+      }),
+    ).toContain("2개");
+  });
+  it("P0 provider failure rate alerts over 30% with at least 10 cells", () => {
+    expect(
+      providerAlertText({
+        ledger_mismatch: 0,
+        cells_finished: 9,
+        cells_failed: 9,
+      }),
+    ).toBeNull();
+    expect(
+      providerAlertText({
+        ledger_mismatch: 0,
+        cells_finished: 10,
+        cells_failed: 3,
+      }),
+    ).toBeNull();
+    expect(
+      providerAlertText({
+        ledger_mismatch: 0,
+        cells_finished: 10,
+        cells_failed: 4,
+      }),
+    ).toContain("40%");
   });
 });

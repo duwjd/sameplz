@@ -1,26 +1,39 @@
 "use client";
 
+import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { LogoWordmark } from "@/components/ds/brand/Logo";
 
-/* SAMEPLZ SiteFooter — legal notice (통신판매중개 고지, 전자상거래법 제20조),
-   policy links and company line. Required on the home screen and checkout. */
+/* SAMEPLZ SiteFooter — policy links, operator notice and company line. Required on the home
+   screen. The 통신판매중개 notice (전자상거래법 제20조) returns with the paid phase via `notice`. */
+
+export interface SiteFooterLink {
+  label: string;
+  /** null renders plain text (e.g. a contact not set up yet). */
+  href: string | null;
+  /** HOME-06: 개인정보처리방침 is shown bold. */
+  strong?: boolean;
+}
 
 /**
- * Legal footer. Required on home and checkout.
+ * Legal footer. Required on home.
  */
 export interface SiteFooterProps {
-  links?: string[];
-  onLink?: (label: string) => void;
+  links?: SiteFooterLink[];
+  notice?: ReactNode;
   company?: ReactNode;
   style?: CSSProperties;
 }
 
-const DEFAULT_LINKS = ["이용 안내", "이용약관", "개인정보처리방침", "고객센터"];
+const DEFAULT_LINKS: SiteFooterLink[] = [
+  { label: "이용 안내", href: "/guide" },
+  { label: "이용약관", href: "/terms" },
+  { label: "개인정보처리방침", href: "/privacy", strong: true },
+];
 
 export function SiteFooter({
   links = DEFAULT_LINKS,
-  onLink,
+  notice,
   company,
   style = {},
 }: SiteFooterProps) {
@@ -42,36 +55,44 @@ export function SiteFooter({
         aria-label="정책"
         style={{ display: "flex", flexWrap: "wrap", gap: 20 }}
       >
-        {links.map((l, i) => (
-          <button
-            key={l}
-            type="button"
-            onClick={() => onLink && onLink(l)}
-            style={{
-              all: "unset",
-              cursor: "pointer",
-              fontSize: 13,
-              color: i === 2 ? "var(--sp-fg-normal)" : "var(--sp-fg-secondary)",
-              fontWeight: i === 2 ? 700 : 500,
-            }}
-          >
-            {l}
-          </button>
-        ))}
+        {links.map((l) => {
+          const linkStyle: CSSProperties = {
+            fontSize: 13,
+            textDecoration: "none",
+            color: l.strong ? "var(--sp-fg-normal)" : "var(--sp-fg-secondary)",
+            fontWeight: l.strong ? 700 : 500,
+          };
+          if (!l.href)
+            return (
+              <span key={l.label} style={linkStyle}>
+                {l.label}
+              </span>
+            );
+          return l.href.startsWith("/") ? (
+            <Link key={l.label} href={l.href} style={linkStyle}>
+              {l.label}
+            </Link>
+          ) : (
+            <a key={l.label} href={l.href} style={linkStyle}>
+              {l.label}
+            </a>
+          );
+        })}
       </nav>
-      <p
-        style={{
-          margin: 0,
-          maxWidth: 720,
-          fontSize: 12,
-          lineHeight: 1.6,
-          color: "var(--sp-fg-hint)",
-          textWrap: "pretty",
-        }}
-      >
-        SAMEPLZ는 통신판매중개자로서 거래 당사자가 아니며, 상품 정보와 거래에
-        대한 책임은 각 판매자에게 있어요.
-      </p>
+      {notice ? (
+        <p
+          style={{
+            margin: 0,
+            maxWidth: 720,
+            fontSize: 12,
+            lineHeight: 1.6,
+            color: "var(--sp-fg-hint)",
+            textWrap: "pretty",
+          }}
+        >
+          {notice}
+        </p>
+      ) : null}
       {company ? (
         <p style={{ margin: 0, fontSize: 12, color: "var(--sp-fg-hint)" }}>
           {company}

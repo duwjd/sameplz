@@ -227,7 +227,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-const SIGNUP_FREE_PATHS = ["/welcome", "/terms", "/privacy"];
+const SIGNUP_FREE_PATHS = [
+  "/welcome",
+  "/terms",
+  "/privacy",
+  "/guide",
+  "/policy",
+];
+const isSignupFree = (path: string) =>
+  SIGNUP_FREE_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
 
 /** URL-driven effects: login error round-trip and the unfinished-signup guard. Renders nothing. */
 function AuthRouteEffects({
@@ -258,8 +266,7 @@ function AuthRouteEffects({
   // re-ran this effect, cancelled the pending redirect and refetched forever.
   const needsSignup = Boolean(viewer && !viewer.signupComplete);
   useEffect(() => {
-    if (!needsSignup || SIGNUP_FREE_PATHS.some((p) => pathname.startsWith(p)))
-      return;
+    if (!needsSignup || isSignupFree(pathname)) return;
     let alive = true;
     refreshViewer().then((fresh) => {
       if (alive && fresh && !fresh.signupComplete) {
@@ -270,6 +277,15 @@ function AuthRouteEffects({
       alive = false;
     };
   }, [needsSignup, pathname, router, refreshViewer]);
+
+  // F8-4: a banned account is signed out and shown /blocked (the server refuses its writes anyway).
+  const banned = viewer?.sanction?.level === "banned";
+  useEffect(() => {
+    if (!banned) return;
+    void createClient()
+      .auth.signOut()
+      .finally(() => router.replace("/blocked"));
+  }, [banned, router]);
 
   return null;
 }

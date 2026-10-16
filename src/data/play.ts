@@ -13,7 +13,13 @@ import {
   type ProviderOutcome,
 } from "@/lib/generation/types";
 import { checkImage } from "@/lib/moderation/play";
-import { budgetAlertText, postOpsAlert, type BudgetAlert } from "@/lib/ops/alert";
+import {
+  budgetAlertText,
+  postOpsAlert,
+  slaAlertText,
+  type BudgetAlert,
+  type SlaAlert,
+} from "@/lib/ops/alert";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sniffMatches, type MediaMime } from "@/lib/upload/media";
 import { parseRecipeMeta } from "@/lib/recipe/detail";
@@ -69,7 +75,8 @@ export async function recipeTemplate(
   // parts of the hidden original (they come back in INVALID_VARIABLES errors).
   return {
     template,
-    variables: declared.length || mode === "free" ? declared : detectVariables(template),
+    variables:
+      declared.length || mode === "free" ? declared : detectVariables(template),
   };
 }
 
@@ -317,16 +324,26 @@ export async function submitCell(cellId: string): Promise<void> {
   let requestId: string | null = null;
   for (let attempt = 0; attempt < 2 && !requestId; attempt++) {
     try {
-      requestId = (await adapter.submit({ endpoint: c.endpoint, input, webhookUrl })).requestId;
+      requestId = (
+        await adapter.submit({ endpoint: c.endpoint, input, webhookUrl })
+      ).requestId;
     } catch (e) {
       const failure = e instanceof ProviderSubmitError ? e.failure : "unknown";
       if (failure === "transient" && attempt === 0) continue; // one immediate retry on a definite 5xx
-      if (failure === "safety_blocked") await finish(cellId, "blocked", "SAFETY_BLOCKED");
-      else if (failure === "invalid_input") await finish(cellId, "failed", "INVALID_INPUT");
+      if (failure === "safety_blocked")
+        await finish(cellId, "blocked", "SAFETY_BLOCKED");
+      else if (failure === "invalid_input")
+        await finish(cellId, "failed", "INVALID_INPUT");
       // The job may exist at the provider: never resubmit it (no double billing). It counts as spent.
       else if (failure === "unknown")
-        await finish(cellId, "failed", "PROVIDER_ERROR", { providerBilled: true });
-      else await db.rpc("requeue_cell", { p_cell: cellId, p_error_code: "PROVIDER_BUSY" });
+        await finish(cellId, "failed", "PROVIDER_ERROR", {
+          providerBilled: true,
+        });
+      else
+        await db.rpc("requeue_cell", {
+          p_cell: cellId,
+          p_error_code: "PROVIDER_BUSY",
+        });
       return;
     }
   }
@@ -343,7 +360,10 @@ export async function submitCell(cellId: string): Promise<void> {
 
 function resultMime(bytes: Uint8Array, declared: string): MediaMime | null {
   const candidates = Object.keys(RESULT_EXT) as MediaMime[];
-  if (candidates.includes(declared as MediaMime) && sniffMatches(declared as MediaMime, bytes))
+  if (
+    candidates.includes(declared as MediaMime) &&
+    sniffMatches(declared as MediaMime, bytes)
+  )
     return declared as MediaMime;
   return candidates.find((m) => sniffMatches(m, bytes)) ?? null;
 }
@@ -361,7 +381,8 @@ async function cellHasReferences(cellId: string): Promise<boolean> {
     .select("play_runs!inner(reference_ids)")
     .eq("id", cellId)
     .maybeSingle();
-  const run = (data as { play_runs?: { reference_ids: string[] } } | null)?.play_runs;
+  const run = (data as { play_runs?: { reference_ids: string[] } } | null)
+    ?.play_runs;
   return (run?.reference_ids?.length ?? 0) > 0;
 }
 
@@ -388,11 +409,15 @@ export async function applyOutcome(
 ): Promise<void> {
   if (outcome.state === "pending") return;
   if (outcome.state === "safety_blocked") {
-    await finish(cell.cellId, "blocked", "SAFETY_BLOCKED", { providerBilled: true });
+    await finish(cell.cellId, "blocked", "SAFETY_BLOCKED", {
+      providerBilled: true,
+    });
     return;
   }
   if (outcome.state === "failed") {
-    await finish(cell.cellId, "failed", outcome.code, { providerBilled: outcome.code === "OUTPUT_LOST" });
+    await finish(cell.cellId, "failed", outcome.code, {
+      providerBilled: outcome.code === "OUTPUT_LOST",
+    });
     return;
   }
   const temporary = async (code: string) => {
@@ -405,7 +430,9 @@ export async function applyOutcome(
   if (!file) return temporary("OUTPUT_LOST");
   const mime = resultMime(file.bytes.subarray(0, 32), file.contentType);
   if (!mime || (mime.startsWith("video/") ? "video" : "image") !== cell.kind) {
-    await finish(cell.cellId, "failed", "OUTPUT_LOST", { providerBilled: true });
+    await finish(cell.cellId, "failed", "OUTPUT_LOST", {
+      providerBilled: true,
+    });
     return;
   }
   const db = admin();
@@ -419,23 +446,33 @@ export async function applyOutcome(
       bytes = await markAiGenerated(bytes, mime);
     } catch (e) {
       logError("mark", e);
-      await finish(cell.cellId, "failed", "MARK_FAILED", { providerBilled: true });
+      await finish(cell.cellId, "failed", "MARK_FAILED", {
+        providerBilled: true,
+      });
       return;
     }
   }
-  const up = await db.storage.from(RESULTS_BUCKET).upload(path, bytes, { contentType: mime, upsert: true });
+  const up = await db.storage
+    .from(RESULTS_BUCKET)
+    .upload(path, bytes, { contentType: mime, upsert: true });
   if (up.error) return temporary("STORAGE_FAILED");
 
   let verdict: "pass" | "blocked" | "unavailable" = "pass";
-  if (adapter.name === "mock") verdict = mockOutputBlocked(url) ? "blocked" : "pass";
+  if (adapter.name === "mock")
+    verdict = mockOutputBlocked(url) ? "blocked" : "pass";
   else if (cell.kind === "image") {
     const s = await db.storage.from(RESULTS_BUCKET).createSignedUrl(path, 120);
-    verdict = s.error || !s.data ? "unavailable" : await checkImage(s.data.signedUrl);
+    verdict =
+      s.error || !s.data ? "unavailable" : await checkImage(s.data.signedUrl);
   }
 
   // Settle first, clean up after: a losing duplicate never removes the winner's file.
   const keepIfWinner = async () => {
-    const { data: now } = await db.from("play_cells").select("status, result_path").eq("id", cell.cellId).maybeSingle();
+    const { data: now } = await db
+      .from("play_cells")
+      .select("status, result_path")
+      .eq("id", cell.cellId)
+      .maybeSingle();
     if (!(now?.status === "succeeded" && now.result_path === path))
       await db.storage.from(RESULTS_BUCKET).remove([path]);
   };
@@ -444,16 +481,21 @@ export async function applyOutcome(
       await keepIfWinner();
       throw new RetryLater("MODERATION_UNAVAILABLE");
     }
-    await finish(cell.cellId, "failed", "MODERATION_UNAVAILABLE", { providerBilled: true });
+    await finish(cell.cellId, "failed", "MODERATION_UNAVAILABLE", {
+      providerBilled: true,
+    });
     await keepIfWinner();
     return;
   }
   if (verdict === "blocked") {
-    await finish(cell.cellId, "blocked", "RESULT_BLOCKED", { providerBilled: true });
+    await finish(cell.cellId, "blocked", "RESULT_BLOCKED", {
+      providerBilled: true,
+    });
     await keepIfWinner();
     return;
   }
-  if (!(await finish(cell.cellId, "succeeded", null, { resultPath: path }))) await keepIfWinner();
+  if (!(await finish(cell.cellId, "succeeded", null, { resultPath: path })))
+    await keepIfWinner();
 }
 
 // ---------------------------------------------------------------- webhook (F4-4, FM-9/10/11)
@@ -462,7 +504,9 @@ export async function applyOutcome(
 async function cellEndpoint(cellId: string): Promise<string | null> {
   const { data } = await admin()
     .from("play_cells")
-    .select("models!inner(endpoint, ref_endpoint), play_runs!inner(reference_ids)")
+    .select(
+      "models!inner(endpoint, ref_endpoint), play_runs!inner(reference_ids)",
+    )
     .eq("id", cellId)
     .maybeSingle();
   const row = data as {
@@ -470,7 +514,8 @@ async function cellEndpoint(cellId: string): Promise<string | null> {
     play_runs?: { reference_ids: string[] };
   } | null;
   if (!row?.models) return null;
-  return (row.play_runs?.reference_ids?.length ?? 0) > 0 && row.models.ref_endpoint
+  return (row.play_runs?.reference_ids?.length ?? 0) > 0 &&
+    row.models.ref_endpoint
     ? row.models.ref_endpoint
     : row.models.endpoint;
 }
@@ -513,21 +558,29 @@ export async function handleWebhook(args: {
 
   const event = adapter.parseEvent(args.rawBody);
   if (!event) return 200; // not an event we act on
-  if (cell.provider_request_id && cell.provider_request_id !== event.requestId) return 200; // older attempt
-  if (!["queued", "submitted", "running"].includes(cell.status ?? "")) return 200; // already settled
+  if (cell.provider_request_id && cell.provider_request_id !== event.requestId)
+    return 200; // older attempt
+  if (!["queued", "submitted", "running"].includes(cell.status ?? ""))
+    return 200; // already settled
   if (!cell.provider_request_id)
     await db.rpc("attach_provider_request", {
       p_cell: args.cellId,
       p_provider_request_id: event.requestId,
     });
 
-  const ref: CellRef = { cellId: args.cellId, userId: cell.user_id, kind: cell.kind };
+  const ref: CellRef = {
+    cellId: args.cellId,
+    userId: cell.user_id,
+    kind: cell.kind,
+  };
   try {
     let outcome = event.outcome;
     if (outcome.state === "pending") {
       // "OK" without an inline payload (large results): look the result up.
       const endpoint = await cellEndpoint(args.cellId);
-      outcome = endpoint ? await adapter.poll(endpoint, event.requestId) : outcome;
+      outcome = endpoint
+        ? await adapter.poll(endpoint, event.requestId)
+        : outcome;
     }
     if (outcome.state === "pending") {
       await db.rpc("mark_cell_running", { p_cell: args.cellId });
@@ -536,7 +589,9 @@ export async function handleWebhook(args: {
       await db.rpc("mark_cell_running", { p_cell: args.cellId });
       const done = outcome;
       args.later(async () => {
-        await applyOutcome(ref, done, adapter, { final: false }).catch((e) => logError("video finalize", e));
+        await applyOutcome(ref, done, adapter, { final: false }).catch((e) =>
+          logError("video finalize", e),
+        );
       });
     } else {
       await applyOutcome(ref, outcome, adapter, { final: false });
@@ -558,7 +613,12 @@ export async function handleWebhook(args: {
 interface SweepTargets {
   finish: { cell: string; status: "failed" | "expired"; error_code: string }[];
   resubmit: string[];
-  poll: { cell: string; provider_request_id: string | null; endpoint: string; deadline_at: string }[];
+  poll: {
+    cell: string;
+    provider_request_id: string | null;
+    endpoint: string;
+    deadline_at: string;
+  }[];
   expired_refs: { id: string; path: string }[];
   expired_results: { id: string; path: string }[];
 }
@@ -621,19 +681,31 @@ export async function sweep(budgetMs = 40_000): Promise<SweepReport> {
         const c = await cellForPoll(f.cell);
         const endpoint = await cellEndpoint(f.cell);
         if (c?.provider_request_id && endpoint) {
-          const outcome = await adapter.poll(endpoint, c.provider_request_id).catch(() => null);
+          const outcome = await adapter
+            .poll(endpoint, c.provider_request_id)
+            .catch(() => null);
           if (outcome && outcome.state !== "pending") {
-            await applyOutcome({ cellId: f.cell, userId: c.user_id, kind: c.kind }, outcome, adapter, {
-              final: true,
-            });
+            await applyOutcome(
+              { cellId: f.cell, userId: c.user_id, kind: c.kind },
+              outcome,
+              adapter,
+              {
+                final: true,
+              },
+            );
             report.finished++;
             continue;
           }
           await adapter.cancel(endpoint, c.provider_request_id);
         }
-        if (await finish(f.cell, "expired", "TIMEOUT", { providerBilled: Boolean(c?.provider_request_id) }))
+        if (
+          await finish(f.cell, "expired", "TIMEOUT", {
+            providerBilled: Boolean(c?.provider_request_id),
+          })
+        )
           report.finished++;
-      } else if (await finish(f.cell, f.status, f.error_code)) report.finished++;
+      } else if (await finish(f.cell, f.status, f.error_code))
+        report.finished++;
     } catch (e) {
       logError("sweep finish", e);
     }
@@ -652,11 +724,19 @@ export async function sweep(budgetMs = 40_000): Promise<SweepReport> {
     if (!p.provider_request_id) continue;
     const c = await cellForPoll(p.cell);
     if (!c) continue;
-    const outcome = await adapter.poll(p.endpoint, p.provider_request_id).catch(() => null);
+    const outcome = await adapter
+      .poll(p.endpoint, p.provider_request_id)
+      .catch(() => null);
     if (!outcome) continue;
-    const final = Date.now() - new Date(p.deadline_at).getTime() > FINAL_AFTER_MS;
+    const final =
+      Date.now() - new Date(p.deadline_at).getTime() > FINAL_AFTER_MS;
     try {
-      await applyOutcome({ cellId: p.cell, userId: c.user_id, kind: c.kind }, outcome, adapter, { final });
+      await applyOutcome(
+        { cellId: p.cell, userId: c.user_id, kind: c.kind },
+        outcome,
+        adapter,
+        { final },
+      );
       report.polled++;
     } catch (e) {
       if (!(e instanceof RetryLater)) logError("poll finalize", e);
@@ -666,16 +746,23 @@ export async function sweep(budgetMs = 40_000): Promise<SweepReport> {
   // D19 / F4-8: remove files first, then forget only the ones actually removed.
   const refIds: string[] = [];
   if (t.expired_refs.length) {
-    const r = await db.storage.from(REFS_BUCKET).remove(t.expired_refs.map((x) => x.path));
+    const r = await db.storage
+      .from(REFS_BUCKET)
+      .remove(t.expired_refs.map((x) => x.path));
     if (!r.error) refIds.push(...t.expired_refs.map((x) => x.id));
   }
   const cellIds: string[] = [];
   if (t.expired_results.length) {
-    const r = await db.storage.from(RESULTS_BUCKET).remove(t.expired_results.map((x) => x.path));
+    const r = await db.storage
+      .from(RESULTS_BUCKET)
+      .remove(t.expired_results.map((x) => x.path));
     if (!r.error) cellIds.push(...t.expired_results.map((x) => x.id));
   }
   if (refIds.length || cellIds.length) {
-    await db.rpc("purge_play_files", { p_ref_ids: refIds, p_cell_ids: cellIds });
+    await db.rpc("purge_play_files", {
+      p_ref_ids: refIds,
+      p_cell_ids: cellIds,
+    });
     report.purgedRefs = refIds.length;
     report.purgedResults = cellIds.length;
   }
@@ -685,6 +772,18 @@ export async function sweep(budgetMs = 40_000): Promise<SweepReport> {
   for (const a of (alerts ?? []) as unknown as BudgetAlert[]) {
     if (await postOpsAlert(budgetAlertText(a)))
       await db.rpc("mark_budget_alert", { p_month: a.month, p_level: a.level });
+  }
+
+  // F8-1 / F8-2: reviews past 24h and reports past 20h → one ops message, each item once.
+  const { data: sla } = await db.rpc("pending_sla_alerts");
+  const due = (sla ?? []) as unknown as SlaAlert[];
+  const text = slaAlertText(due);
+  if (text && (await postOpsAlert(text))) {
+    for (const kind of ["review_24h", "report_20h"] as const) {
+      const ids = due.filter((a) => a.kind === kind).map((a) => a.id);
+      if (ids.length)
+        await db.rpc("mark_sla_alerts", { p_kind: kind, p_ids: ids });
+    }
   }
   return report;
 }

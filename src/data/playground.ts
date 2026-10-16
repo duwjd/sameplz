@@ -91,7 +91,7 @@ export async function getPlayRecipes(viewer: Viewer): Promise<PlayRecipeDTO[]> {
       .select("id, public_id, title, status, current_version_id")
       .eq("owner_id", viewer.id)
       .eq("category", "prompt")
-      .neq("status", "stopped")
+      .not("status", "in", "(stopped,taken_down)")
       .not("current_version_id", "is", null)
       .order("updated_at", { ascending: false })
       .limit(50),

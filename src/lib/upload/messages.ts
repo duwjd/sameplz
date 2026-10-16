@@ -57,6 +57,9 @@ export const SUBMIT_COPY: Record<
       "사람이 확인 중인 버전이 있어요. 확인이 끝나면 새 버전을 올릴 수 있어요.",
   },
   RECIPE_STOPPED: { message: "판매가 멈춘 레시피라 새 버전을 올릴 수 없어요." },
+  RECIPE_TAKEN_DOWN: {
+    message: "게시가 중단된 레시피라 새 버전을 올릴 수 없어요.",
+  },
   NOT_FOUND: { message: "레시피를 찾지 못했어요." },
   PAYLOAD_TOO_LARGE: {
     message: "내용이 너무 길어요. 조금 줄여 주세요.",

@@ -19,6 +19,24 @@ export function budgetAlertText(a: BudgetAlert): string {
     : `[SAMEPLZ] ${month}월 생성이 마감됐어요 (${a.state === "open" ? "예산 소진" : "수동 정지"} · ${a.used.toLocaleString("ko-KR")}C / ${a.cap.toLocaleString("ko-KR")}C). 다음 달 1일에 자동으로 다시 열려요.`;
 }
 
+export interface SlaAlert {
+  kind: "review_24h" | "report_20h";
+  id: string;
+  since: string;
+}
+
+/** F8-1 / F8-2: one message per sweep with the counts; ids stay out of the text (no user data). */
+export function slaAlertText(alerts: SlaAlert[]): string | null {
+  const reviews = alerts.filter((a) => a.kind === "review_24h").length;
+  const reports = alerts.filter((a) => a.kind === "report_20h").length;
+  if (!reviews && !reports) return null;
+  const parts = [
+    reviews ? `24시간 넘은 심사 ${reviews}건` : "",
+    reports ? `20시간 넘게 답하지 않은 신고 ${reports}건` : "",
+  ].filter(Boolean);
+  return `[SAMEPLZ] ${parts.join(", ")}이 있어요. /admin 에서 처리해 주세요.`;
+}
+
 /** POST to the ops webhook. true only on a 2xx (the caller marks the alert sent). */
 export async function postOpsAlert(text: string): Promise<boolean> {
   const url = process.env.OPS_ALERT_WEBHOOK_URL;
